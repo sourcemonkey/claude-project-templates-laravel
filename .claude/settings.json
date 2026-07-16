@@ -1,0 +1,21 @@
+{
+  "model": "fable",
+  "permissions": {
+    "allow": [
+      "Bash(git worktree *)",
+      "Bash(git merge *)",
+      "Bash(git branch *)",
+      "Bash(git mv *)",
+      "Bash(echo \"---exit: $?\")",
+      "Bash(echo \"exit: $?\")",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(bash -n bin/reset-phase.sh)",
+      "Bash(bin/reset-phase.sh)",
+      "Bash(bin/reset-phase.sh 2)",
+      "Bash(bin/reset-phase.sh 1)",
+      "Bash(git check-ignore *)",
+      "Bash(bash -c \"grep -c '.' /dev/null\")"
+    ]
+  }
+}
