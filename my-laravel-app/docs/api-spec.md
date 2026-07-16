@@ -31,8 +31,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/users/{user}', [Admin\UserController::class, 'show'])->name('users.show');
         Route::patch('/users/{user}', [Admin\UserController::class, 'update'])->name('users.update');
 
-        Route::resource('categories', Admin\CategoryController::class)->except(['show']);
-        Route::resource('tags', Admin\TagController::class)->except(['show']);
+        // カテゴリ・タグは作成・編集フォームを一覧画面内に置くため create / edit 画面を持たない
+        Route::resource('categories', Admin\CategoryController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::resource('tags', Admin\TagController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('books', Admin\BookController::class)->except(['show']);
 
         Route::get('/lendings', [Admin\LendingController::class, 'index'])->name('lendings.index');

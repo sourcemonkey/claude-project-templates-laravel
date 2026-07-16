@@ -21,6 +21,7 @@
 | `GET /notifications` | 通知一覧 | 未読/既読切替 |
 | `PATCH /notifications/{notification}/read` | 既読化 | |
 | `GET /profile/edit` | プロフィール編集 | |
+| `PATCH /profile` | プロフィール更新 | name / email の更新 |
 
 ## 管理者領域（要ログイン + admin ロール）
 
@@ -32,11 +33,11 @@ URL プレフィックス: `/admin/`
 | `GET /admin/users` | ユーザー一覧 | 検索 |
 | `GET /admin/users/{user}` | ユーザー詳細 | 貸出履歴含む |
 | `PATCH /admin/users/{user}` | ロール変更 | Member ⇄ Admin |
-| `GET /admin/categories` | カテゴリ一覧 | |
+| `GET /admin/categories` | カテゴリ一覧 | 作成・編集フォームは一覧画面内（専用の create / edit 画面は作らない） |
 | `POST /admin/categories` | カテゴリ作成 | |
 | `PATCH /admin/categories/{category}` | カテゴリ更新 | |
 | `DELETE /admin/categories/{category}` | カテゴリ削除 | |
-| `GET /admin/tags` | タグ一覧 | |
+| `GET /admin/tags` | タグ一覧 | 作成・編集フォームは一覧画面内（専用の create / edit 画面は作らない） |
 | `POST /admin/tags` | タグ作成 | |
 | `PATCH /admin/tags/{tag}` | タグ更新 | |
 | `DELETE /admin/tags/{tag}` | タグ削除 | |
@@ -47,6 +48,7 @@ URL プレフィックス: `/admin/`
 | `PATCH /admin/books/{book}` | 蔵書更新 | |
 | `DELETE /admin/books/{book}` | 蔵書削除 | |
 | `GET /admin/lendings` | 貸出申請一覧 | 状態フィルタ（Livewire コンポーネント） |
+| `GET /admin/lendings/{lending}` | 貸出詳細 | 承認・却下ボタン |
 | `PATCH /admin/lendings/{lending}/approve` | 申請承認 | |
 | `PATCH /admin/lendings/{lending}/reject` | 申請却下 | |
 | `GET /admin/audit-logs` | 監査ログ | 検索 / 日付絞り込み |
@@ -104,4 +106,4 @@ URL プレフィックス: `/admin/`
 | カテゴリフォームの name フィールド label | `カテゴリ名` |
 | タグフォームの name フィールド label | `タグ名` |
 
-> **Breeze のログインフォームのラベル文言（メールアドレス欄・パスワード欄・ログインボタン）は `laravel-lang/lang` の翻訳ファイルが提供する文言をそのまま使う。** バージョンによって訳語が変わりうるため、この docs では固定値を明示しない。Phase 3 でシステムテストを書く前に `resources/views/vendor/breeze/` 配下のビューを実際に Read し、ラベル文言を確認してからテストコードに反映すること（推測で書くと不一致による修正ループが発生する）。
+> **Breeze のログインフォームのラベル文言（メールアドレス欄・パスワード欄・ログインボタン）は `laravel-lang/lang` の翻訳ファイルが提供する文言をそのまま使う。** バージョンによって訳語が変わりうるため、この docs では固定値を明示しない。Phase 3 でシステムテストを書く前に、Breeze が `resources/views/` 配下に生成した認証ビュー（Livewire スタックでは `resources/views/livewire/pages/auth/` 等）と `lang/` 配下の翻訳ファイル（`lang/ja.json` 等）を実際に Read し、ラベル文言を確認してからテストコードに反映すること（推測で書くと不一致による修正ループが発生する。なお Breeze はビューを vendor ディレクトリではなくプロジェクト直下に publish する）。
