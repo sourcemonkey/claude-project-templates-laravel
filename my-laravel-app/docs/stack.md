@@ -13,7 +13,7 @@
 
 ## フレームワーク・主要パッケージ
 
-「手動追加」列が ✅ のパッケージは `laravel new` で自動追加されないため手動で `composer require` する。— は `laravel new my-app --database=mysql` で自動追加される、または PHP 標準拡張として利用する。
+「手動追加」列が ✅ のパッケージは `laravel new` で自動追加されないため手動で `composer require` する。— は `laravel new my-laravel-app --database=mysql` で自動追加される、または PHP 標準拡張として利用する。
 
 | パッケージ | 用途 | 手動追加 | 種別 |
 |---|---|---|---|

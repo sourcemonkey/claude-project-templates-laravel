@@ -8,7 +8,7 @@ PHP 8.4.23 / Laravel 13 向けに移植したものです。フェーズ分割�
 （雛形 → モデル → UI → 仕上げ）や CLAUDE.md 階層構造は Rails 版と共通です。
 
 題材として「蔵書管理 + 貸出記録システム（BookKeeper）」を同梱していますが、
-これはあくまで例で、`my-app/docs/` を差し替えれば他の業務系プロジェクトの
+これはあくまで例で、`my-laravel-app/docs/` を差し替えれば他の業務系プロジェクトの
 雛形としても使えます。
 
 ## 構成
@@ -26,9 +26,9 @@ PHP 8.4.23 / Laravel 13 向けに移植したものです。フェーズ分割�
 │   ├── git-workflow.md
 │   ├── review-policy.md
 │   └── security.md
-└── my-app/                      ← 個別プロジェクトのルート（ここで claude を起動）
+└── my-laravel-app/              ← 個別プロジェクトのルート（ここで claude を起動）
     ├── .gitignore               ← Laravel アプリ用の除外設定（.env / coverage/ 等を含む）
-    ├── .tool-versions           ← my-app 配下での PHP / Node.js バージョン
+    ├── .tool-versions           ← my-laravel-app 配下での PHP / Node.js バージョン
     ├── CLAUDE.md                ← プロジェクト固有のエントリポイント
     ├── compose.yaml              ← 開発用 MySQL コンテナ定義
     ├── docker/                  ← Docker 関連の追加設定
@@ -52,7 +52,7 @@ PHP 8.4.23 / Laravel 13 向けに移植したものです。フェーズ分割�
 
 ## ローカル環境の前提
 
-`my-app/docs/stack.md` の前提に従い、ローカル PC に以下が必要です。
+`my-laravel-app/docs/stack.md` の前提に従い、ローカル PC に以下が必要です。
 
 | ツール | バージョン | 用途 |
 |---|---|---|
@@ -69,9 +69,9 @@ DBMS は MySQL 8.x を **Docker コンテナ** で起動する設計です。
 
 ### PHP バージョンを 2 箇所で固定している理由
 
-リポジトリ直下と `my-app/` 配下の両方に `.tool-versions` を置いています。
+リポジトリ直下と `my-laravel-app/` 配下の両方に `.tool-versions` を置いています。
 Claude Code が `laravel new` や `composer require` などのコマンドを実行する際、
-カレントディレクトリが `my-app/` の外側になるケースがあるためです。両方に
+カレントディレクトリが `my-laravel-app/` の外側になるケースがあるためです。両方に
 同じバージョンを書いておけば、どちらのディレクトリで `asdf` が動いても
 同じ PHP / Node.js が選ばれます。
 
@@ -95,15 +95,15 @@ cd ~/work/your-new-project
 別プロジェクトに転用する場合は、以下を実際に作りたい題材に合わせて編集します。
 BookKeeper をそのまま題材として進める場合はスキップで OK です。
 
-- `my-app/CLAUDE.md` のプロジェクト名と概要
-- `my-app/docs/` の各ドキュメント
+- `my-laravel-app/CLAUDE.md` のプロジェクト名と概要
+- `my-laravel-app/docs/` の各ドキュメント
   - 特に `db-schema.md`, `screens.md`, `seeds.md` は題材に応じて差し替え
-- `my-app/compose.yaml` のコンテナ名・DB 名（必要なら）
+- `my-laravel-app/compose.yaml` のコンテナ名・DB 名（必要なら）
 
 ### 3. Claude Code を起動
 
 ```sh
-cd my-app
+cd my-laravel-app
 claude
 ```
 
@@ -140,16 +140,16 @@ Claude Code のセッションで順番にスラッシュコマンドを実行�
 
 ### 5. 完成後
 
-`my-app/` 配下に Laravel アプリ一式が生成されます。
+`my-laravel-app/` 配下に Laravel アプリ一式が生成されます。
 
 ```sh
-cd my-app
+cd my-laravel-app
 bin/setup    # MySQL コンテナ起動 + composer/npm install + migrate --seed
 bin/dev      # 開発サーバ起動
 ```
 
 具体的な起動 URL・テストアカウントは Phase 4 で生成される
-`my-app/README.md` 参照。
+`my-laravel-app/README.md` 参照。
 
 ### 6. 独立リポジトリへの移行（任意）
 
@@ -182,14 +182,14 @@ bash bin/init-project.sh
 | SimpleCov | PHPUnit/Pest の `--coverage-html`（PCOV ドライバ） | |
 | Service オブジェクト | Action クラス（`app/Actions/`） | 命名規則は「操作 + リソース + Action」 |
 
-詳細な理由・設計判断は `my-app/docs/stack.md` および `my-app/docs/architecture.md` 参照。
+詳細な理由・設計判断は `my-laravel-app/docs/stack.md` および `my-laravel-app/docs/architecture.md` 参照。
 
 ## カスタマイズのコツ
 
-- **別の業務系プロジェクトに転用するとき**: `my-app/docs/` の中身だけ
+- **別の業務系プロジェクトに転用するとき**: `my-laravel-app/docs/` の中身だけ
   差し替えれば、コマンドや方針はそのまま使えます
 - **DB を PostgreSQL にしたいとき**: `docs/stack.md` の MySQL 関連記述、
-  `my-app/compose.yaml` のイメージ、Phase 1 のコマンドファイルの 3 箇所を
+  `my-laravel-app/compose.yaml` のイメージ、Phase 1 のコマンドファイルの 3 箇所を
   書き換えれば対応できます
 - **チーム共通ルールの強化**: `team-rules/` 配下にファイルを追加し、
   ルート `CLAUDE.md` で `@team-rules/xxx.md` でインクルードします
@@ -199,14 +199,14 @@ bash bin/init-project.sh
 
 ## コマンドファイルの書き方
 
-`my-app/.claude/commands/*.md` を新規追加・編集するときの方針です。
+`my-laravel-app/.claude/commands/*.md` を新規追加・編集するときの方針です。
 新しいフェーズや補助コマンドを追加する場合、既存のコマンドファイル
 （`scaffold-phase1-skeleton.md` など）を雛形にしてください。
 
 ### 1. 一次情報は docs/ に集約する
 
 仕様（DB スキーマ、画面構成、ルーティング、認可、Seeder 内容など）は
-`my-app/docs/` 配下のドキュメントが一次情報です。コマンドファイル側に
+`my-laravel-app/docs/` 配下のドキュメントが一次情報です。コマンドファイル側に
 同じ内容を書かず、`docs/xxx.md` を参照する形にします。
 
 理由:
@@ -286,12 +286,12 @@ description: （コマンド一覧で表示される 1 行説明）
 
 ## Claude Code の権限設定について
 
-このテンプレートには `my-app/.claude/settings.json`（共有用）が
+このテンプレートには `my-laravel-app/.claude/settings.json`（共有用）が
 同梱されており、Phase 1〜4 でよく使うコマンドパターンを許可リストに
 入れてあります。これにより毎回の承認プロンプトが減ります。
 
 セッション中に「Yes, and don't ask again」を選んだ項目は、個人ローカル用の
-`my-app/.claude/settings.local.json`（gitignore 対象）に自動で蓄積されます。
+`my-laravel-app/.claude/settings.local.json`（gitignore 対象）に自動で蓄積されます。
 そこから共有してよいパターンを選別して `settings.json` にマージしていくと、
 次プロジェクトでさらに承認回数が減らせます。
 
@@ -307,6 +307,6 @@ description: （コマンド一覧で表示される 1 行説明）
 - 生成中に Claude Code が破壊的操作（`rm -rf`, `migrate:fresh` 等）を行おうと
   した際は確認が入ります。`settings.json` の `deny` リストにも
   ガードを置いてあります
-- `.env` はテンプレート同梱の `my-app/.gitignore` で
+- `.env` はテンプレート同梱の `my-laravel-app/.gitignore` で
   除外済みです。`init-project.sh` 実行時に秘密情報がコミット候補に入っていないことを
   確認してください（スクリプト側でも検出ガードを設けています）

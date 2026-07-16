@@ -12,10 +12,10 @@ Laravel 本体はホスト側で動かす。
 
 以下はテンプレートに同梱済み。Phase 1 で新規作成しない:
 
-- `my-app/compose.yaml`
-- `my-app/docker/mysql/conf.d/.keep`
-- `my-app/.tool-versions`
-- `my-app/.gitignore`（`.env` 除外・カバレッジ除外など含む）
+- `my-laravel-app/compose.yaml`
+- `my-laravel-app/docker/mysql/conf.d/.keep`
+- `my-laravel-app/.tool-versions`
+- `my-laravel-app/.gitignore`（`.env` 除外・カバレッジ除外など含む）
 - ルート直下の `.tool-versions`, `env.example`, `.gitignore`
 
 これらの内容を確認・編集する必要はない（中身は `docs/stack.md` の規約に合致した状態でコミット済み）。
@@ -24,7 +24,7 @@ Laravel 本体はホスト側で動かす。
 
 ### 1. 事前確認
 
-1. **PHP バージョン確認**: `my-app/` 内で `php -v` を実行し 8.4.23 系が出るか確認。出ない場合は asdf 等でインストールを促し中断。
+1. **PHP バージョン確認**: `my-laravel-app/` 内で `php -v` を実行し 8.4.23 系が出るか確認。出ない場合は asdf 等でインストールを促し中断。
 2. **PHP 拡張の確認**: `php -m | grep -i zip` で `zip` 拡張が有効か確認する（`laravel/dusk` v8.x 系が `ext-zip` を要求するため）。無効な場合、`pecl install zip` でビルドし、`php --ini` で表示される `conf.d` 配下の ini ファイルに `extension=zip.so` を追記する（このホストの PHP 全体に適用される変更のため、事前にユーザーへ確認する）。`libzip` が未インストールの場合は `brew install libzip` を促す。
 3. **Node.js バージョン確認**: `node -v` を実行し `.tool-versions` の `nodejs 22.14.0` 系と一致するか確認する。一致しない場合、`which node` で実際に使われているバージョンマネージャ（asdf/mise/nodenv/nvm 等）を特定する。**複数のバージョンマネージャが併存し、`.tool-versions`（asdf/mise 用）を無視して別のマネージャ（例: nodenv）が優先されるケースがある**ため、その場合は優先されているマネージャ側で該当バージョンをインストールし、プロジェクトディレクトリにローカルピン留め（例: `nodenv local 22.14.0`）する。バージョン不一致のまま進めると `npm run build` で Vite 系パッケージのネイティブバインディングが解決できず失敗することがある。
 4. **Laravel Installer の確認**: `laravel --version` を実行。存在しない場合は `composer global require laravel/installer` を提案し、`~/.composer/vendor/bin`（または `~/.config/composer/vendor/bin`）に PATH が通っているか確認。
@@ -39,7 +39,7 @@ Laravel 本体はホスト側で動かす。
 
 ### 2. DB コンテナの起動
 
-`my-app/` ディレクトリで以下を実行:
+`my-laravel-app/` ディレクトリで以下を実行:
 
 1. `docker compose up -d db` で DB コンテナを起動
 2. DB が ready になるまで待機:
@@ -57,11 +57,11 @@ Laravel 本体はホスト側で動かす。
 起動失敗時の典型原因:
 - ポート競合（`docker compose logs db` で確認）
 - ボリュームに前回データが残っていてユーザ作成がスキップされた（`docker compose down -v` で初期化）
-- **Docker named volume の衝突**: Docker Compose のデフォルトプロジェクト名はディレクトリ名（basename）に由来するため、`my-app` という同名ディレクトリが複数存在する場合（例: 元のチェックアウトと git worktree、あるいは複数クローン）、`my-app_db-data` という同じボリューム名を共有してしまう。過去に別の `my-app` で初期化済みのデータが残っていると、今回の `MYSQL_DATABASE=bookkeeper` / `MYSQL_USER=app` の初期化がスキップされ、`app` ユーザーが `bookkeeper` にアクセスできない（`SHOW GRANTS FOR 'app'@'%';` で対象データベースを確認できる）。この場合も `docker compose down -v` で解消するが、worktree で並行して試す場合は根本対策として `COMPOSE_PROJECT_NAME` を worktree ごとに変える運用も検討する
+- **Docker named volume の衝突**: Docker Compose のデフォルトプロジェクト名はディレクトリ名（basename）に由来するため、`my-laravel-app` という同名ディレクトリが複数存在する場合（例: 元のチェックアウトと git worktree、あるいは複数クローン）、`my-laravel-app_db-data` という同じボリューム名を共有してしまう。過去に別の `my-laravel-app` で初期化済みのデータが残っていると、今回の `MYSQL_DATABASE=bookkeeper` / `MYSQL_USER=app` の初期化がスキップされ、`app` ユーザーが `bookkeeper` にアクセスできない（`SHOW GRANTS FOR 'app'@'%';` で対象データベースを確認できる）。この場合も `docker compose down -v` で解消するが、worktree で並行して試す場合は根本対策として `COMPOSE_PROJECT_NAME` を worktree ごとに変える運用も検討する
 
 ### 3. Laravel アプリ生成
 
-`my-app/` は既にテンプレート同梱ファイル（`CLAUDE.md`, `docs/`, `.claude/`, `compose.yaml`, `docker/`, `.gitignore` 等）で空でないため、`laravel new` を直接カレントディレクトリに実行する:
+`my-laravel-app/` は既にテンプレート同梱ファイル（`CLAUDE.md`, `docs/`, `.claude/`, `compose.yaml`, `docker/`, `.gitignore` 等）で空でないため、`laravel new` を直接カレントディレクトリに実行する:
 
 ```sh
 laravel new . --force --no-interaction --pest
@@ -216,8 +216,8 @@ php artisan migrate --seed
 - [ ] `bookkeeper_test` データベースが作成済み
 - [ ] `composer.lock` がコミット対象に入っている
 - [ ] Laravel Breeze（Livewire スタック）/ larastan / Dusk の初期化済み
-- [ ] `my-app/.env` が存在し、`.gitignore` で除外されている
-- [ ] `my-app/.env.example` が存在し、コミット対象に含まれている
+- [ ] `my-laravel-app/.env` が存在し、`.gitignore` で除外されている
+- [ ] `my-laravel-app/.env.example` が存在し、コミット対象に含まれている
 - [ ] `bin/dev` に Queue ワーカー（`php artisan queue:work` / `queue:listen`）の行が**含まれていない**
 - [ ] `vendor/bin/pint --test` が違反 0
 - [ ] `vendor/bin/phpstan analyse --memory-limit=512M` がエラー 0

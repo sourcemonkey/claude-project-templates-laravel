@@ -53,7 +53,7 @@ Phase 1 で作成済みの `bin/setup` が以下を一発で実行できるこ�
 
 ### 4. README.md の作成
 
-`my-app/README.md` を新規作成。含めるべき項目:
+`my-laravel-app/README.md` を新規作成。含めるべき項目:
 
 - プロジェクト概要（1-2 段落）
 - 必要なランタイム（`docs/stack.md` の「ランタイム」表からコピー）

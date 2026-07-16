@@ -65,7 +65,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # 想定構造の簡易チェック（テンプレ由来のファイル群がそろっているか）
 check_repo_root() {
   local missing=()
-  for f in CLAUDE.md my-app/CLAUDE.md my-app/docs my-app/.claude; do
+  for f in CLAUDE.md my-laravel-app/CLAUDE.md my-laravel-app/docs my-laravel-app/.claude; do
     [ -e "$REPO_ROOT/$f" ] || missing+=("$f")
   done
   if [ ${#missing[@]} -gt 0 ]; then
@@ -197,15 +197,15 @@ run_mode2() {
   #   node_modules / vendor / tmp / log  — 再生成可能なビルド成果物（コピー時間短縮）
   #
   # 除外しないもの（重要）:
-  #   my-app/.env                        — Laravel の起動に必須（APP_KEY 含む）。git では .gitignore で除外される
+  #   my-laravel-app/.env                — Laravel の起動に必須（APP_KEY 含む）。git では .gitignore で除外される
   if command -v rsync >/dev/null 2>&1; then
     rsync -a \
       --exclude='.git/' \
       --exclude='**/.claude/settings.local.json' \
       --exclude='**/CLAUDE.local.md' \
-      --exclude='my-app/node_modules/' \
-      --exclude='my-app/vendor/' \
-      --exclude='my-app/storage/logs/' \
+      --exclude='my-laravel-app/node_modules/' \
+      --exclude='my-laravel-app/vendor/' \
+      --exclude='my-laravel-app/storage/logs/' \
       "$REPO_ROOT"/ "$DEST"/
   else
     warn "rsync が無いため tar でコピーします"
@@ -213,9 +213,9 @@ run_mode2() {
         --exclude='./.git' \
         --exclude='*/.claude/settings.local.json' \
         --exclude='*/CLAUDE.local.md' \
-        --exclude='./my-app/node_modules' \
-        --exclude='./my-app/vendor' \
-        --exclude='./my-app/storage/logs' \
+        --exclude='./my-laravel-app/node_modules' \
+        --exclude='./my-laravel-app/vendor' \
+        --exclude='./my-laravel-app/storage/logs' \
         . ) | ( cd "$DEST" && tar -xf - )
   fi
 

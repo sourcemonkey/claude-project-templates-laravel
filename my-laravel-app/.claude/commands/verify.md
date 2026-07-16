@@ -24,8 +24,8 @@ description: 現在のフェーズの完了基準を満たしているかセル�
 - [ ] `php artisan migrate` 成功済み（`bookkeeper` データベースに対して）
 - [ ] `bookkeeper_test` データベースが作成済み
 - [ ] `bin/dev` で 200 が返る
-- [ ] `my-app/.env` が存在し、`.gitignore` で除外されている
-- [ ] `my-app/.env.example` が存在し、コミット対象に含まれている
+- [ ] `my-laravel-app/.env` が存在し、`.gitignore` で除外されている
+- [ ] `my-laravel-app/.env.example` が存在し、コミット対象に含まれている
 - [ ] `bin/dev` に Queue ワーカー（`php artisan queue:work` / `queue:listen`）の行が含まれていない
 
 ### Phase 2 完了時
