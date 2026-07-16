@@ -1,0 +1,203 @@
+---
+description: フェーズ1 - Laravel 雛形を生成し依存を導入する（DB は Docker 上の MySQL）
+---
+
+# Phase 1: スケルトン生成
+
+`docs/stack.md` の技術スタックに従って、Laravel アプリの雛形を作成する。
+DBMS は **MySQL 8.x** を **Docker コンテナ** で起動して利用する。
+Laravel 本体はホスト側で動かす。
+
+## 前提
+
+以下はテンプレートに同梱済み。Phase 1 で新規作成しない:
+
+- `my-app/compose.yaml`
+- `my-app/docker/mysql/conf.d/.keep`
+- `my-app/.tool-versions`
+- `my-app/.gitignore`（`.env` 除外・カバレッジ除外など含む）
+- ルート直下の `.tool-versions`, `env.example`, `.gitignore`
+
+これらの内容を確認・編集する必要はない（中身は `docs/stack.md` の規約に合致した状態でコミット済み）。
+
+## 実行手順
+
+### 1. 事前確認
+
+1. **PHP バージョン確認**: `my-app/` 内で `php -v` を実行し 8.4.23 系が出るか確認。出ない場合は asdf 等でインストールを促し中断。
+2. **Laravel Installer の確認**: `laravel --version` を実行。存在しない場合は `composer global require laravel/installer` を提案し、`~/.composer/vendor/bin`（または `~/.config/composer/vendor/bin`）に PATH が通っているか確認。
+3. **Docker の確認**:
+   - `docker version` で Docker Engine が利用可能か確認
+   - `docker compose version` で Compose v2 が利用可能か確認
+   - どちらかが不可ならユーザーに「Docker Desktop か Docker Engine + Compose v2 をインストールしてください」と案内し中断
+4. **ポート 3306 の空き確認**:
+   - `lsof -i :3306` または `nc -z 127.0.0.1 3306` で確認
+   - 既に使用中ならユーザーに案内し、停止または別ポート利用を判断してもらう
+
+### 2. DB コンテナの起動
+
+`my-app/` ディレクトリで以下を実行:
+
+1. `docker compose up -d db` で DB コンテナを起動
+2. DB が ready になるまで待機:
+   ```sh
+   for i in $(seq 1 30); do
+     if docker compose exec -T db mysqladmin ping -uroot -proot_password > /dev/null 2>&1; then
+       echo "MySQL is ready"
+       break
+     fi
+     sleep 1
+   done
+   ```
+3. `docker compose exec db mysql -uapp -papp_password -e "SELECT 1"` で `app` ユーザでログインできることを確認
+
+起動失敗時の典型原因:
+- ポート競合（`docker compose logs db` で確認）
+- ボリュームに前回データが残っていてユーザ作成がスキップされた（`docker compose down -v` で初期化）
+
+### 3. Laravel アプリ生成
+
+`my-app/` は既にテンプレート同梱ファイル（`CLAUDE.md`, `docs/`, `.claude/`, `compose.yaml`, `docker/`, `.gitignore` 等）で空でないため、`laravel new` を直接カレントディレクトリに実行する:
+
+```sh
+laravel new . --force --no-interaction --pest
+```
+
+`--force` により既存ディレクトリでも生成を強行する。`--pest` でテストフレームワークに Pest を選択する。スターターキット選択のプロンプトは `--no-interaction` によりスキップされ、認証機能なしの素の Laravel が生成される（認証は Step 6 で Breeze を個別に導入する）。
+
+`laravel new` は `.gitignore` を独自に生成するが、テンプレート同梱の内容を正とするため、生成直後に以下を実行してテンプレート側のファイルへ戻す:
+
+```sh
+git checkout -- .gitignore CLAUDE.md docs/ .claude/ compose.yaml docker/ .tool-versions 2>/dev/null || true
+```
+
+（テンプレートリポジトリがまだ git 管理下にない場合、上記コマンドは何もせず終了して構わない。その場合は `docs/`, `.claude/`, `compose.yaml`, `docker/`, `CLAUDE.md`, `.tool-versions`, `.gitignore` が `laravel new` によって上書き・混入していないか目視で確認する。）
+
+### 4. config/database.php の調整
+
+`docs/stack.md` の「MySQL 設定の規約」セクションに記載のサンプル通りに `mysql` 接続設定を修正する。要点:
+
+- `charset: utf8mb4` / `collation: utf8mb4_0900_ai_ci` を明示
+- `host` / `username` / `password` / `port` を `.env` 経由で読み込む（Laravel の既定のまま）
+
+### 5. Composer パッケージの追加
+
+`docs/stack.md` の「手動追加」列が ✅ のパッケージを追加する:
+
+```sh
+composer require livewire/livewire spatie/laravel-query-builder
+composer require --dev enlightn/enlightn laravel/dusk laravel-lang/lang
+```
+
+### 6. 各種初期化
+
+- **Laravel Breeze（Livewire スタック）**:
+  ```sh
+  composer require laravel/breeze --dev
+  php artisan breeze:install livewire
+  ```
+  このコマンドで認証ビュー（ログイン・登録・パスワードリセット等）が Livewire コンポーネントとして生成され、Tailwind CSS と Alpine.js のセットアップも同時に行われる。
+- **laravel-lang（日本語化）**:
+  ```sh
+  php artisan lang:add ja
+  ```
+  `config/app.php` の `'locale'` を `'ja'` に、`'faker_locale'` を `'ja_JP'` に変更する。
+- **Laravel Dusk**:
+  ```sh
+  php artisan dusk:install
+  ```
+  ChromeDriver のインストールも自動で行われる。
+- **Enlightn**:
+  ```sh
+  php artisan enlightn:install
+  ```
+- **Laravel Pint**: `laravel new` で既定導入済み。確認のみ（`vendor/bin/pint --version`）。
+
+### 7. .env の準備
+
+`laravel new` が生成した `.env` / `.env.example` に、ルート同梱の `env.example` の内容（`DB_USERNAME`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `DEFAULT_FROM_EMAIL`）をマージする。`APP_KEY` は上書きしない（Laravel が生成した値をそのまま使う。未設定なら次のコマンドで生成する）:
+
+```sh
+php artisan key:generate
+```
+
+`DB_DATABASE=bookkeeper` を追記する。`MAIL_MAILER=log` を設定する（`docs/stack.md` の「メール確認」セクション参照）。
+
+`.env` はテンプレート同梱の `.gitignore` で除外済み。`.env.example` は git 管理対象に含める（`APP_KEY=` は空のままにしておく）。
+
+> **注意: `DATABASE_URL` を `.env` に追加しないこと**
+>
+> このプロジェクトの `config/database.php` は `DB_HOST` / `DB_USERNAME` / `DB_PASSWORD` / `DB_PORT` の個別変数で接続情報を受け取る設計になっている。
+> `DATABASE_URL` 方式と個別変数方式を混在させると接続設定の優先順位が複雑になりデバッグが困難になる。
+> プロジェクト全体で個別変数方式に統一するため、`DATABASE_URL` は設定しないこと。
+
+### 8. bin/setup と bin/dev の作成
+
+Laravel には Rails の `bin/setup` / `bin/dev` に相当する標準スクリプトが無いため、新規作成する。
+
+`bin/setup`（実行権限を付与すること）:
+
+```sh
+#!/usr/bin/env bash
+set -euo pipefail
+
+docker compose up -d db
+
+for i in $(seq 1 30); do
+  if docker compose exec -T db mysqladmin ping -uroot -proot_password > /dev/null 2>&1; then
+    break
+  fi
+  if [ "$i" -eq 30 ]; then
+    echo "Database did not become ready in 30 seconds" >&2
+    exit 1
+  fi
+  sleep 1
+done
+
+composer install
+npm install
+php artisan migrate --seed
+```
+
+`bin/dev` は `docs/stack.md` の「bin/dev（正規形）」セクションの内容をそのまま使う。
+
+両ファイルに `chmod +x` で実行権限を付与する。
+
+### 9. DB の作成と起動確認
+
+1. **データベースの作成**（`bookkeeper` は `compose.yaml` の `MYSQL_DATABASE` で自動作成済み。`bookkeeper_test` を手動作成する）:
+   ```sh
+   docker compose exec -T db mysql -uroot -proot_password -e \
+     "CREATE DATABASE IF NOT EXISTS bookkeeper_test CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci; GRANT ALL PRIVILEGES ON \`bookkeeper_test\`.* TO 'app'@'%'; FLUSH PRIVILEGES;"
+   ```
+2. `php artisan migrate`
+   - 失敗時の典型原因: コンテナ未起動 / `.env` の認証情報不一致
+   - エラー時は勝手に MySQL のユーザー権限をいじらず、状況を報告して指示を仰ぐ
+3. **起動確認**: `bin/dev` をバックグラウンドで立ち上げ、`curl -sS -o /dev/null -w "%{http_code}" http://localhost:8000` が 200 を返すことを確認後、サーバを停止（`kill %1` または `pkill -f "php artisan serve"`）。
+
+## このフェーズの完了基準
+
+- [ ] `docker compose up -d db` で DB が起動し、`mysqladmin ping` が成功する
+- [ ] `bin/setup` で DB 起動 → セットアップ完了まで一気通貫で動く
+- [ ] `bin/dev` で http://localhost:8000 が 200
+- [ ] `php artisan migrate` が成功（`bookkeeper` データベースに対して）
+- [ ] `bookkeeper_test` データベースが作成済み
+- [ ] `composer.lock` がコミット対象に入っている
+- [ ] Laravel Breeze（Livewire スタック）/ Enlightn / Dusk の初期化済み
+- [ ] `my-app/.env` が存在し、`.gitignore` で除外されている
+- [ ] `my-app/.env.example` が存在し、コミット対象に含まれている
+- [ ] `bin/dev` に Queue ワーカー（`php artisan queue:work` / `queue:listen`）の行が**含まれていない**
+
+## やらないこと
+
+- モデル生成（Phase 2 で実施）
+- Controller / View 生成（Phase 3 で実施）
+- Seeder（Phase 4 で実施）
+- Laravel 本体のコンテナ化（プロジェクト方針として行わない）
+- Queue ワーカーの起動設定（本プロジェクトでは非同期ジョブを使わない）
+- Redis / Reverb の追加
+- 同梱ファイル（`compose.yaml`, `.tool-versions`, `env.example`）の編集
+
+## 完了後
+
+`/verify` を実行してセルフチェックし、結果を「やったこと / 次にやること / 詰まっていること」の 3 点で報告する。

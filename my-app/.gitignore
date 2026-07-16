@@ -1,0 +1,50 @@
+# git で無視するファイルの設定。
+# エディタや OS が生成する一時ファイルは、このファイルではなく
+# git のグローバル無視設定 (`~/.gitconfig` の `core.excludesfile`) に
+# 書くことを推奨。
+
+# Composer の依存関係。
+/vendor/
+
+# 環境変数ファイル。.env.example はリポジトリに含める。
+/.env
+/.env.*
+!/.env.example
+
+# ログとキャッシュ・セッション・ビューのコンパイル結果。
+/storage/logs/*
+!/storage/logs/.gitignore
+/storage/framework/cache/*
+!/storage/framework/cache/.gitignore
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitignore
+/storage/framework/testing/*
+!/storage/framework/testing/.gitignore
+/storage/framework/views/*
+!/storage/framework/views/.gitignore
+
+# Active Storage 相当のローカル保存ファイル(開発・テスト環境)。
+/storage/app/public/*
+!/storage/app/public/.gitignore
+
+# Laravel Dusk のスクリーンショット・コンソールログ。
+/tests/Browser/screenshots/*
+!/tests/Browser/screenshots/.gitignore
+/tests/Browser/console/*
+!/tests/Browser/console/.gitignore
+
+# ビルド成果物(Vite のビルド出力、Node モジュール)。
+/public/build
+/node_modules/
+
+# テストカバレッジレポート。
+/coverage/
+
+# PHPUnit/Pest のキャッシュ。
+/.phpunit.cache
+
+# 認証情報ファイル(Composer プライベートリポジトリ用トークン等)。絶対にコミットしない。
+auth.json
+
+# OS が生成するメタデータ。
+.DS_Store

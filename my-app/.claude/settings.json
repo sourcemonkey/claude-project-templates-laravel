@@ -1,0 +1,51 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(break)",
+      "Bash(cat:*)",
+      "Bash(echo:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(head:*)",
+      "Bash(ls:*)",
+      "Bash(rg:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(composer install)",
+      "Bash(composer require*)",
+      "Bash(composer update)",
+      "Bash(composer audit)",
+      "Bash(composer dump-autoload*)",
+      "Bash(composer show*)",
+      "Bash(npm install)",
+      "Bash(npm run *)",
+      "Bash(php artisan *)",
+      "Bash(vendor/bin/pint*)",
+      "Bash(vendor/bin/enlightn*)",
+      "Bash(bin/dev)",
+      "Bash(bin/setup)",
+      "Bash(docker compose *)",
+      "Bash(docker version*)",
+      "Bash(laravel new *)",
+      "Bash(mkdir *)",
+      "Bash(touch *)",
+      "Bash(cp *)",
+      "Bash(mv *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(curl *)",
+      "Bash(lsof *)",
+      "Bash(nc *)",
+      "Bash(php -v)",
+      "Bash(asdf list *)",
+      "Edit",
+      "Write",
+      "Skill(verify)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push*)",
+      "Bash(git reset --hard*)"
+    ]
+  }
+}
