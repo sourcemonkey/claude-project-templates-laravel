@@ -21,10 +21,11 @@ Conventional Commits に準拠する。
 - type: `feat` / `fix` / `docs` / `style` / `refactor` / `test` / `chore`
 - subject: 50 文字以内、命令形、末尾ピリオドなし
 - body: 必要に応じて「なぜ」を書く
+- subject・body は日本語で書く（`type` プレフィックスは Conventional Commits の規約に従い英語のまま）
 
 例:
 ```
-feat(books): add stock check before lending
+feat(books): 貸出前に在庫チェックを追加
 
 貸出時に在庫が 0 の場合はエラーを返すよう変更。
 業務要件 #123 に対応。
