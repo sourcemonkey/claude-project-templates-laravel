@@ -18,6 +18,14 @@ fi
 
 echo "=== Phase ${PHASE} リセット ==="
 
+# daemon 未接続だと docker compose down -v が黙って失敗し、stale ボリュームが
+# 残ったまま「リセット完了」と誤報告してしまうため、先に接続を確認する
+if ! docker info > /dev/null 2>&1; then
+  echo "エラー: Docker daemon に接続できません。" >&2
+  echo "Docker Desktop を起動してから再実行してください。" >&2
+  exit 1
+fi
+
 case "$PHASE" in
   1)
     # 1. 開発サーバー停止
