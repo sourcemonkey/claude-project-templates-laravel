@@ -21,7 +21,7 @@
       "Bash(npm run *)",
       "Bash(php artisan *)",
       "Bash(vendor/bin/pint*)",
-      "Bash(vendor/bin/enlightn*)",
+      "Bash(vendor/bin/phpstan*)",
       "Bash(bin/dev)",
       "Bash(bin/setup)",
       "Bash(docker compose *)",
@@ -45,7 +45,9 @@
     "deny": [
       "Bash(rm -rf *)",
       "Bash(git push*)",
-      "Bash(git reset --hard*)"
+      "Bash(git reset --hard*)",
+      "Bash(php artisan migrate:fresh*)",
+      "Bash(php artisan db:wipe*)"
     ]
   }
 }
