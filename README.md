@@ -17,7 +17,7 @@ PHP 8.4.23 / Laravel 13 向けに移植したものです。フェーズ分割�
 .
 ├── .claude/
 │   ├── prompts/
-│   │   └── trial-phase1.md      ← フェーズファイルのヘッドレス・トライアル用プロンプト
+│   │   └── trial-phase.md       ← フェーズファイルのヘッドレス・トライアル用プロンプト
 │   └── settings.json            ← Claude Code 共通設定（使用モデル・git 系コマンドの許可）
 ├── .gitignore                   ← テンプレートリポジトリ用の除外設定
 ├── .tool-versions               ← リポジトリ全体での PHP / Node.js バージョン（asdf）
@@ -303,12 +303,12 @@ Phase 1 は開発サーバー停止・Docker コンテナ/ボリューム破棄�
 
 ### ヘッドレスでのトライアル自動化
 
-`.claude/prompts/trial-phase1.md` に、対象フェーズの実行 → 問題点の洗い出し →
+`.claude/prompts/trial-phase.md` に、対象フェーズの実行 → 問題点の洗い出し →
 コマンドファイル/docs の修正 → `bin/reset-phase.sh` の更新 → コミットまでを自動で
 行うためのプロンプトを用意しています。
 
 ```sh
-claude -p "$(cat .claude/prompts/trial-phase1.md)"
+claude -p "$(cat .claude/prompts/trial-phase.md)"
 ```
 
 ファイル冒頭の「実行対象フェーズ」の1行を書き換えることで対象範囲を段階的に
