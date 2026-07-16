@@ -5,6 +5,26 @@
 コミットを自動で行うためのプロンプト。全フェーズ分のセクションを最初から
 用意してあり、「実行対象フェーズ」の1行を書き換えるだけで対象範囲を広げられる。
 
+## 前提条件
+
+実行前に以下が満たされていることを確認する。満たされていない場合は作業を
+進めず、その旨を報告して終了する。
+
+1. **Docker daemon が起動していること**: `docker info` で接続確認できること。
+   未起動の場合 `bin/reset-phase.sh` はエラー終了する（Docker Desktop を
+   起動してから再実行する）。
+2. **実行セッションに許可リストが効いていること**: 本プロンプトはリポジトリ
+   ルートで `claude -p` 起動されるため、適用されるのは**ルートの**
+   `.claude/settings.json` のみ。`my-laravel-app/.claude/settings.json` は
+   ルート起動のセッションには適用されない。フェーズ実行に必要な許可
+   （`php artisan *`, `composer *`, `docker compose *`, `laravel new *`,
+   `Edit`, `Write` 等）はルート側の許可リストに含めておくこと。
+3. **スラッシュコマンドの読み込み**: ルート起動のセッションには
+   `my-laravel-app/.claude/commands/` のスラッシュコマンドが読み込まれない
+   場合がある。`/scaffold-phaseN-xxx` が実行できないときは、対象のコマンド
+   ファイル（`my-laravel-app/.claude/commands/scaffold-phaseN-xxx.md`）を
+   Read し、その手順を直接実行する。
+
 ## 実行対象フェーズ
 
 現在の実行対象: Phase 1 のみ
