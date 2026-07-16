@@ -46,5 +46,9 @@
 # 認証情報ファイル(Composer プライベートリポジトリ用トークン等)。絶対にコミットしない。
 auth.json
 
+# Claude Code の個人ローカル設定(承認履歴・個人メモ)。共有しない。
+/.claude/settings.local.json
+/CLAUDE.local.md
+
 # OS が生成するメタデータ。
 .DS_Store

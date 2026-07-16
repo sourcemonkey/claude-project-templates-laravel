@@ -34,8 +34,13 @@ case "$PHASE" in
     #    Phase 1 のリセットはテンプレート同梱状態（Laravel 未生成）まで
     #    完全に巻き戻す。Phase 2 以降は「直前のフェーズ完了時点」まで
     #    戻す必要があるため、別のケースとして追加する。
+    #    ただし個人ローカル設定（承認履歴・個人メモ）はリセットのたびに
+    #    消えると蓄積・選別の運用が成り立たないため除外する。
     echo ">> 未追跡ファイルを削除..."
-    git -C "$REPO_ROOT" clean -fdx "$APP_DIR/"
+    git -C "$REPO_ROOT" clean -fdx \
+      -e 'settings.local.json' \
+      -e 'CLAUDE.local.md' \
+      "$APP_DIR/"
 
     # 4. テンプレートファイルへの変更を復元
     echo ">> テンプレートファイルを復元..."
