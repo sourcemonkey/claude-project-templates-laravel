@@ -23,9 +23,9 @@
 
 このプロジェクトは 4 フェーズで構築する。各フェーズは `.claude/commands/` のスラッシュコマンドで実行する。
 
-1. `/scaffold-phase1-skeleton` — Laravel 雛形 + 依存導入 + Docker DB 起動
+1. `/scaffold-phase1-skeleton` — Laravel 雛形 + 依存・認証（Breeze）導入 + Docker DB 起動
 2. `/scaffold-phase2-models` — DB スキーマ + Model + マイグレーション
-3. `/scaffold-phase3-ui` — 認証 + Controller + Livewire/Blade + 認可
+3. `/scaffold-phase3-ui` — Controller + Livewire/Blade + 認可
 4. `/scaffold-phase4-finalize` — Seeder + テスト + 起動確認
 
 各フェーズ完了時、`/verify` で完了基準を満たしているかセルフチェックする。
@@ -46,7 +46,7 @@
 
 - **API モードにしない**。フルスタック Laravel（Blade + Livewire）。
 - **JS フレームワーク（React/Vue）を導入しない**。Livewire + Alpine.js で完結させる。
-- **Laravel Breeze（Blade スタック）を使う**。自前認証を書かない。
+- **Laravel Breeze（Livewire スタック）を使う**。自前認証を書かない。
 - **Laravel Policy（標準機能）を使う**。CanCanCan 相当のサードパーティ認可ライブラリや自前認可ロジックは導入しない。
 - **非同期ジョブを使わない**。Laravel 標準の Queue（database ドライバ）は
   `laravel new` の生成物として設定を残すが、ワーカー（`php artisan queue:work`）は起動しない。

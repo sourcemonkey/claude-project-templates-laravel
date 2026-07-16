@@ -89,7 +89,7 @@ git checkout -- .gitignore CLAUDE.md docs/ .claude/ compose.yaml docker/ .tool-v
 `docs/stack.md` の「手動追加」列が ✅ のパッケージを追加する:
 
 ```sh
-composer require livewire/livewire spatie/laravel-query-builder
+composer require livewire/livewire spatie/laravel-query-builder blade-ui-kit/blade-heroicons
 composer require --dev larastan/larastan laravel/dusk laravel-lang/lang
 ```
 

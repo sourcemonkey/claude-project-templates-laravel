@@ -13,7 +13,7 @@
 
 ## フレームワーク・主要パッケージ
 
-「手動追加」列が ✅ のパッケージは `laravel new` で自動追加されないため手動で `composer require` する。— は `laravel new my-laravel-app --database=mysql` で自動追加される、または PHP 標準拡張として利用する。
+「手動追加」列が ✅ のパッケージは `laravel new` で自動追加されないため手動で `composer require` する。— は `laravel new`（Phase 1 の実行形は `laravel new . --force --no-interaction --pest`）で自動追加される、または PHP 標準拡張として利用する。
 
 | パッケージ | 用途 | 手動追加 | 種別 |
 |---|---|---|---|
@@ -21,9 +21,10 @@
 | `ext-pdo_mysql` | MySQL アダプタ（PHP 拡張） | — | — |
 | `laravel/vite-plugin` | フロントビルド | — | — |
 | `livewire/livewire` | Hotwire (Turbo) 相当のサーバー駆動 UI | ✅ | ルート |
-| `laravel/breeze` | 認証（Blade スタック） | ✅ | `--dev`（scaffold 実行後は通常依存に降格） |
-| `laravel-lang/lang` | 日本語バリデーションメッセージ・Breeze ビュー翻訳 | ✅ | ルート |
+| `laravel/breeze` | 認証（Livewire スタック） | ✅ | `require-dev`（scaffold 生成後は実行時に不要） |
+| `laravel-lang/lang` | 日本語バリデーションメッセージ・Breeze ビュー翻訳 | ✅ | `require-dev`（`lang:add ja` で翻訳ファイルを publish 済みのため実行時に不要） |
 | `spatie/laravel-query-builder` | 検索・絞り込み（Ransack 相当） | ✅ | ルート |
+| `blade-ui-kit/blade-heroicons` | アイコン（Heroicons の Blade コンポーネント） | ✅ | ルート |
 
 Alpine.js は Livewire に同梱される（`livewire/livewire` インストール時に自動的に読み込まれる）ため、別途 npm パッケージとしての追加は不要。
 
