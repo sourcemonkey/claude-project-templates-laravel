@@ -16,8 +16,9 @@ PHP 8.4.23 / Laravel 13 向けに移植したものです。フェーズ分割�
 ```
 .
 ├── .claude/
-│   └── prompts/
-│       └── trial-phase1.md      ← フェーズファイルのヘッドレス・トライアル用プロンプト
+│   ├── prompts/
+│   │   └── trial-phase1.md      ← フェーズファイルのヘッドレス・トライアル用プロンプト
+│   └── settings.json            ← Claude Code 共通設定（使用モデル・git 系コマンドの許可）
 ├── .gitignore                   ← テンプレートリポジトリ用の除外設定
 ├── .tool-versions               ← リポジトリ全体での PHP / Node.js バージョン（asdf）
 ├── bin/
