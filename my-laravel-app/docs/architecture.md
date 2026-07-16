@@ -170,7 +170,4 @@ flowchart LR
 
 ## MySQL 固有の注意（実装時）
 
-- `boolean` 型は MySQL では `tinyint(1)` として保存される（Eloquent からは透過的）。
-- JSON 型はマイグレーションで `$table->json()` を使う。検索クエリは `->whereJsonContains()` 等の Eloquent メソッドで行う。
-- 一意制約付きインデックスのカラム長制限に注意（utf8mb4 では 1 カラム最大 768 文字相当）。
-- `ENUM` 型は使わず、PHP のネイティブ Enum（`app/Enums/`）と Eloquent の属性キャストを組み合わせ、DB カラムは integer で保存する。
+`docs/stack.md` の「MySQL 固有の注意（実装時）」セクションを参照（重複記載を避けるため一次情報は stack.md に置く）。

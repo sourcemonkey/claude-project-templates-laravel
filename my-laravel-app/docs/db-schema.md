@@ -4,11 +4,11 @@
 
 ```
 users ──< lendings >── books >── categories
-              │            │
-              │            └─< book_tags >── tags
-              │
-              └─< notifications
-              
+  │                        │
+  │                        └─< book_tags >── tags
+  │
+  └─< notifications
+
 audit_logs (独立、polymorphic 相当のカラム構成)
 ```
 

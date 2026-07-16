@@ -160,7 +160,7 @@ MAIL_FROM_ADDRESS=no-reply@example.local
 - `boolean` 型は MySQL では `tinyint(1)` として保存される（Eloquent からは透過的）。
 - JSON 型はマイグレーションで `$table->json()` を使う。検索クエリは `->` 演算子（`whereJsonContains` 等）で行う。
 - 一意制約付きインデックスのカラム長制限に注意（utf8mb4 では 1 カラム最大 768 文字相当）。
-- `ENUM` 型は使わず、Laravel の Enum キャスト（`enum` 属性キャスト、PHP 8.1+ のネイティブ enum クラス）を使い、DB カラムは integer で保存する。
+- `ENUM` 型は使わず、Laravel の Enum キャスト（`enum` 属性キャスト、PHP 8.1+ のネイティブ enum クラス。クラスは `app/Enums/` に置く）を使い、DB カラムは integer で保存する。
 
 ## MySQL 設定の規約
 
