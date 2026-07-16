@@ -118,7 +118,7 @@ DB_PASSWORD=app_password
 DB_HOST=127.0.0.1
 DB_PORT=3306
 APP_KEY=（php artisan key:generate で生成される値）
-DEFAULT_FROM_EMAIL=no-reply@example.local
+MAIL_FROM_ADDRESS=no-reply@example.local
 ```
 
 > **注意**: `DATABASE_URL` は設定しない。`config/database.php` は `DB_*` の個別変数で接続情報を受け取る設計。`DATABASE_URL` と個別変数を混在させると優先順位が複雑になりデバッグが困難になる。
