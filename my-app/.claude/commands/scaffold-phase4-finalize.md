@@ -79,7 +79,7 @@ vendor/bin/pint database/seeders tests
 3. `coverage/index.html` を確認し、行カバレッジが 80% 以上
 4. `php artisan dusk` が all green
 5. `vendor/bin/pint --test` が違反 0
-6. `vendor/bin/enlightn` で Critical / High 警告 0
+6. `vendor/bin/phpstan analyse` でエラー 0
 7. `composer audit` で既知の脆弱性 0
 8. `bin/dev` で起動し、以下を curl で確認:
    - `GET /` → 200 または 302（ログインへ）
@@ -95,7 +95,7 @@ vendor/bin/pint database/seeders tests
 - [ ] Seeder で各画面に表示すべきデータが入る
 - [ ] `php artisan test` および `php artisan dusk` が all green
 - [ ] カバレッジが 80% 以上（`coverage/index.html` で確認）
-- [ ] `vendor/bin/pint --test` 違反 0、`vendor/bin/enlightn` Critical / High 0
+- [ ] `vendor/bin/pint --test` 違反 0、`vendor/bin/phpstan analyse` エラー 0
 - [ ] README にテストアカウント・起動方法が記載
 
 ## 完了後

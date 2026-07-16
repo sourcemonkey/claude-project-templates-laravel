@@ -20,7 +20,7 @@ description: 現在のフェーズの完了基準を満たしているかセル�
 ### Phase 1 完了時
 
 - [ ] `composer.json` に `docs/stack.md` の「手動追加 ✅」パッケージがすべて記載
-- [ ] Laravel Breeze（Livewire スタック）/ laravel-lang / Enlightn / Dusk の初期化済み
+- [ ] Laravel Breeze（Livewire スタック）/ laravel-lang / larastan / Dusk の初期化済み
 - [ ] `php artisan migrate` 成功済み（`bookkeeper` データベースに対して）
 - [ ] `bookkeeper_test` データベースが作成済み
 - [ ] `bin/dev` で 200 が返る
@@ -49,7 +49,7 @@ description: 現在のフェーズの完了基準を満たしているかセル�
 - [ ] `migrate:fresh` 後に `db:seed` が成功
 - [ ] Seeder 投入後にログインして主要画面が見える
 - [ ] `php artisan dusk` all green
-- [ ] `vendor/bin/enlightn` Critical / High 警告 0
+- [ ] `vendor/bin/phpstan analyse` エラー 0
 - [ ] README.md に「起動方法」「テストアカウント」が記載されている
 
 ## 報告フォーマット

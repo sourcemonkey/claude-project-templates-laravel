@@ -39,7 +39,7 @@
 - [ ] Laravel Dusk のシステムテストが all green
 - [ ] カバレッジ 80% 以上（`coverage/index.html` で確認）
 - [ ] `vendor/bin/pint --test` が違反 0
-- [ ] `vendor/bin/enlightn` で Critical / High 警告なし
+- [ ] `vendor/bin/phpstan analyse` でエラーなし（larastan/larastan による静的解析）
 - [ ] README に「起動方法」「テストアカウント」が記載されている
 
 ## 重要な制約

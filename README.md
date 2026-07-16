@@ -177,7 +177,7 @@ bash bin/init-project.sh
 | Ransack | Spatie Laravel Query Builder | クエリパラメータでの宣言的フィルタ・ソート |
 | Kaminari | Laravel 標準 `paginate()` | 追加パッケージ不要 |
 | RuboCop | Laravel Pint | `laravel new` の既定に含まれる |
-| Brakeman | Enlightn（無料版） | セキュリティ・品質静的解析 |
+| Brakeman | larastan/larastan | 静的解析（PHPStan の Laravel 版。Enlightn は Laravel 13.x 未対応のため不採用） |
 | Minitest + Capybara/Selenium | Pest + Laravel Dusk | システムテスト |
 | SimpleCov | PHPUnit/Pest の `--coverage-html`（PCOV ドライバ） | |
 | Service オブジェクト | Action クラス（`app/Actions/`） | 命名規則は「操作 + リソース + Action」 |

@@ -16,7 +16,7 @@ PR を出す前（あるいは「実装完了」と報告する前）に、Claud
 - [ ] `php artisan test` が green
 - [ ] カバレッジが 80% 以上（`coverage/index.html` で確認）
 - [ ] `vendor/bin/pint --test` で違反がない
-- [ ] `vendor/bin/enlightn` で Critical / High 警告がない
+- [ ] `vendor/bin/phpstan analyse` でエラーがない（larastan/larastan によるチーム標準の静的解析）
 - [ ] 新規追加した routes が `php artisan route:list` で確認できる
 - [ ] Seeder 投入後に主要画面が 200 を返す
 - [ ] README に追記が必要な手順があれば追記済み

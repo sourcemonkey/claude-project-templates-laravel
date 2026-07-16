@@ -24,5 +24,6 @@
 ## その他
 
 - `composer.lock` をコミットする。
-- `composer audit` / `vendor/bin/enlightn` を CI に組み込む。
+- `composer audit`（依存パッケージの脆弱性チェック）/ `vendor/bin/phpstan analyse`（larastan/larastan によるコード品質の静的解析）を CI に組み込む。
+- Enlightn が提供していた Laravel 特化のセキュリティ・パフォーマンス項目（本番での `APP_DEBUG` 有効化、Mass Assignment の設定漏れ等）は自動チェックツールが存在しないため、本ファイルのチェックリストに沿った手動レビューでカバーする。
 - 本番ログに個人情報を出さない（`config/logging.php` のチャンネル設定で機密情報をマスクする）。

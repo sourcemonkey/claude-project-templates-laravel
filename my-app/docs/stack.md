@@ -32,13 +32,15 @@ Alpine.js は Livewire に同梱される（`livewire/livewire` インストー�
 | パッケージ | 用途 | 手動追加 | 種別 |
 |---|---|---|---|
 | `laravel/pint` | Lint（コードスタイル） | — | `laravel new` の既定に含まれる |
-| `enlightn/enlightn` | セキュリティ・パフォーマンス静的解析 | ✅ | `require-dev` |
+| `larastan/larastan` | 静的解析（PHPStan の Laravel 版） | ✅ | `require-dev` |
 | `pestphp/pest` | テストフレームワーク | ✅（`--pest` オプションで導入） | `require-dev` |
 | `pestphp/pest-plugin-laravel` | Pest の Laravel 統合 | ✅（`--pest` に同梱） | `require-dev` |
 | `laravel/dusk` | システムテスト（Capybara + Selenium 相当） | ✅ | `require-dev` |
 | `pcov/clobber` または php.ini の `pcov` 拡張 | テストカバレッジ計測ドライバ | ✅（拡張として） | ローカル環境 |
 
 `factory_bot` 相当は Laravel 標準の Model Factory（`database/factories/`）、`faker` 相当は `fakerphp/faker`（Laravel の依存関係に標準で含まれる）を使う。追加インストール不要。
+
+> **注意**: 当初 `enlightn/enlightn`（セキュリティ・パフォーマンス静的解析）の採用を検討していたが、Laravel 13.x に対応するバージョンが存在しない（最新の v2.10.0 でも `laravel/framework ^9.0|^10.0|^11.0` までのサポート）ため、型・コード品質の静的解析ツールである `larastan/larastan` に変更した。Enlightn が提供していた Laravel 特化のセキュリティ・パフォーマンスチェック（本番での `APP_DEBUG` 有効化検知等）は代替ツールがないため、`team-rules/security.md` のチェックリストに沿った手動レビューでカバーする。
 
 ## メール確認（letter_opener 相当）
 
@@ -79,7 +81,7 @@ Laravel 標準の Queue（database ドライバ）・Cache（database/file ド�
 | `php artisan dusk` | システムテスト |
 | `vendor/bin/pint --test` | Lint（チェックのみ） |
 | `vendor/bin/pint` | Lint（自動修正） |
-| `vendor/bin/enlightn` | セキュリティ・品質静的解析 |
+| `vendor/bin/phpstan analyse` | 静的解析（larastan/larastan） |
 
 ## bin/dev（正規形）
 
