@@ -13,7 +13,7 @@
 
 ## フレームワーク・主要パッケージ
 
-「手動追加」列が ✅ のパッケージは `laravel new` で自動追加されないため手動で `composer require` する。— は `laravel new`（Phase 1 の実行形は `laravel new . --force --no-interaction --pest`）で自動追加される、または PHP 標準拡張として利用する。
+「手動追加」列が ✅ のパッケージは `laravel new` で自動追加されないため手動で `composer require` する。— は `laravel new`（Phase 1 の実行形は一時ディレクトリへの `laravel new tmp-skeleton --no-interaction --pest`。Laravel Installer 5.x はカレントディレクトリ指定と `--force` の併用を拒否するため、一時ディレクトリに生成して直下へ移動する。手順の詳細は `.claude/commands/scaffold-phase1-skeleton.md` 参照）で自動追加される、または PHP 標準拡張として利用する。
 
 | パッケージ | 用途 | 手動追加 | 種別 |
 |---|---|---|---|
