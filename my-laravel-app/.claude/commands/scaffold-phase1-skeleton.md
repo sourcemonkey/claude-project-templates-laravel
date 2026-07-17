@@ -73,17 +73,19 @@ laravel new tmp-skeleton --no-interaction --pest
 
 ```sh
 shopt -s dotglob
-mv tmp-skeleton/* .
+mv tmp-skeleton/* . 2>/dev/null || true
 shopt -u dotglob
-rmdir tmp-skeleton
+rmdir tmp-skeleton 2>/dev/null || true
 ```
 
-> **注意（ヘッドレス実行時）**: Claude Code のセンシティブファイル保護により、`.npmrc` の移動・作成・削除がヘッドレスセッションでは承認できず失敗する。その場合は `.npmrc` だけ `tmp-skeleton/` に残して先へ進み、完了報告時にユーザーへ手動対応（`mv tmp-skeleton/.npmrc .npmrc && rmdir tmp-skeleton`）を依頼する。`.npmrc` の内容は `ignore-scripts=true` / `audit=true` の 2 行（npm のサプライチェーン対策設定）で、無くても Phase 1 の完了基準には影響しない。
+`.npmrc`（npm のサプライチェーン対策 `ignore-scripts=true` / `audit=true`）は `laravel new` が生成し、**本テンプレートにも `my-laravel-app/.npmrc` として同梱・git 追跡している**。通常実行では上記の移動で配置され、直後の `git checkout`（下記）でテンプレート版に揃う。
 
-`laravel new` は `.gitignore` を独自に生成する（上記の移動でテンプレート版が上書きされる）が、テンプレート同梱の内容を正とするため、移動直後に以下を実行してテンプレート側のファイルへ戻す:
+> **注意（ヘッドレス実行時）**: Claude Code のセンシティブファイル保護により、`.npmrc` の移動・削除がヘッドレスセッションでは承認されず失敗することがある。その場合 `.npmrc` は `tmp-skeleton/` に残り `rmdir` も失敗するが（上記は `|| true` で握りつぶす）、**テンプレート同梱の `.npmrc` が既に直下に存在するためアプリは正しい状態**であり、残った `tmp-skeleton/.npmrc` は次回 `bin/reset-phase.sh`（`git clean -fdx`）で除去されるため無視してよい。手動対応は不要。
+
+`laravel new` は `.gitignore` / `.npmrc` を独自に生成する（上記の移動でテンプレート版が上書きされうる）が、テンプレート同梱の内容を正とするため、移動直後に以下を実行してテンプレート側のファイルへ戻す:
 
 ```sh
-git checkout -- .gitignore CLAUDE.md docs/ .claude/ compose.yaml docker/ .tool-versions 2>/dev/null || true
+git checkout -- .npmrc .gitignore CLAUDE.md docs/ .claude/ compose.yaml docker/ .tool-versions 2>/dev/null || true
 ```
 
 （テンプレートリポジトリがまだ git 管理下にない場合、上記コマンドは何もせず終了して構わない。その場合は `docs/`, `.claude/`, `compose.yaml`, `docker/`, `CLAUDE.md`, `.tool-versions`, `.gitignore` が `laravel new` によって上書き・混入していないか目視で確認する。）
