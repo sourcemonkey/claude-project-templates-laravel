@@ -61,15 +61,26 @@ Laravel 本体はホスト側で動かす。
 
 ### 3. Laravel アプリ生成
 
-`my-laravel-app/` は既にテンプレート同梱ファイル（`CLAUDE.md`, `docs/`, `.claude/`, `compose.yaml`, `docker/`, `.gitignore` 等）で空でないため、`laravel new` を直接カレントディレクトリに実行する:
+`my-laravel-app/` は既にテンプレート同梱ファイル（`CLAUDE.md`, `docs/`, `.claude/`, `compose.yaml`, `docker/`, `.gitignore` 等）で空でない。Laravel Installer はカレントディレクトリ指定（`laravel new .`）では空でないディレクトリへの生成を `Application already exists!` で拒否し、`--force` との併用も `Cannot use --force option when using current directory for installation!` で拒否する（Installer 5.30.0 で確認）。そのため、一時サブディレクトリに生成してから直下へ移動する:
 
 ```sh
-laravel new . --force --no-interaction --pest
+laravel new tmp-skeleton --no-interaction --pest
 ```
 
-`--force` により既存ディレクトリでも生成を強行する。`--pest` でテストフレームワークに Pest を選択する。スターターキット選択のプロンプトは `--no-interaction` によりスキップされ、認証機能なしの素の Laravel が生成される（認証は Step 6 で Breeze を個別に導入する）。
+`--pest` でテストフレームワークに Pest を選択する。スターターキット選択のプロンプトは `--no-interaction` によりスキップされ、認証機能なしの素の Laravel が生成される（認証は Step 6 で Breeze を個別に導入する）。
 
-`laravel new` は `.gitignore` を独自に生成するが、テンプレート同梱の内容を正とするため、生成直後に以下を実行してテンプレート側のファイルへ戻す:
+生成完了後、ドットファイルを含む全生成物を `my-laravel-app/` 直下へ移動し、一時ディレクトリを削除する（同一シェル内で実行すること）:
+
+```sh
+shopt -s dotglob
+mv tmp-skeleton/* .
+shopt -u dotglob
+rmdir tmp-skeleton
+```
+
+> **注意（ヘッドレス実行時）**: Claude Code のセンシティブファイル保護により、`.npmrc` の移動・作成・削除がヘッドレスセッションでは承認できず失敗する。その場合は `.npmrc` だけ `tmp-skeleton/` に残して先へ進み、完了報告時にユーザーへ手動対応（`mv tmp-skeleton/.npmrc .npmrc && rmdir tmp-skeleton`）を依頼する。`.npmrc` の内容は `ignore-scripts=true` / `audit=true` の 2 行（npm のサプライチェーン対策設定）で、無くても Phase 1 の完了基準には影響しない。
+
+`laravel new` は `.gitignore` を独自に生成する（上記の移動でテンプレート版が上書きされる）が、テンプレート同梱の内容を正とするため、移動直後に以下を実行してテンプレート側のファイルへ戻す:
 
 ```sh
 git checkout -- .gitignore CLAUDE.md docs/ .claude/ compose.yaml docker/ .tool-versions 2>/dev/null || true
@@ -95,6 +106,8 @@ composer require --dev larastan/larastan laravel/dusk laravel-lang/lang
 
 > **注意**: 当初 `enlightn/enlightn` を予定していたが、Laravel 13.x に対応するバージョンが存在しない（`laravel/framework ^9.0|^10.0|^11.0` までのサポート）ため `larastan/larastan`（PHPStan の Laravel 版）に変更した。詳細は `docs/stack.md` 参照。
 
+> **補足**: `livewire/livewire` はこの時点では v4 系で解決されることがあるが、Step 6 の `laravel/breeze`（Livewire スタック）導入時に Breeze の制約で v3 系（`^3.6`）に解決し直される。`docs/stack.md` の想定（Livewire v3）と一致するため問題ない。
+
 ### 6. 各種初期化
 
 - **Laravel Breeze（Livewire スタック）**:
@@ -114,7 +127,7 @@ composer require --dev larastan/larastan laravel/dusk laravel-lang/lang
   ```
   ChromeDriver のインストールも自動で行われる。
 
-  > **注意**: `dusk:install` が `tests/Pest.php` の先頭に挿入するコードは、`use Tests\DuskTestCase;` 等の `use` 文より前に `DuskTestCase::class` を参照する順序になっており、そのままでは `php artisan test` が `The class "DuskTestCase" was not found.` で失敗する（Dusk 自体の既知の生成バグ）。`tests/Pest.php` を開き、`use` 文をファイル冒頭（`pest()->extend(DuskTestCase::class)...` より前）に移動すること。
+  > **注意**: Dusk 8.6 の `dusk:install` は `tests/Pest.php` の先頭に完全修飾名（`Tests\DuskTestCase::class`）でコードを挿入するため、直後の `php artisan test` は通る。ただし Step 9 で Pint を適用すると `fully_qualified_strict_types` / `ordered_imports` フィクサが短縮名 + `use` 文へ書き換え、`use Tests\DuskTestCase;` が参照より後ろに置かれるため、以後の `php artisan test` が `Class "DuskTestCase" not found` で失敗するようになる。**Pint 適用後に** `tests/Pest.php` を開き、`use` 文をファイル冒頭（`pest()->extend(DuskTestCase::class)...` より前）に移動すること。
 - **larastan/larastan**: `artisan` 経由のインストールコマンドはないため、`phpstan.neon` をリポジトリ直下に手動作成する:
   ```neon
   includes:
@@ -205,7 +218,7 @@ php artisan migrate --seed
    - 失敗時の典型原因: コンテナ未起動 / `.env` の認証情報不一致 / Step 2 で触れた Docker named volume の衝突（`Access denied for user 'app'@'%' to database 'bookkeeper'` のようなエラーが出る場合はこれを疑う）
    - エラー時は勝手に MySQL のユーザー権限をいじらず、状況を報告して指示を仰ぐ
 3. **起動確認**: `bin/dev` をバックグラウンドで立ち上げ、`curl -sS -o /dev/null -w "%{http_code}" http://localhost:8000` が 200 を返すことを確認後、サーバを停止（`kill %1` または `pkill -f "php artisan serve"`）。
-4. **Pint による自動修正**: `vendor/bin/pint --test` を実行する。`laravel new` / `breeze:install` / `lang:add` が生成するファイル（`bootstrap/providers.php`, `tests/Pest.php`, `lang/ja/*.php` 等）はデフォルトで Pint の規約に違反していることがあるため、`vendor/bin/pint` で自動修正し、再度 `--test` で 0 件になることを確認する。
+4. **Pint による自動修正**: `vendor/bin/pint --test` を実行する。`laravel new` / `breeze:install` / `lang:add` が生成するファイル（`bootstrap/providers.php`, `tests/Pest.php`, `lang/ja/*.php` 等）はデフォルトで Pint の規約に違反していることがあるため、`vendor/bin/pint` で自動修正し、再度 `--test` で 0 件になることを確認する。**Pint は `tests/Pest.php` の Dusk 挿入コードの `use` 文順序を壊す（Step 6 の Dusk の注意参照）ため、修正後に `use` 文をファイル冒頭へ移動し、`php artisan test` が green のままであることを必ず再確認する。**
 
 ## このフェーズの完了基準
 
