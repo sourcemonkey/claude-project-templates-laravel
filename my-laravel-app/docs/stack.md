@@ -121,7 +121,7 @@ APP_KEY=（php artisan key:generate で生成される値）
 MAIL_FROM_ADDRESS=no-reply@example.local
 ```
 
-> **注意**: `DATABASE_URL` は設定しない。`config/database.php` は `DB_*` の個別変数で接続情報を受け取る設計。`DATABASE_URL` と個別変数を混在させると優先順位が複雑になりデバッグが困難になる。
+> **注意**: 接続文字列方式の `DB_URL` は設定しない。`config/database.php` は `DB_*` の個別変数で接続情報を受け取る設計。URL 方式と個別変数を混在させると優先順位が複雑になりデバッグが困難になる。なお Laravel 13 の既定 `mysql` 接続が参照する変数名は `'url' => env('DB_URL')` であり、`DATABASE_URL` ではない。
 
 ## 開発 DB（Docker）
 
