@@ -30,7 +30,10 @@ Laravel 本体はホスト側で動き、`127.0.0.1:3306` 経由でコンテナ�
 
 - HTTP リクエストの受付と Response 返却のみ。
 - Form Request（`app/Http/Requests/`）で入力をバリデーション・ホワイトリスト化。
-- Policy で認可チェック（`$this->authorize($ability, $model)`）。
+- Policy で認可チェック（`$this->authorize($ability, $model)`）。Laravel 11 以降の
+  `app/Http/Controllers/Controller.php` は `AuthorizesRequests` トレイトを持たないため、
+  基底 Controller に `use Illuminate\Foundation\Auth\Access\AuthorizesRequests;` を
+  取り込んでおく（無いと `$this->authorize()` が「未定義メソッド」で落ちる）。
 - 複雑なロジックは Action に委譲。
 - 1 アクション 15 行を目安に収める。
 
@@ -44,11 +47,16 @@ Laravel 本体はホスト側で動き、`127.0.0.1:3306` 経由でコンテナ�
   ```php
   final readonly class ActionResult
   {
+      /**
+       * $resource は「成功時に呼び出し側がリダイレクト先の組み立てに使うモデル」。
+       * 例: POST /lendings は成功後に lendings.show($lending) へリダイレクトするため、
+       * 作成した Lending を Action から受け取る必要がある。不要な Action では null。
+       */
       public function __construct(
           public bool $success,
           public string $message,
-      ) {
-      }
+          public ?Model $resource = null,
+      ) {}
 
       public function successful(): bool
       {
@@ -57,7 +65,7 @@ Laravel 本体はホスト側で動き、`127.0.0.1:3306` 経由でコンテナ�
   }
   ```
 
-  呼び出し側: `$result = app(RequestLendingAction::class)->execute($user, $book);` → `$result->successful()`
+  呼び出し側: `$result = app(RequestLendingAction::class)->execute($user, $book);` → `$result->successful()` / `$result->resource`
 
 #### 本プロジェクトの Action 一覧
 
@@ -75,7 +83,11 @@ Laravel 本体はホスト側で動き、`127.0.0.1:3306` 経由でコンテナ�
 - バリデーションルールの元となる制約定義、リレーション、スコープ、単純な属性ベースのロジック。
 - 単一モデルで完結する `isPublished()` のようなメソッドはここに置く。
 - Eloquent イベント（`booted()` 内の登録）は最小限。副作用の大きい処理は Action に逃がす。
-- `spatie/laravel-query-builder` を使うモデルは、許可するフィルタ・ソートを Controller 側の `QueryBuilder::for(Book::class)->allowedFilters([...])->allowedSorts([...])` で明示する（Model 側に特別な定義は不要）。
+- `spatie/laravel-query-builder` を使うモデルは、許可するフィルタ・ソートを Controller 側の `QueryBuilder::for(Book::class)->allowedFilters(...)->allowedSorts(...)` で明示する（Model 側に特別な定義は不要）。
+
+  > **注意（v7 の引数形式）**: `spatie/laravel-query-builder` v7 の `allowedFilters()` / `allowedSorts()` は**可変長引数のみ**を受け取る（`AllowedFilter|string ...$filters`）。v6 までの配列渡し（`allowedFilters([...])`）は `TypeError` になる。
+
+  > **注意（Eager Load の位置）**: `QueryBuilder` インスタンスに対して `->with()` を繋ぐと、静的解析（larastan）が戻り値を `Eloquent\Builder` と推論し、後続の `allowedFilters()` を「未定義メソッド」と判定する。Eager Load は `for()` に渡すクエリ側で指定する（`QueryBuilder::for(Book::with(['category', 'tags']))`）。
 
 ### Policy (`app/Policies/`)
 
@@ -115,15 +127,33 @@ Laravel 本体はホスト側で動き、`127.0.0.1:3306` 経由でコンテナ�
 
 | エラーの種類 | 挙動 | 実装箇所 |
 |---|---|---|
-| `Illuminate\Auth\Access\AuthorizationException`（一般認可エラー） | `flash('error')` を表示して `route('home')` へリダイレクト | `bootstrap/app.php` の例外ハンドリング設定（`withExceptions`） |
+| 認可エラー（`$this->authorize()` の失敗） | `flash('error')` を表示して `route('home')` へリダイレクト | `bootstrap/app.php` の例外ハンドリング設定（`withExceptions`） |
 | 管理者権限不足 | `flash('error')` を表示して `route('home')` へリダイレクト | `app/Http/Middleware/EnsureUserIsAdmin.php` |
 
 フラッシュメッセージの文言（実装ブレ防止のため固定）:
 
 | 発生箇所 | フラッシュメッセージの文言 |
 |---|---|
-| `AuthorizationException` ハンドリング | `この操作を行う権限がありません。` |
+| 認可エラーのハンドリング | `この操作を行う権限がありません。` |
 | `EnsureUserIsAdmin` ミドルウェア | `管理者のみアクセスできます。` |
+
+> **重要（`withExceptions` に渡す例外型）**: 認可エラーの `render()` コールバックは
+> **`Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException` を型に取る**こと。
+> `Illuminate\Auth\Access\AuthorizationException` を指定してはならない。Laravel の
+> `Handler::render()` は登録済みコールバック（`renderViaCallbacks()`）を呼ぶ**前に**
+> `prepareException()` で `AuthorizationException` を `AccessDeniedHttpException` へ
+> 変換するため、`AuthorizationException` を指定したコールバックは決して呼ばれず、
+> 素の 403 ページが返る。
+>
+> ```php
+> $exceptions->render(function (AccessDeniedHttpException $e, Request $request) {
+>     if ($request->expectsJson()) {
+>         return null;
+>     }
+>
+>     return redirect()->route('home')->with('error', 'この操作を行う権限がありません。');
+> });
+> ```
 
 ## 非同期処理
 

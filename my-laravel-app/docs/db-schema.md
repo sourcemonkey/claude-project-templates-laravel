@@ -154,6 +154,8 @@ audit_logs (独立、polymorphic 相当のカラム構成)
 
 検索機能を持つ画面で使うモデルに対して、Controller 側で `allowedFilters` / `allowedSorts` を定義する。
 
+> **注意**: v7 の `allowedFilters()` / `allowedSorts()` は**可変長引数のみ**を受け取る。下表の内容は配列ではなく引数の並びとして渡すこと（`->allowedFilters('title', 'author', AllowedFilter::exact('category_id'))`）。詳細は `docs/architecture.md` の Model セクション参照。
+
 | モデル | allowedFilters | allowedSorts |
 |---|---|---|
 | Book | title, author, publisher, isbn, description, published, `AllowedFilter::exact('category_id')`, `AllowedFilter::exact('tags.id')` | created_at, title |
