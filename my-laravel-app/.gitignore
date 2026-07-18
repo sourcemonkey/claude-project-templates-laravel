@@ -46,7 +46,7 @@
 /public/build
 /node_modules/
 
-# Vite の開発サーバー稼働マーカーとフォントマニフェスト(bin/dev 実行中に生成)。
+# Vite の開発サーバー稼働マーカーとフォントマニフェスト(composer run dev 実行中に生成)。
 /public/hot
 /public/fonts-manifest.dev.json
 
