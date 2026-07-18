@@ -3,6 +3,8 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP_DIR="$REPO_ROOT/my-laravel-app"
+# git clean の除外パターン・表示用に使うリポジトリルートからの相対パス
+APP_REL="${APP_DIR#"$REPO_ROOT"/}"
 
 PHASE="${1:-}"
 
@@ -59,9 +61,14 @@ reset_to_template() {
   #    ただし個人ローカル設定（承認履歴・個人メモ）はリセットのたびに
   #    消えると蓄積・選別の運用が成り立たないため除外する。
   echo ">> 未追跡ファイルを削除..."
+  # 除外パターンは先頭 / を付けてリポジトリルート基準の絶対パスで書く。
+  # スラッシュを含まないパターン（例: 'settings.local.json'）は .gitignore と
+  # 同じく任意階層にマッチするため、node_modules 配下の無関係な同名ファイル
+  # （例: node_modules/resolve/.claude/settings.local.json）まで保護され、
+  # node_modules ごと削除されずに残ってしまう。
   git -C "$REPO_ROOT" clean -fdx \
-    -e 'settings.local.json' \
-    -e 'CLAUDE.local.md' \
+    -e "/$APP_REL/.claude/settings.local.json" \
+    -e "/$APP_REL/CLAUDE.local.md" \
     "$APP_DIR/"
 
   # 4. テンプレートファイルへの変更を復元
@@ -73,13 +80,13 @@ case "$PHASE" in
   1)
     reset_to_template
     echo ""
-    echo "✅ リセット完了。${APP_DIR#$REPO_ROOT/} は Phase 1 実行前（Laravel 未生成）の状態に戻りました。"
+    echo "✅ リセット完了。${APP_REL} は Phase 1 実行前（Laravel 未生成）の状態に戻りました。"
     ;;
   2 | 3 | 4)
     reset_to_template
     PREV=$((PHASE - 1))
     echo ""
-    echo "✅ リセット完了。${APP_DIR#$REPO_ROOT/} はテンプレート状態（Laravel 未生成）に戻りました。"
+    echo "✅ リセット完了。${APP_REL} はテンプレート状態（Laravel 未生成）に戻りました。"
     echo ""
     if [ "$PREV" -eq 1 ]; then
       echo "ℹ️  Phase ${PHASE} のトライアルは Phase 1 完了状態が前提です。"
