@@ -28,7 +28,7 @@ description: フェーズ4 - Seeder、テスト、README、起動確認で完成
 
 #### 2-1. テストシナリオの実装
 
-テストを書く前に、テスト対象の Blade / Livewire コンポーネントファイルを Read してボタン名・フィールド label の実際の文字列を確認すること（ボタン名の標準は `docs/screens.md` の「ボタン・ラベルの標準」参照、Breeze のログイン画面ラベルは `laravel-lang/lang` の実際の翻訳ファイルを確認）。推測で書くと不一致による修正ループが発生する。
+テストを書く前に、ボタン名・フィールド label の実際の文字列を対象の Blade / Livewire ファイルを Read して確認すること（`docs/screens.md` の「ボタン・ラベルの標準」とその注記参照）。
 
 テスト実装上の注意:
 - **Dusk の `select()` には `<option>` の `value` 属性を渡す**（表示テキストではない）。表示テキストで選択したい場合は `$browser->script(...)` を使わず、`selectByText()`（Dusk 3 系以降で利用可能な場合）の有無を確認して使う

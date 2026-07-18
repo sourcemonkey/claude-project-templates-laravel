@@ -17,40 +17,9 @@ description: 現在のフェーズの完了基準を満たしているかセル�
 
 ## フェーズ別チェック
 
-### Phase 1 完了時
-
-- [ ] `composer.json` に `docs/stack.md` の「手動追加 ✅」パッケージがすべて記載
-- [ ] Laravel Breeze（Livewire スタック）/ laravel-lang / larastan / Dusk の初期化済み
-- [ ] `php artisan migrate` 成功済み（`bookkeeper` データベースに対して）
-- [ ] `bookkeeper_test` データベースが作成済み
-- [ ] `bin/dev` で 200 が返る
-- [ ] `my-laravel-app/.env` が存在し、`.gitignore` で除外されている
-- [ ] `my-laravel-app/.env.example` が存在し、コミット対象に含まれている
-- [ ] `bin/dev` に Queue ワーカー（`php artisan queue:work` / `queue:listen`）の行が含まれていない
-
-### Phase 2 完了時
-
-- [ ] `database/migrations/` の各テーブル定義が `docs/db-schema.md` と一致
-- [ ] 各モデルに Enum キャスト / リレーションが定義済み
-- [ ] CHECK 制約が存在（books の available_copies）
-- [ ] `php artisan test tests/Unit/Models` all green
-
-### Phase 3 完了時
-
-- [ ] `php artisan route:list` の出力が `docs/api-spec.md` の全エンドポイントを含む
-- [ ] 各リソースに Policy が存在
-- [ ] レイアウト `layouts/app.blade.php` と `layouts/admin.blade.php` が存在
-- [ ] `docs/architecture.md` の「Action 一覧」の 4 クラスが `app/Actions/` に存在
-- [ ] 主要画面が（空でも）500 にならない
-
-### Phase 4 完了時
-
-- [ ] `coverage/index.html` が生成され、行カバレッジが 80% 以上
-- [ ] `migrate:fresh` 後に `db:seed` が成功
-- [ ] Seeder 投入後にログインして主要画面が見える
-- [ ] `php artisan dusk` all green
-- [ ] `vendor/bin/phpstan analyse` エラー 0
-- [ ] README.md に「起動方法」「テストアカウント」が記載されている
+対象フェーズの手順書（`.claude/commands/scaffold-phaseN-*.md`）の
+「このフェーズの完了基準」セクションを Read し、各項目を順に確認する。
+完了基準の一次情報は各手順書側に置き、本ファイルでは重複管理しない。
 
 ## 報告フォーマット
 

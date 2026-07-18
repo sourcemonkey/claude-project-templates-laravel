@@ -124,7 +124,7 @@ enum LendingState: int
 
 ### リレーション
 
-テーブル定義と ER 図から方向を導出し、各モデルに `hasMany` / `belongsTo` / `belongsToMany` を記述する。中間テーブル（`book_tags`）は `belongsToMany` で結ぶ。削除時の挙動（`restrictOnDelete` / `cascadeOnDelete`）はマイグレーションの外部キー定義で `@docs/db-schema.md` の「削除時の挙動」セクション通りに設定する。`User` の `notifications()` は定義しない（前述の注意4）。
+テーブル定義と ER 図から方向を導出し、各モデルに `hasMany` / `belongsTo` / `belongsToMany` を記述する。削除時の挙動（`restrictOnDelete` / `cascadeOnDelete`）はマイグレーションの外部キー定義で `@docs/db-schema.md` の「削除時の挙動」セクション通りに設定する。`User` の `notifications()` は定義しない（前述の注意4）。
 
 ### Spatie Query Builder 対応
 

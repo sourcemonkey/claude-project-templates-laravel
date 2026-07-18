@@ -57,7 +57,7 @@ Laravel 本体はホスト側で動かす。
 起動失敗時の典型原因:
 - ポート競合（`docker compose logs db` で確認）
 - ボリュームに前回データが残っていてユーザ作成がスキップされた（`docker compose down -v` で初期化）
-- **Docker named volume の衝突**: Docker Compose のデフォルトプロジェクト名はディレクトリ名（basename）に由来するため、`my-laravel-app` という同名ディレクトリが複数存在する場合（例: 元のチェックアウトと git worktree、あるいは複数クローン）、`my-laravel-app_db-data` という同じボリューム名を共有してしまう。過去に別の `my-laravel-app` で初期化済みのデータが残っていると、今回の `MYSQL_DATABASE=bookkeeper` / `MYSQL_USER=app` の初期化がスキップされ、`app` ユーザーが `bookkeeper` にアクセスできない（`SHOW GRANTS FOR 'app'@'%';` で対象データベースを確認できる）。この場合も `docker compose down -v` で解消するが、worktree で並行して試す場合は根本対策として `COMPOSE_PROJECT_NAME` を worktree ごとに変える運用も検討する
+- **Docker named volume の衝突**: Compose のプロジェクト名はディレクトリ名（basename）由来のため、`my-laravel-app` という同名ディレクトリが複数ある場合（git worktree・複数クローン）、同じボリューム `my-laravel-app_db-data` を共有してしまう。過去に別ディレクトリで初期化済みのデータが残っていると `MYSQL_DATABASE=bookkeeper` / `MYSQL_USER=app` の初期化がスキップされ、`app` ユーザーが `bookkeeper` にアクセスできない（`SHOW GRANTS FOR 'app'@'%';` で確認できる）。`docker compose down -v` で解消する。worktree で並行して試す場合は `COMPOSE_PROJECT_NAME` を worktree ごとに変える
 
 ### 3. Laravel アプリ生成
 
@@ -78,17 +78,15 @@ rmdir tmp-skeleton 2>/dev/null || true
 
 > **注意（実行シェル）**: `shopt` は bash 専用ビルトインで、zsh には存在しない（`shopt not found` になる）。Claude Code の Bash ツールがコマンドを **zsh** で評価する環境（このテンプレートのヘッドレス実行環境がこれに該当）では、`shopt -s dotglob` を素で書くとエラーになり、続く `mv tmp-skeleton/* .` がドットファイル（`.env`, `.env.example`, `.editorconfig`, `.gitattributes` 等）を移動しない。`.env` が移動されないと以降の `key:generate` / `migrate` が全滅するため、上記のように **`bash -c` で明示的に bash を起動して** dotglob を効かせること（POSIX/zsh から呼んでも安全）。
 
-`.npmrc`（npm のサプライチェーン対策 `ignore-scripts=true` / `audit=true`）は `laravel new` が生成し、**本テンプレートにも `my-laravel-app/.npmrc` として同梱・git 追跡している**。通常実行では上記の移動で配置され、直後の `git checkout`（下記）でテンプレート版に揃う。
-
-> **注意（ヘッドレス実行時）**: Claude Code のセンシティブファイル保護により、`.npmrc` の移動・削除がヘッドレスセッションでは承認されず失敗することがある。その場合 `.npmrc` は `tmp-skeleton/` に残り `rmdir` も失敗するが（上記は `|| true` で握りつぶす）、**テンプレート同梱の `.npmrc` が既に直下に存在するためアプリは正しい状態**であり、残った `tmp-skeleton/.npmrc` は次回 `bin/reset-phase.sh`（`git clean -fdx`）で除去されるため無視してよい。手動対応は不要。
-
-`laravel new` は `.gitignore` / `.npmrc` を独自に生成する（上記の移動でテンプレート版が上書きされうる）が、テンプレート同梱の内容を正とするため、移動直後に以下を実行してテンプレート側のファイルへ戻す:
+`laravel new` は `.gitignore` / `.npmrc`（npm のサプライチェーン対策 `ignore-scripts=true` / `audit=true`）を独自に生成し、上記の移動でテンプレート同梱版が上書きされうる。テンプレート同梱の内容を正とするため、移動直後に以下を実行してテンプレート側のファイルへ戻す:
 
 ```sh
 git checkout -- .npmrc .gitignore CLAUDE.md docs/ .claude/ compose.yaml docker/ .tool-versions 2>/dev/null || true
 ```
 
 （テンプレートリポジトリがまだ git 管理下にない場合、上記コマンドは何もせず終了して構わない。その場合は `docs/`, `.claude/`, `compose.yaml`, `docker/`, `CLAUDE.md`, `.tool-versions`, `.gitignore` が `laravel new` によって上書き・混入していないか目視で確認する。）
+
+> **注意（ヘッドレス実行時）**: センシティブファイル保護により `.npmrc` の移動・削除が失敗することがあるが、テンプレート同梱の `.npmrc` が既に直下に存在するため無視してよい（`tmp-skeleton/` の残置物は次回 `bin/reset-phase.sh` の `git clean` で除去される）。
 
 ### 4. config/database.php の調整
 
@@ -97,7 +95,7 @@ git checkout -- .npmrc .gitignore CLAUDE.md docs/ .claude/ compose.yaml docker/ 
 - `charset: utf8mb4` / `collation: utf8mb4_0900_ai_ci` を明示
 - `host` / `username` / `password` / `port` を `.env` 経由で読み込む（Laravel の既定のまま）
 
-> **補足（Laravel 13 の既定値）**: `laravel new`（Laravel 13.x）が生成する `config/database.php` の `mysql` 接続は既定で `'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci')`・`'database' => env('DB_DATABASE', 'laravel')`・`'username' => env('DB_USERNAME', 'root')` になっている。`.env` 側で `DB_DATABASE` / `DB_USERNAME` / `DB_PASSWORD` を明示するので接続自体は通るが、`docs/stack.md` の規約に合わせて `env()` の第 2 引数（既定値）も `bookkeeper` / `app` / `app_password` / `utf8mb4_0900_ai_ci` に揃えておく。なお Laravel 13 の既定 `mysql` 接続は接続文字列方式として `'url' => env('DB_URL')` を持つ（`DATABASE_URL` ではなく `DB_URL`）。本プロジェクトでは Step 7 の通り URL 方式は使わないので `DB_URL` は `.env` に設定しない。
+> **補足（Laravel 13 の既定値）**: `laravel new`（Laravel 13.x）が生成する `config/database.php` の `mysql` 接続は既定で `'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci')`・`'database' => env('DB_DATABASE', 'laravel')`・`'username' => env('DB_USERNAME', 'root')` になっている。`.env` 側で `DB_DATABASE` / `DB_USERNAME` / `DB_PASSWORD` を明示するので接続自体は通るが、`docs/stack.md` の規約に合わせて `env()` の第 2 引数（既定値）も `bookkeeper` / `app` / `app_password` / `utf8mb4_0900_ai_ci` に揃えておく。なお `DB_URL`（接続文字列方式）は設定しない（Step 7 の注意参照）。
 
 ### 5. Composer パッケージの追加
 
@@ -174,7 +172,7 @@ php artisan key:generate
 > **注意: `DB_URL`（接続文字列方式）を `.env` に追加しないこと**
 >
 > このプロジェクトの `config/database.php` は `DB_HOST` / `DB_USERNAME` / `DB_PASSWORD` / `DB_PORT` の個別変数で接続情報を受け取る設計になっている。
-> Laravel 13 の既定 `mysql` 接続は `'url' => env('DB_URL')` を持つが、URL 方式と個別変数方式を混在させると接続設定の優先順位が複雑になりデバッグが困難になる。
+> Laravel 13 の既定 `mysql` 接続は `'url' => env('DB_URL')`（環境変数名は `DATABASE_URL` ではなく `DB_URL`）を持つが、URL 方式と個別変数方式を混在させると接続設定の優先順位が複雑になりデバッグが困難になる。
 > プロジェクト全体で個別変数方式に統一するため、`DB_URL` は設定しないこと。
 
 ### 8. bin/setup と bin/dev の作成
@@ -229,7 +227,7 @@ php artisan migrate --seed
    - 失敗時の典型原因: コンテナ未起動 / `.env` の認証情報不一致 / Step 2 で触れた Docker named volume の衝突（`Access denied for user 'app'@'%' to database 'bookkeeper'` のようなエラーが出る場合はこれを疑う）
    - エラー時は勝手に MySQL のユーザー権限をいじらず、状況を報告して指示を仰ぐ
 3. **起動確認**: `bin/dev` をバックグラウンドで立ち上げ、`curl -sS -o /dev/null -w "%{http_code}" http://localhost:8000` が 200 を返すことを確認後、サーバを停止（`kill %1` または `pkill -f "php artisan serve"`）。
-4. **Pint による自動修正**: `vendor/bin/pint --test` を実行する。`laravel new` / `breeze:install` / `lang:add` が生成するファイル（`bootstrap/providers.php`, `tests/Pest.php`, `lang/ja/*.php` 等）はデフォルトで Pint の規約に違反していることがあるため、`vendor/bin/pint` で自動修正し、再度 `--test` で 0 件になることを確認する。**Pint は `tests/Pest.php` の Dusk 挿入コードの `use` 文順序を壊す（Step 6 の Dusk の注意参照）ため、修正後に `use` 文をファイル冒頭へ移動し、`php artisan test` が green のままであることを必ず再確認する。**
+4. **Pint による自動修正**: `vendor/bin/pint --test` を実行する。`laravel new` / `breeze:install` / `lang:add` が生成するファイル（`bootstrap/providers.php`, `tests/Pest.php`, `lang/ja/*.php` 等）はデフォルトで Pint の規約に違反していることがあるため、`vendor/bin/pint` で自動修正し、再度 `--test` で 0 件になることを確認する。**Pint 適用後、Step 6 の Dusk の注意に従い `tests/Pest.php` の `use` 文をファイル冒頭へ戻し、`php artisan test` が green のままであることを再確認する。**
 
 ## このフェーズの完了基準
 
@@ -240,7 +238,8 @@ php artisan migrate --seed
 - [ ] `bookkeeper_test` データベースが作成済み
 - [ ] `phpunit.xml` の `DB_CONNECTION` が `mysql`・`DB_DATABASE` が `bookkeeper_test`（既定の sqlite / :memory: から変更済み）
 - [ ] `composer.lock` がコミット対象に入っている
-- [ ] Laravel Breeze（Livewire スタック）/ larastan / Dusk の初期化済み
+- [ ] `composer.json` に `docs/stack.md` の「手動追加 ✅」パッケージがすべて記載
+- [ ] Laravel Breeze（Livewire スタック）/ laravel-lang / larastan / Dusk の初期化済み
 - [ ] `my-laravel-app/.env` が存在し、`.gitignore` で除外されている
 - [ ] `my-laravel-app/.env.example` が存在し、コミット対象に含まれている
 - [ ] `bin/dev` に Queue ワーカー（`php artisan queue:work` / `queue:listen`）の行が**含まれていない**
@@ -259,4 +258,4 @@ php artisan migrate --seed
 
 ## 完了後
 
-`/verify` を実行してセルフチェックし、結果を「やったこと / 次にやること / 詰まっていること」の 3 点で報告する。
+`/verify` を実行し、結果を報告。

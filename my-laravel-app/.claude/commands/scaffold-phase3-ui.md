@@ -15,12 +15,11 @@ description: フェーズ3 - Controller / View / Policy を生成し UI を完�
 4. **`EnsureUserIsAdmin` ミドルウェア**（`app/Http/Middleware/`）:
    - `$request->user()->isAdmin()` が false なら `flash('error', '管理者のみアクセスできます。')` の上で `redirect()->route('home')`
    - `bootstrap/app.php` の `withMiddleware()` で `admin` エイリアスとして登録
-5. **メンバー領域 Controller / View**: `@docs/screens.md` のメンバー領域画面一覧と `@docs/api-spec.md` のルーティング定義から導出すること
-6. **管理者領域 Controller / View**: `@docs/screens.md` の管理者領域画面一覧と `@docs/api-spec.md` のルーティング定義から導出すること
-7. **Policy**: `php artisan make:policy XxxPolicy --model=Xxx` でリソースごとに作成。認可ルールは `@docs/api-spec.md` の「認可マトリクス」通り。実装パターン（シングルトンリソースの Policy 直接呼び出し等）は `@docs/architecture.md` の「Policy」セクション参照
-8. **Action クラス**: `@docs/architecture.md` の「Action 一覧」参照。各 Action の副作用は `@docs/api-spec.md` の「エンドポイント詳細」参照
-9. **カスタムエラーページ**: `resources/views/errors/404.blade.php`, `419.blade.php`, `500.blade.php` を Tailwind スタイルに合わせて作成
-10. **通知（メンバー向け）と監査ログ（管理者向け）画面**: `docs/screens.md` の画面一覧から導出
+5. **メンバー領域・管理者領域の Controller / View**: `@docs/screens.md` の各領域の画面一覧と `@docs/api-spec.md` のルーティング定義から導出すること
+6. **Policy**: `php artisan make:policy XxxPolicy --model=Xxx` でリソースごとに作成。認可ルールは `@docs/api-spec.md` の「認可マトリクス」通り。実装パターン（シングルトンリソースの Policy 直接呼び出し等）は `@docs/architecture.md` の「Policy」セクション参照
+7. **Action クラス**: `@docs/architecture.md` の「Action 一覧」参照。各 Action の副作用は `@docs/api-spec.md` の「エンドポイント詳細」参照
+8. **カスタムエラーページ**: `resources/views/errors/404.blade.php`, `419.blade.php`, `500.blade.php` を Tailwind スタイルに合わせて作成
+9. **通知（メンバー向け）と監査ログ（管理者向け）画面**: `docs/screens.md` の画面一覧から導出
 
 ## 画面実装の注意
 
@@ -137,7 +136,7 @@ protected function signInAs(Browser $browser, User $user): void
     $browser->visit('/login')
         ->type('email', $user->email)
         ->type('password', 'password123')
-        ->press('ログイン') // ボタン文言は laravel-lang/lang が提供する実際の文言を Read して確認すること
+        ->press('ログイン') // 文言は docs/screens.md の注記に従い実ファイルを Read して確認
         ->waitForLocation('/'); // リダイレクト完了を待つ
 }
 ```
@@ -158,6 +157,8 @@ protected function signInAs(Browser $browser, User $user): void
 - [ ] `php artisan route:list` で `docs/api-spec.md` の全ルートが存在
 - [ ] 各画面が（データなしでも）500 にならずに表示できる
 - [ ] Policy が全リソースに存在
+- [ ] レイアウト `layouts/app.blade.php` / `layouts/admin.blade.php` が存在
+- [ ] `docs/architecture.md` の「Action 一覧」の 4 クラスが `app/Actions/` に存在
 - [ ] `php artisan test` が all green
 - [ ] `vendor/bin/pint --test` が違反 0
 
