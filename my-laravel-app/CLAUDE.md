@@ -32,9 +32,8 @@
 
 ## 完了の定義（プロジェクト全体）
 
-- [ ] `composer install && npm install` + `php artisan migrate --seed` 一発でセットアップ完了
+- [ ] `composer install && npm install` + `php artisan migrate --seed` 一発でセットアップが完了し、各画面に表示すべきサンプルデータが入る
 - [ ] `php artisan serve` + `npm run dev` で起動し、ログインから主要画面遷移まで動作
-- [ ] `db:seed` 相当（`php artisan migrate --seed` / `php artisan db:seed`）で各画面に表示すべきサンプルデータが入る
 - [ ] `php artisan test` が all green
 - [ ] Laravel Dusk のシステムテストが all green
 - [ ] カバレッジ 80% 以上（`coverage/index.html` で確認）
@@ -48,7 +47,5 @@
 - **JS フレームワーク（React/Vue）を導入しない**。Livewire + Alpine.js で完結させる。
 - **Laravel Breeze（Livewire スタック）を使う**。自前認証を書かない。
 - **Laravel Policy（標準機能）を使う**。CanCanCan 相当のサードパーティ認可ライブラリや自前認可ロジックは導入しない。
-- **非同期ジョブを使わない**。Laravel 標準の Queue（database ドライバ）は
-  `laravel new` の生成物として設定を残すが、ワーカー（`php artisan queue:work`）は起動しない。
-  Redis / Horizon などの追加導入もしない。詳細は `docs/stack.md` の
-  「ジョブ・キャッシュ・ブロードキャスト」セクション参照。
+- **非同期ジョブを使わない**。Queue の生成物は残すがワーカーは起動しない。
+  詳細は `docs/stack.md` の「ジョブ・キャッシュ・ブロードキャスト」セクション参照。
