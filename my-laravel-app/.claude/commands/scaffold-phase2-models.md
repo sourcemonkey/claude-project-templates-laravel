@@ -6,6 +6,8 @@ description: フェーズ2 - DB スキーマからモデル・マイグレーシ
 
 `docs/db-schema.md` の定義に厳密に従ってマイグレーションとモデルを作成する。テーブル定義・カラム制約・インデックス・enum 値・リレーションはすべて `docs/db-schema.md` が一次情報。
 
+> **前提**: Phase 1 が完走し、`phpunit.xml` のテスト DB が MySQL の `bookkeeper_test` に設定済みであること（Phase 1 手順書の Step 9 参照）。既定の `sqlite` / `:memory:` のままだと、本フェーズで追加する `books` の `ALTER TABLE ... ADD CONSTRAINT ... CHECK` が SQLite の構文エラーで失敗し、モデルテストが全滅する。
+
 ## 実行順序
 
 `@docs/db-schema.md` の ER 図・リレーション定義を読み、FK の参照先テーブルを先に作る順序で作成すること。Breeze が生成する `users` テーブルは他テーブルの FK が `users.id` を参照するため、FK 依存の有無にかかわらず必ず最初に対応する。
@@ -22,7 +24,13 @@ php artisan make:migration add_role_to_users_table --table=users
 
 `docs/db-schema.md` の `users` テーブル定義に合わせて `role`（`tinyInteger`, `NOT NULL`, `default: 0`）カラムを追加する。
 
-`App\Models\User` に `role` を `$fillable` に追加し、`casts()` に `'role' => UserRole::class` を追加する（`UserRole` Enum は次のステップで作成）。`app/Enums/UserRole.php`:
+次に `App\Models\User` を補正する。
+
+> **注意1（`role` を Mass assignment 対象にしない）**: `team-rules/security.md` は「`id` や `role` 等の権限に関わるカラムを `$fillable` に含めない」と定めている。**`role` は fillable に追加しないこと**（追加すると Mass assignment による権限昇格の余地が生まれる）。ロール変更（`PATCH /admin/users/{user}`）は Phase 3 の admin Controller で `$user->role = ...; $user->save();` と明示代入する。Model Factory は fillable を経由せず属性を設定するため、`role` を fillable 外にしても `User::factory()->admin()` は問題なく機能する（トライアルで確認済み）。
+
+> **注意2（Laravel 13 の User モデルは属性ベース）**: `laravel new`（Laravel 13.x）が生成する `User` モデルは、`protected $fillable` / `protected $hidden` プロパティではなく PHP 属性 `#[Fillable([...])]` / `#[Hidden([...])]` を使う。上記の通り `role` は fillable に足さないので、`#[Fillable(['name', 'email', 'password'])]` はそのままでよい。
+
+`casts()` に `'role' => UserRole::class` を追加する（`UserRole` Enum は次のステップで作成）。`app/Enums/UserRole.php`:
 
 ```php
 enum UserRole: int
@@ -34,6 +42,17 @@ enum UserRole: int
 
 `User` モデルに `isAdmin(): bool` メソッドを追加し、`role === UserRole::Admin` を返す。
 
+> **注意3（larastan 用の `@property` 注釈）**: enum キャストしたカラム（`role`）は、`@property` PHPDoc が無いと larastan が `casts()` の型を推論できず `int` 扱いになり、`isAdmin()` の `role === UserRole::Admin` が **「常に false」と誤判定されて `vendor/bin/phpstan analyse` がエラーになる**（`team-rules/review-policy.md` の必須チェック）。モデルの docblock に `@property` を付けること:
+> ```php
+> /**
+>  * @property UserRole $role
+>  */
+> class User extends Authenticatable
+> ```
+> 同様に enum キャストを持つ他モデル（`Lending::$state`, `Notification::$kind`）にも `@property` を付ける。
+
+> **注意4（`Notifiable` トレイトとの衝突）**: `User` に `notifications()` の `hasMany` を定義しないこと。Breeze が付与する `Illuminate\Notifications\Notifiable` トレイトが既に `notifications()`（`MorphMany` 返り、パスワードリセットで利用）を提供しており、これを `HasMany` 返りで上書きすると larastan が非共変な戻り値型としてエラーにする。独自 `Notification` へのアクセスは `Notification` 側の `belongsTo(User::class)` で表現する。`User` に必要なリレーションは `lendings()`（`hasMany`）のみ。
+
 ### 残りのモデル
 
 各モデルを `php artisan make:model Xxx -mf`（マイグレーション + ファクトリ同時生成）で雛形作成し、`docs/db-schema.md` の定義（NOT NULL、UNIQUE、CHECK 制約、インデックス、enum 値）に合わせて手動で補正する。
@@ -43,6 +62,10 @@ enum UserRole: int
 `book_tags` は中間テーブルのため専用モデルは作らず、マイグレーションのみ `php artisan make:migration create_book_tags_table --create=book_tags` で作成する（`Book` / `Tag` モデルの `belongsToMany` のピボットテーブルとして扱う）。
 
 > `App\Models\Notification` は Laravel 標準の `Illuminate\Notifications\Facades\Notification` ファサードと名前が衝突しないよう、Controller / Action での `use` 文に注意する（完全修飾名かエイリアスで区別する）。
+
+各モデルの `$fillable`（`User` 以外は従来どおり `protected $fillable` プロパティで可）・`casts()`・リレーションを定義する。enum キャスト（`Lending::$state` → `LendingState`, `Notification::$kind` → `NotificationKind`）を持つモデルには前述の `@property` 注釈を付ける。
+
+> **注意（`audit_logs` の `$timestamps`）**: `audit_logs` は不変レコードで `updated_at` を持たない（`created_at` のみ）。`AuditLog` モデルに `public $timestamps = false;` を設定すること。設定しないと Eloquent が保存時に `updated_at` を書こうとして「Unknown column 'updated_at'」で失敗する。`created_at` はマイグレーションの `useCurrent()` により DB 側で設定される。`changes_json` は `'changes_json' => 'array'` でキャストする。
 
 ジェネレータの自動生成だけでは制約が足りないので、以下を必ず確認:
 
@@ -59,8 +82,8 @@ enum UserRole: int
 ```php
 public function up(): void
 {
-    Schema::table('books', function (Blueprint $table) {
-        // ここでは available_copies カラム自体は既に存在する前提
+    Schema::create('books', function (Blueprint $table) {
+        // ... カラム定義 ...
     });
 
     DB::statement('ALTER TABLE books ADD CONSTRAINT books_available_copies_non_negative CHECK (available_copies >= 0)');
@@ -71,8 +94,12 @@ public function down(): void
 {
     DB::statement('ALTER TABLE books DROP CHECK books_available_copies_non_negative');
     DB::statement('ALTER TABLE books DROP CHECK books_available_lte_total');
+
+    Schema::dropIfExists('books');
 }
 ```
+
+> このマイグレーションは `use Illuminate\Support\Facades\DB;` を必要とする。また `ALTER TABLE ... ADD CONSTRAINT` は MySQL 固有の構文で SQLite では動かないため、テストは必ず MySQL の `bookkeeper_test` で実行すること（前提の phpunit.xml 設定を参照）。
 
 ### Lending の state 遷移
 
@@ -91,13 +118,13 @@ enum LendingState: int
 }
 ```
 
-状態遷移用の外部パッケージは使わず、`Lending` モデルのメソッド（`approve()`, `reject()`, `returnBook()`）として実装する（`return` は PHP 予約語のためメソッド名に使えない）。各メソッド内で遷移元の state を確認し、不正な場合は `throw new \DomainException(...)` する。
+状態遷移用の外部パッケージは使わず、`Lending` モデルのメソッド（`approve()`, `reject()`, `returnBook()`）として実装する（`return` は PHP 予約語のためメソッド名に使えない）。各メソッド内で遷移元の state を確認し、不正な場合は `throw new \DomainException(...)` する。在庫減算・通知などの副作用は Action（Phase 3）側で行い、モデルのメソッドは state 遷移（と対応する `approved_at` / `returned_at` の設定）に限定する。
 
 `markOverdue()` のようなメソッドは作成しない。`Overdue` への遷移はバッチ相当の操作（将来 Queue を有効化した際に実装予定）であり、本フェーズでは Seeder で state を直接 `Overdue` に設定することで代替する。
 
 ### リレーション
 
-テーブル定義と ER 図から方向を導出し、各モデルに `hasMany` / `belongsTo` / `belongsToMany` を記述する。中間テーブル（`book_tags`）は `belongsToMany` で結ぶ。削除時の挙動（`restrictOnDelete` / `cascadeOnDelete`）はマイグレーションの外部キー定義で `@docs/db-schema.md` の「削除時の挙動」セクション通りに設定する。
+テーブル定義と ER 図から方向を導出し、各モデルに `hasMany` / `belongsTo` / `belongsToMany` を記述する。中間テーブル（`book_tags`）は `belongsToMany` で結ぶ。削除時の挙動（`restrictOnDelete` / `cascadeOnDelete`）はマイグレーションの外部キー定義で `@docs/db-schema.md` の「削除時の挙動」セクション通りに設定する。`User` の `notifications()` は定義しない（前述の注意4）。
 
 ### Spatie Query Builder 対応
 
@@ -114,12 +141,20 @@ php artisan migrate
 ### Pint 自動修正
 
 ```sh
-vendor/bin/pint app/Models app/Enums database/migrations
+vendor/bin/pint app/Models app/Enums database/migrations database/factories tests/Unit/Models
 ```
 
 ### モデルテスト
 
-`make:model -f` が生成するファクトリは Faker の適当な値が入っているだけなので、`docs/db-schema.md` の定義に合わせて書き直すこと（ファイルが既に存在するため Read してから Write する）。`User` ファクトリのメールは `@test.local` ドメインにすること（Breeze 標準ファクトリのデフォルトドメインとテスト実行時に衝突しないようにするため）。
+`make:model -f` が生成するファクトリは Faker の適当な値が入っているだけなので、`docs/db-schema.md` の定義に合わせて書き直すこと（ファイルが既に存在するため Read してから Write する）。`User` ファクトリのメールは `@test.local` ドメインにすること（Breeze 標準ファクトリのデフォルトドメインとテスト実行時に衝突しないようにするため）。`role` を扱う `admin()` state も追加する。
+
+> **注意（Pest の Unit ディレクトリ設定）**: `tests/Unit/` は既定では素の PHPUnit `TestCase` にバインドされており、Laravel アプリが起動しない（DB も使えない）。DB を伴うモデルテストを `tests/Unit/Models/` に置くため、`tests/Pest.php` に次のバインドを追加すること:
+> ```php
+> pest()->extend(Tests\TestCase::class)
+>     ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
+>     ->in('Unit/Models');
+> ```
+> これが無いと `tests/Unit/Models/` のテストは Laravel を起動できず `A facade root has not been set.` 等で失敗する。
 
 `tests/Unit/Models/` に各モデルの最低限のバリデーションテストを Pest で書く（`test/models` 相当のディレクトリ構成）。網羅すべき観点:
 
@@ -127,6 +162,7 @@ vendor/bin/pint app/Models app/Enums database/migrations
 - uniqueness
 - enum（PHP Enum）キャストの確認
 - リレーションの存在
+- `books` の CHECK 制約（`available_copies` の範囲違反で `QueryException`）
 
 ```sh
 php artisan test tests/Unit/Models
@@ -140,7 +176,10 @@ php artisan test tests/Unit/Models
 - [ ] `php artisan test tests/Unit/Models` が all green
 - [ ] マイグレーション定義（`database/migrations/`）が `docs/db-schema.md` の定義と一致
 - [ ] 各モデルのリレーション・enum キャストが定義済み
+- [ ] enum キャストを持つモデルに `@property` 注釈があり、`vendor/bin/phpstan analyse --memory-limit=512M` がエラー 0
+- [ ] `role` が `User` の Mass assignment 対象（fillable）に**含まれていない**
 - [ ] `books` テーブルに CHECK 制約が存在する
+- [ ] `vendor/bin/pint --test` が違反 0
 
 ## やらないこと
 
