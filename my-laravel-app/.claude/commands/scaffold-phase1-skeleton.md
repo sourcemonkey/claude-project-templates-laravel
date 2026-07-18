@@ -16,6 +16,7 @@ Laravel 本体はホスト側で動かす。
 - `my-laravel-app/docker/mysql/conf.d/.keep`
 - `my-laravel-app/.tool-versions`
 - `my-laravel-app/.gitignore`（`.env` 除外・カバレッジ除外など含む）
+- `my-laravel-app/.npmrc`（npm のサプライチェーン対策 `ignore-scripts=true` / `audit=true`）
 - ルート直下の `.tool-versions`, `env.example`, `.gitignore`
 
 これらの内容を確認・編集する必要はない（中身は `docs/stack.md` の規約に合致した状態でコミット済み）。
@@ -41,18 +42,11 @@ Laravel 本体はホスト側で動かす。
 
 `my-laravel-app/` ディレクトリで以下を実行:
 
-1. `docker compose up -d db` で DB コンテナを起動
-2. DB が ready になるまで待機:
-   ```sh
-   for i in $(seq 1 30); do
-     if docker compose exec -T db mysqladmin ping -uroot -proot_password > /dev/null 2>&1; then
-       echo "MySQL is ready"
-       break
-     fi
-     sleep 1
-   done
-   ```
-3. `docker compose exec db mysql -uapp -papp_password bookkeeper -e "SELECT 1"` で `app` ユーザが `bookkeeper` データベースに実際にアクセスできることを確認する（データベース名を指定せずに `SELECT 1` するだけではログイン可否しか確認できず、後述のボリューム衝突による権限不足を見逃す）
+1. `docker compose up -d --wait db` で DB コンテナを起動する。`--wait` は `compose.yaml` の `healthcheck`（`mysqladmin ping`）が healthy を報告するまでブロックするため、**待機用のシェルループを自前で書かないこと**。
+   - 準備完了の判定条件を `compose.yaml` の 1 箇所に集約でき、`bin/setup` とも同じ書き方に揃う
+   - `for i in $(seq 1 30); do ... done` のようなループは Claude Code の Bash ツールでは変数展開のガード（`Contains simple_expansion`）に掛かって実行できない。スクリプトファイル内に書く場合を除き使わない
+   - healthy にならないまま終了した場合、`--wait` は非 0 で終了する。`docker compose logs db` で原因を確認する
+2. `docker compose exec -T db mysql -uapp -papp_password bookkeeper -e "SELECT 1"` で `app` ユーザが `bookkeeper` データベースに実際にアクセスできることを確認する（データベース名を指定せずに `SELECT 1` するだけではログイン可否しか確認できず、後述のボリューム衝突による権限不足を見逃す）
 
 起動失敗時の典型原因:
 - ポート競合（`docker compose logs db` で確認）
@@ -61,39 +55,43 @@ Laravel 本体はホスト側で動かす。
 
 ### 3. Laravel アプリ生成
 
-`my-laravel-app/` は既にテンプレート同梱ファイル（`CLAUDE.md`, `docs/`, `.claude/`, `compose.yaml`, `docker/`, `.gitignore` 等）で空でない。Laravel Installer はカレントディレクトリ指定（`laravel new .`）では空でないディレクトリへの生成を `Application already exists!` で拒否し、`--force` との併用も `Cannot use --force option when using current directory for installation!` で拒否する（Installer 5.30.0 で確認）。そのため、一時サブディレクトリに生成してから直下へ移動する:
+`my-laravel-app/` は既にテンプレート同梱ファイル（`CLAUDE.md`, `docs/`, `.claude/`, `compose.yaml`, `docker/`, `.gitignore`, `.npmrc` 等）で空でない。Laravel Installer はカレントディレクトリ指定（`laravel new .`）では空でないディレクトリへの生成を `Application already exists!` で拒否し、`--force` との併用も `Cannot use --force option when using current directory for installation!` で拒否する（Installer 5.30.0 で確認）。そのため、一時サブディレクトリに生成してから直下へ配置する:
 
 ```sh
 laravel new tmp-skeleton --no-interaction --pest
 ```
 
-`--pest` でテストフレームワークに Pest を選択する。スターターキット選択のプロンプトは `--no-interaction` によりスキップされ、認証機能なしの素の Laravel が生成される（認証は Step 6 で Breeze を個別に導入する）。
+`--pest` でテストフレームワークに Pest を選択する。スターターキット選択のプロンプトは `--no-interaction` によりスキップされ、認証機能なしの素の Laravel が生成される（認証は Step 6 で Breeze を個別に導入する）。`--no-interaction` かつ非 TTY で実行すると、進捗ログの代わりに `{"success":true,"name":"tmp-skeleton",...}` の JSON 1 行だけが出力される。これは正常。
 
-生成完了後、ドットファイルを含む全生成物を `my-laravel-app/` 直下へ移動し、一時ディレクトリを削除する（同一シェル内で実行すること）:
-
-```sh
-find tmp-skeleton -mindepth 1 -maxdepth 1 -exec mv {} . \;
-rmdir tmp-skeleton 2>/dev/null || true
-ls -a .env .env.example artisan composer.json
-```
-
-最後の `ls` は移動が成功したことの確認。1 つでも「No such file」になる場合は先に進まず、原因を調べること。
-
-> **注意（実行シェル）**: この移動を **glob に頼って書かないこと**。`mv tmp-skeleton/* .` はドットファイル（`.env`, `.env.example`, `.editorconfig`, `.gitattributes`）を含まず、`.env` を欠いたまま以降の `key:generate` / `migrate` が全滅する。しかもエラーは移動時点では出ず、フェーズ後半まで表面化しない。
->
-> bash の `shopt -s dotglob` で解決する手もあるが**採らない**。Claude Code の Bash ツールはコマンドを **zsh** で評価するため `shopt not found` になり（しかも後続の `mv` は実行されるので上記のサイレント障害を招く）、かといって `bash -c '...'` で包む形はヘッドレス実行の許可リストで許可されていない（任意コマンドを渡せてしまい `rm -rf` 等の deny を迂回できるため）ので権限で停止する。
->
-> 上記の `find` はシェルの glob 展開に依存せずドットファイルを含めて列挙するため、zsh / bash のどちらで評価されても同じ結果になる。
-
-`laravel new` は `.gitignore` / `.npmrc`（npm のサプライチェーン対策 `ignore-scripts=true` / `audit=true`）を独自に生成し、上記の移動でテンプレート同梱版が上書きされうる。テンプレート同梱の内容を正とするため、移動直後に以下を実行してテンプレート側のファイルへ戻す:
+生成完了後、`rsync` で全生成物（ドットファイル含む）を `my-laravel-app/` 直下へ配置し、一時ディレクトリを削除する:
 
 ```sh
-git checkout -- .npmrc .gitignore CLAUDE.md docs/ .claude/ compose.yaml docker/ .tool-versions 2>/dev/null || true
+rsync -a --exclude=/.gitignore --exclude=/.npmrc tmp-skeleton/ .
+git clean -fdxq tmp-skeleton
+ls -a .env .env.example artisan composer.json composer.lock phpunit.xml
 ```
 
-（テンプレートリポジトリがまだ git 管理下にない場合、上記コマンドは何もせず終了して構わない。その場合は `docs/`, `.claude/`, `compose.yaml`, `docker/`, `CLAUDE.md`, `.tool-versions`, `.gitignore` が `laravel new` によって上書き・混入していないか目視で確認する。）
+最後の `ls` は配置が成功したことの確認。1 つでも「No such file」になる場合は先に進まず、原因を調べること。
 
-> **注意（ヘッドレス実行時）**: センシティブファイル保護により `.npmrc` の移動・削除が失敗することがあるが、テンプレート同梱の `.npmrc` が既に直下に存在するため無視してよい（`tmp-skeleton/` の残置物は次回 `bin/reset-phase.sh` の `git clean` で除去される）。
+> **注意（配置手段の選定理由）**: この配置を **`mv` と glob で書かないこと**。理由は 3 つある。
+>
+> - `mv tmp-skeleton/* .` はドットファイル（`.env`, `.env.example`, `.editorconfig`, `.gitattributes`）を含まず、`.env` を欠いたまま以降の `key:generate` / `migrate` が全滅する。しかもエラーは移動時点では出ず、フェーズ後半まで表面化しない
+> - Claude Code の Bash ツールは**書き込み系コマンドの glob を拒否**する（`Glob patterns are not allowed in write operations.`）ため、そもそも `mv tmp-skeleton/* .` は実行できない
+> - `find tmp-skeleton -mindepth 1 -maxdepth 1 -exec mv {} . \;` も、`-exec` がファイルを変更するため許可リストの `Bash(find:*)` では自動許可されず拒否される
+>
+> `rsync -a` は末尾スラッシュ付きのディレクトリ指定でドットファイルを含めて再帰コピーするため、シェルの glob 展開に依存せず zsh / bash のどちらで評価されても同じ結果になる。コピー後に残る `tmp-skeleton` は未追跡なので `git clean -fdxq` で除去する（`rm -rf` は許可リストの deny 対象）。
+
+`laravel new` は `.gitignore` / `.npmrc` を独自に生成するが、上記の `--exclude` により**テンプレート同梱版がそのまま残る**。テンプレート側を正とするため、除外は必ず指定すること（`--exclude=/.gitignore` の先頭 `/` は転送元ルート直下のみを対象にする指定で、`storage/framework/*/.gitignore` 等の下位ディレクトリの `.gitignore` は除外されない）。
+
+> **補足**: `.npmrc` を `--exclude` するのは内容が同一（`ignore-scripts=true` / `audit=true`）だからだけでなく、Claude Code のセンシティブファイル保護により `.npmrc` への書き込みがヘッドレス実行で承認できないため。除外しておけば保護に抵触せず処理が止まらない。
+
+配置後、テンプレート同梱ファイルが無傷であることを確認する:
+
+```sh
+git status --short -- .gitignore .npmrc .claude compose.yaml docker .tool-versions CLAUDE.md docs
+```
+
+何も出力されなければ正常。差分が出た場合は `git checkout -- <path>` で戻す。
 
 ### 4. config/database.php の調整
 
@@ -102,7 +100,7 @@ git checkout -- .npmrc .gitignore CLAUDE.md docs/ .claude/ compose.yaml docker/ 
 - `charset: utf8mb4` / `collation: utf8mb4_0900_ai_ci` を明示
 - `host` / `username` / `password` / `port` を `.env` 経由で読み込む（Laravel の既定のまま）
 
-> **補足（Laravel 13 の既定値）**: `laravel new`（Laravel 13.x）が生成する `config/database.php` の `mysql` 接続は既定で `'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci')`・`'database' => env('DB_DATABASE', 'laravel')`・`'username' => env('DB_USERNAME', 'root')` になっている。`.env` 側で `DB_DATABASE` / `DB_USERNAME` / `DB_PASSWORD` を明示するので接続自体は通るが、`docs/stack.md` の規約に合わせて `env()` の第 2 引数（既定値）も `bookkeeper` / `app` / `app_password` / `utf8mb4_0900_ai_ci` に揃えておく。なお `DB_URL`（接続文字列方式）は設定しない（Step 7 の注意参照）。
+> **補足（Laravel 13 の既定値）**: `laravel new`（Laravel 13.x）が生成する `config/database.php` の `mysql` 接続は既定で `'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci')`・`'database' => env('DB_DATABASE', 'laravel')`・`'username' => env('DB_USERNAME', 'root')`・`'password' => env('DB_PASSWORD', '')` になっている。`.env` 側で `DB_DATABASE` / `DB_USERNAME` / `DB_PASSWORD` を明示するので接続自体は通るが、`docs/stack.md` の規約に合わせて `env()` の第 2 引数（既定値）も `bookkeeper` / `app` / `app_password` / `utf8mb4_0900_ai_ci` に揃えておく。なお `DB_URL`（接続文字列方式）は設定しない（Step 7 の注意参照）。`'url' => env('DB_URL')` の行自体は Laravel の既定のまま残してよい。
 
 ### 5. Composer パッケージの追加
 
@@ -122,21 +120,46 @@ composer require --dev larastan/larastan laravel/dusk laravel-lang/lang
 - **Laravel Breeze（Livewire スタック）**:
   ```sh
   composer require laravel/breeze --dev
-  php artisan breeze:install livewire
+  php artisan breeze:install livewire --no-interaction
   ```
-  このコマンドで認証ビュー（ログイン・登録・パスワードリセット等）が Livewire コンポーネントとして生成され、Tailwind CSS と Alpine.js のセットアップも同時に行われる。
+  このコマンドで認証ビュー（ログイン・登録・パスワードリセット等）が Livewire コンポーネントとして生成され、Tailwind CSS と Alpine.js のセットアップも同時に行われる。`npm install` と `npm run build` も内部で実行される。非 TTY 環境では `WARN TTY mode requires /dev/tty to be read/writable.` が出るが処理は継続するので無視してよい。
 - **laravel-lang（日本語化）**:
   ```sh
-  php artisan lang:add ja
+  php artisan lang:add ja --no-interaction
   ```
   `config/app.php` の `'locale'` / `'faker_locale'` は Laravel 13 では `env('APP_LOCALE', 'en')` / `env('APP_FAKER_LOCALE', 'en_US')` として `.env` を参照する。したがって値の切り替えは **`.env` 側で行う**（Step 7 で `APP_LOCALE=ja` / `APP_FAKER_LOCALE=ja_JP` に変更する）。**`config/app.php` のハードコード編集は不要**（`.env` が優先されるため）。
 - **Laravel Dusk**:
   ```sh
-  php artisan dusk:install
+  php artisan dusk:install --no-interaction
   ```
   ChromeDriver のインストールも自動で行われる。
 
-  > **注意**: Dusk 8.6 の `dusk:install` は `tests/Pest.php` の先頭に完全修飾名（`Tests\DuskTestCase::class`）でコードを挿入するため、直後の `php artisan test` は通る。ただし Step 9 で Pint を適用すると `fully_qualified_strict_types` / `ordered_imports` フィクサが短縮名 + `use` 文へ書き換え、`use Tests\DuskTestCase;` が `pest()->extend(DuskTestCase::class)` の呼び出しより後ろに置かれる。Pest は `pest()->extend()` をブートストラップ段階で評価するため、この状態だと `php artisan test` が `The class DuskTestCase was not found.` で失敗する（トライアルで実際に再現確認済み）。**Pint 適用後に** `tests/Pest.php` を開き、`use` 文をファイル冒頭（`pest()->extend(DuskTestCase::class)...` より前）に移動すること。
+  > **重要（`tests/Pest.php` を先に並べ替える）**: Dusk 8.6 の `dusk:install` は `tests/Pest.php` の**先頭**（`use` 文より前）に完全修飾名で次の行を挿入する:
+  > ```php
+  > pest()->extend(Tests\DuskTestCase::class)
+  > //  ->use(Illuminate\Foundation\Testing\DatabaseMigrations::class)
+  >     ->in('Browser');
+  >
+  > use Illuminate\Foundation\Testing\RefreshDatabase;
+  > use Tests\TestCase;
+  > ```
+  > この状態で Step 9 の Pint を掛けると `fully_qualified_strict_types` / `ordered_imports` が短縮名 + `use` 文へ書き換え、`use Tests\DuskTestCase;` が `pest()->extend(DuskTestCase::class)` の**後ろ**に置かれる。Pest は `pest()->extend()` をブートストラップ段階で評価するため、`php artisan test` が `The class DuskTestCase was not found.` で失敗する。
+  >
+  > **`dusk:install` の直後に**、挿入されたブロックを `use` 文の**後ろ**へ移し、短縮名 + `use Tests\DuskTestCase;` の形に直しておくこと。こうしておけば Pint はこのファイルを一切書き換えず（トライアルで確認済み）、Step 9 での手戻りが発生しない:
+  > ```php
+  > use Illuminate\Foundation\Testing\RefreshDatabase;
+  > use Tests\DuskTestCase;
+  > use Tests\TestCase;
+  >
+  > // dusk:install はこの行をファイル冒頭（use 文より前）に挿入するが、Pint の
+  > // fully_qualified_strict_types が短縮名 + use 文へ書き換えると、import が
+  > // pest()->extend() より後ろに置かれ Pest のブートストラップが解決に失敗する。
+  > // use 文より後ろへ移してあるのはそのため。
+  > pest()->extend(DuskTestCase::class)
+  > //  ->use(Illuminate\Foundation\Testing\DatabaseMigrations::class)
+  >     ->in('Browser');
+  > ```
+  > （Pint 適用後に直す運用では、Pint を掛け直すたびに壊れる。並べ替えを先に済ませること。）
 - **larastan/larastan**: `artisan` 経由のインストールコマンドはないため、`phpstan.neon` をリポジトリ直下に手動作成する:
   ```neon
   includes:
@@ -160,6 +183,8 @@ composer require --dev larastan/larastan laravel/dusk laravel-lang/lang
       - vendor/larastan/larastan/extension.neon
       - phpstan-baseline.neon
   ```
+
+  > **注意**: `phpstan analyse` の出力には「ベースラインで抑制するな、根本原因を直せ」という PHPStan 一般の指示文が含まれるが、**この 1 件に限っては上記の判断（ベースライン化）を優先する**。エラー元が Breeze の scaffold 出力であり、`docs/` にもチームのコード規約にも属さないため。アプリケーションコード由来のエラーをベースラインに追加してはならない。
 - **Laravel Pint**: `laravel new` で既定導入済み。確認のみ（`vendor/bin/pint --version`）。
 
 ### 7. .env の準備
@@ -174,7 +199,18 @@ php artisan key:generate
 
 `DB_DATABASE=bookkeeper` を追記する。`MAIL_MAILER` は Laravel 13 の `.env` では既定で `log` になっている（`docs/stack.md` の「メール確認」セクション参照）。既定から変わっている場合のみ `log` に設定する。
 
-`.env` はテンプレート同梱の `.gitignore` で除外済み。`.env.example` は git 管理対象に含める（`APP_KEY=` は空のままにしておく）。
+Laravel 13 の `.env` / `.env.example` は `DB_CONNECTION=sqlite` 以外の `DB_*` 行が**コメントアウトされた状態**で生成される。コメントを外した上で値を設定すること:
+
+```
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=bookkeeper
+DB_USERNAME=app
+DB_PASSWORD=app_password
+```
+
+`.env` はテンプレート同梱の `.gitignore` で除外済み。`.env.example` は git 管理対象に含める（`APP_KEY=` は空のままにしておく）。**`.env` に加えた変更（`DB_*` / `APP_LOCALE` / `APP_FAKER_LOCALE` / `MAIL_FROM_ADDRESS`）は `.env.example` にも同じく反映する**（`team-rules/security.md` の「`.env.example` をリポジトリに含めて同期する」）。
 
 > **注意: `DB_URL`（接続文字列方式）を `.env` に追加しないこと**
 >
@@ -186,7 +222,7 @@ php artisan key:generate
 
 Laravel には Rails の `bin/setup` / `bin/dev` に相当する標準スクリプトが無いため、新規作成する。
 
-先に `composer.json` の `scripts.dev` を確認する。`laravel new` の既定生成物には `php artisan queue:listen ...` を含む concurrently コマンドが入っているため、`docs/stack.md` の規約（Queue ワーカーを起動しない）に従い、この行を削除する（`pail` と `npm run dev` はそのまま残してよい）。
+先に `composer.json` の `scripts.dev` を確認する。`laravel new` の既定生成物には `php artisan queue:listen ...` を含む concurrently コマンドが入っているため、`docs/stack.md` の規約（Queue ワーカーを起動しない）に従い、この行を削除する（`pail` と `npm run dev` はそのまま残してよい）。`--names` と `-c`（色指定）からも `queue` に対応する要素を落とすこと（残すと名前と実プロセスの対応がずれる）。
 
 `bin/setup`（実行権限を付与すること）:
 
@@ -194,18 +230,9 @@ Laravel には Rails の `bin/setup` / `bin/dev` に相当する標準スクリ�
 #!/usr/bin/env bash
 set -euo pipefail
 
-docker compose up -d db
-
-for i in $(seq 1 30); do
-  if docker compose exec -T db mysqladmin ping -uroot -proot_password > /dev/null 2>&1; then
-    break
-  fi
-  if [ "$i" -eq 30 ]; then
-    echo "Database did not become ready in 30 seconds" >&2
-    exit 1
-  fi
-  sleep 1
-done
+# --wait は compose.yaml の healthcheck が healthy を報告するまでブロックする。
+# 自前のポーリングループより短く、判定条件も compose.yaml 側に一本化できる。
+docker compose up -d --wait db
 
 composer install
 npm install
@@ -233,12 +260,17 @@ php artisan migrate --seed
 2. `php artisan migrate`
    - 失敗時の典型原因: コンテナ未起動 / `.env` の認証情報不一致 / Step 2 で触れた Docker named volume の衝突（`Access denied for user 'app'@'%' to database 'bookkeeper'` のようなエラーが出る場合はこれを疑う）
    - エラー時は勝手に MySQL のユーザー権限をいじらず、状況を報告して指示を仰ぐ
-3. **起動確認**: `bin/dev` をバックグラウンドで立ち上げ、`curl -sS -o /dev/null -w "%{http_code}" http://localhost:8000` が 200 を返すことを確認後、サーバを停止（`kill %1` または `pkill -f "php artisan serve"`）。
-4. **Pint による自動修正**: `vendor/bin/pint --test` を実行する。`laravel new` / `breeze:install` / `lang:add` が生成するファイル（`bootstrap/providers.php`, `tests/Pest.php`, `lang/ja/*.php` 等）はデフォルトで Pint の規約に違反していることがあるため、`vendor/bin/pint` で自動修正し、再度 `--test` で 0 件になることを確認する。**Pint 適用後、Step 6 の Dusk の注意に従い `tests/Pest.php` の `use` 文をファイル冒頭へ戻し、`php artisan test` が green のままであることを再確認する。**
+3. **Pint による自動修正**: `vendor/bin/pint` を実行する。`laravel new` / `breeze:install` / `lang:add` が生成するファイル（`bootstrap/providers.php`, `lang/ja/*.php` 等）はデフォルトで Pint の規約に違反しているため自動修正が入る。その後 `vendor/bin/pint --test` が 0 件になることを確認する。
+   - Step 6 の指示どおり `tests/Pest.php` を先に並べ替えてあれば、Pint はこのファイルを書き換えない。書き換えられた場合は並べ替えが漏れているので Step 6 に戻ること
+4. `php artisan test` が green であることを確認する。
+5. **起動確認**: `bin/dev` をバックグラウンドで立ち上げ、`curl -sS --retry 15 --retry-all-errors --retry-delay 1 -o /dev/null -w "%{http_code}" http://localhost:8000` が 200 を返すことを確認する。`/login` `/register` も 200 になること。確認後サーバを停止（`pkill -f "php artisan serve"` と `pkill -f vite`）。
+   - `--retry` を付けるのは、`bin/dev` の起動直後は `php artisan serve` がまだ listen していないため。Bash ツールでは `sleep` を伴う待機ループが書けないので `curl` 側のリトライで吸収する
+6. **`bin/setup` の一気通貫確認**: `bin/setup` を実行し、DB 起動 → `composer install` → `npm install` → `migrate --seed` が最後まで通ることを確認する（Phase 1 時点では Seeder が空なので `Seeding database.` のみ出る）。
+7. **git status の確認**: `git status --short` に、`.gitignore` で除外されるべき生成物（`public/hot`, `storage/pail`, `.phpunit.result.cache` 等）が現れていないことを確認する。現れた場合はテンプレートの `.gitignore` 側を補うこと。
 
 ## このフェーズの完了基準
 
-- [ ] `docker compose up -d db` で DB が起動し、`mysqladmin ping` が成功する
+- [ ] `docker compose up -d --wait db` で DB が healthy になる
 - [ ] `bin/setup` で DB 起動 → セットアップ完了まで一気通貫で動く
 - [ ] `bin/dev` で http://localhost:8000 が 200
 - [ ] `php artisan migrate` が成功（`bookkeeper` データベースに対して）
@@ -248,10 +280,12 @@ php artisan migrate --seed
 - [ ] `composer.json` に `docs/stack.md` の「手動追加 ✅」パッケージがすべて記載
 - [ ] Laravel Breeze（Livewire スタック）/ laravel-lang / larastan / Dusk の初期化済み
 - [ ] `my-laravel-app/.env` が存在し、`.gitignore` で除外されている
-- [ ] `my-laravel-app/.env.example` が存在し、コミット対象に含まれている
+- [ ] `my-laravel-app/.env.example` が存在し、コミット対象に含まれている。`.env` の設定（`DB_*` / `APP_LOCALE` / `APP_FAKER_LOCALE` / `MAIL_FROM_ADDRESS`）が同期されている
 - [ ] `bin/dev` に Queue ワーカー（`php artisan queue:work` / `queue:listen`）の行が**含まれていない**
+- [ ] `php artisan test` が green
 - [ ] `vendor/bin/pint --test` が違反 0
 - [ ] `vendor/bin/phpstan analyse --memory-limit=512M` がエラー 0
+- [ ] `git status --short` に `.gitignore` 漏れの生成物が出ていない
 
 ## やらないこと
 
@@ -261,7 +295,7 @@ php artisan migrate --seed
 - Laravel 本体のコンテナ化（プロジェクト方針として行わない）
 - Queue ワーカーの起動設定（本プロジェクトでは非同期ジョブを使わない）
 - Redis / Reverb の追加
-- 同梱ファイル（`compose.yaml`, `.tool-versions`, `env.example`）の編集
+- 同梱ファイル（`compose.yaml`, `.tool-versions`, `env.example`, `.npmrc`）の編集
 
 ## 完了後
 

@@ -12,6 +12,15 @@ description: フェーズ2 - DB スキーマからモデル・マイグレーシ
 
 `@docs/db-schema.md` の ER 図・リレーション定義を読み、FK の参照先テーブルを先に作る順序で作成すること。Breeze が生成する `users` テーブルは他テーブルの FK が `users.id` を参照するため、FK 依存の有無にかかわらず必ず最初に対応する。
 
+本フェーズ全体の作業順序は次のとおり。**Pint はモデルテストを書いた後に実行する**（先に実行すると `tests/Unit/Models` がまだ存在せず `The path "tests/Unit/Models" is not readable.` で失敗する）:
+
+1. `users` テーブルの補正（マイグレーション + Enum + Model）
+2. 残りのモデル・マイグレーション・ファクトリの作成
+3. `php artisan migrate`
+4. モデルテストの作成
+5. `vendor/bin/pint`
+6. `php artisan test` / `vendor/bin/phpstan analyse`
+
 ## 手順
 
 ### users テーブルの補正
@@ -22,7 +31,7 @@ Phase 1 で Breeze がインストール済みのため `users` テーブルの�
 php artisan make:migration add_role_to_users_table --table=users
 ```
 
-`docs/db-schema.md` の `users` テーブル定義に合わせて `role`（`tinyInteger`, `NOT NULL`, `default: 0`）カラムを追加する。
+`docs/db-schema.md` の `users` テーブル定義に合わせて `role`（`tinyInteger`, `NOT NULL`, `default: 0`）カラムを追加する。`down()` では `$table->dropColumn('role')` で戻せるようにする（`team-rules/coding-standards.md` の「マイグレーションは可逆にする」）。
 
 次に `App\Models\User` を補正する。
 
@@ -61,9 +70,13 @@ enum UserRole: int
 
 `book_tags` は中間テーブルのため専用モデルは作らず、マイグレーションのみ `php artisan make:migration create_book_tags_table --create=book_tags` で作成する（`Book` / `Tag` モデルの `belongsToMany` のピボットテーブルとして扱う）。
 
-> `App\Models\Notification` は Laravel 標準の `Illuminate\Notifications\Facades\Notification` ファサードと名前が衝突しないよう、Controller / Action での `use` 文に注意する（完全修飾名かエイリアスで区別する）。
+**生成の順序を FK 依存に合わせること**（`make:model` はタイムスタンプ順でマイグレーションを並べるため、生成順がそのまま実行順になる）: `Category` → `Tag` → `Book` → `book_tags` → `Lending` → `Notification` → `AuditLog`。
+
+> `App\Models\Notification` は Laravel 標準の `Illuminate\Notifications\Facades\Notification` ファサードと名前が衝突しないよう、Controller / Action での `use` 文に注意する（完全修飾名かエイリアスで区別する）。なお Laravel 13 の `laravel new` は標準の `notifications` テーブルのマイグレーションを生成しないため、`create_notifications_table` を新規作成してもテーブル名は衝突しない。
 
 各モデルの `$fillable`（`User` 以外は従来どおり `protected $fillable` プロパティで可）・`casts()`・リレーションを定義する。enum キャスト（`Lending::$state` → `LendingState`, `Notification::$kind` → `NotificationKind`）を持つモデルには前述の `@property` 注釈を付ける。
+
+Enum クラスは `app/Enums/` に置く。値は `docs/db-schema.md` の各テーブル定義に明示されているものを使い、**推測で採番しない**（`UserRole` / `LendingState` / `NotificationKind` の 3 つ）。
 
 > **注意（`audit_logs` の `$timestamps`）**: `audit_logs` は不変レコードで `updated_at` を持たない（`created_at` のみ）。`AuditLog` モデルに `public $timestamps = false;` を設定すること。設定しないと Eloquent が保存時に `updated_at` を書こうとして「Unknown column 'updated_at'」で失敗する。`created_at` はマイグレーションの `useCurrent()` により DB 側で設定される。`changes_json` は `'changes_json' => 'array'` でキャストする。
 
@@ -73,6 +86,7 @@ enum UserRole: int
 - 必須カラムは `->nullable()` を付けない
 - ユニーク制約は `->unique()`、CHECK 制約はマイグレーション内で `DB::statement()` により明示
 - インデックスは `docs/db-schema.md` の通り
+- 削除時の挙動（`restrictOnDelete` / `cascadeOnDelete` / `nullOnDelete`）は `docs/db-schema.md` の「削除時の挙動」表の通り
 - `audit_logs` は `$table->timestamps()` ではなく `$table->timestamp('created_at')->useCurrent();` を使う
 
 ### CHECK 制約の書き方
@@ -124,7 +138,9 @@ enum LendingState: int
 
 ### リレーション
 
-テーブル定義と ER 図から方向を導出し、各モデルに `hasMany` / `belongsTo` / `belongsToMany` を記述する。削除時の挙動（`restrictOnDelete` / `cascadeOnDelete`）はマイグレーションの外部キー定義で `@docs/db-schema.md` の「削除時の挙動」セクション通りに設定する。`User` の `notifications()` は定義しない（前述の注意4）。
+テーブル定義と ER 図から方向を導出し、各モデルに `hasMany` / `belongsTo` / `belongsToMany` を記述する。削除時の挙動はマイグレーションの外部キー定義で `@docs/db-schema.md` の「削除時の挙動」セクション通りに設定する。`User` の `notifications()` は定義しない（前述の注意4）。
+
+`belongsToMany` は中間テーブル名を明示し（`belongsToMany(Tag::class, 'book_tags')`）、`withTimestamps()` を付ける（`book_tags` は `created_at` / `updated_at` を持つため。付けないと attach 時に NOT NULL 違反になる）。
 
 ### Spatie Query Builder 対応
 
@@ -138,23 +154,30 @@ php artisan migrate
 
 エラーが出たら止めて報告。勝手に `migrate:fresh` しない。
 
-### Pint 自動修正
+実行後、可逆性を確認する（`team-rules/coding-standards.md` の要求）:
 
 ```sh
-vendor/bin/pint app/Models app/Enums database/migrations database/factories tests/Unit/Models
+php artisan migrate:rollback
+php artisan migrate
 ```
+
+### ファクトリ
+
+`make:model -f` が生成するファクトリは中身が空（`return [];`）なので、`docs/db-schema.md` の定義に合わせて書くこと（ファイルが既に存在するため Read してから編集する）。
+
+- `User` ファクトリのメールは `@test.local` ドメインにする（Breeze 標準ファクトリの既定ドメインとテスト実行時に衝突しないようにするため）。`role` を扱う `admin()` state も追加する
+- **`Book` ファクトリは `available_copies <= total_copies` を必ず満たすように生成すること**。`fake()->numberBetween()` を 2 つ独立に呼ぶと CHECK 制約違反で `QueryException` になり、`Book::factory()` に依存する全テストが不安定になる。先に `total_copies` を決め、`available_copies` はその範囲内で採る
+- `Lending` ファクトリには state ごとの state メソッド（`approved()`, `overdue()`, `returned()`, `rejected()`）を用意しておくと、モデルテストと Phase 4 の Seeder の両方で使える
 
 ### モデルテスト
 
-`make:model -f` が生成するファクトリは Faker の適当な値が入っているだけなので、`docs/db-schema.md` の定義に合わせて書き直すこと（ファイルが既に存在するため Read してから Write する）。`User` ファクトリのメールは `@test.local` ドメインにすること（Breeze 標準ファクトリのデフォルトドメインとテスト実行時に衝突しないようにするため）。`role` を扱う `admin()` state も追加する。
-
 > **注意（Pest の Unit ディレクトリ設定）**: `tests/Unit/` は既定では素の PHPUnit `TestCase` にバインドされており、Laravel アプリが起動しない（DB も使えない）。DB を伴うモデルテストを `tests/Unit/Models/` に置くため、`tests/Pest.php` に次のバインドを追加すること:
 > ```php
-> pest()->extend(Tests\TestCase::class)
->     ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
+> pest()->extend(TestCase::class)
+>     ->use(RefreshDatabase::class)
 >     ->in('Unit/Models');
 > ```
-> これが無いと `tests/Unit/Models/` のテストは Laravel を起動できず `A facade root has not been set.` 等で失敗する。
+> これが無いと `tests/Unit/Models/` のテストは Laravel を起動できず `A facade root has not been set.` 等で失敗する。`TestCase` / `RefreshDatabase` は `tests/Pest.php` の冒頭で既に import 済みなので、**完全修飾名では書かないこと**（Pint の `fully_qualified_strict_types` が短縮するため差分が出る）。
 
 `tests/Unit/Models/` に各モデルの最低限のバリデーションテストを Pest で書く（`test/models` 相当のディレクトリ構成）。網羅すべき観点:
 
@@ -163,6 +186,8 @@ vendor/bin/pint app/Models app/Enums database/migrations database/factories test
 - enum（PHP Enum）キャストの確認
 - リレーションの存在
 - `books` の CHECK 制約（`available_copies` の範囲違反で `QueryException`）
+- 削除時の挙動（`restrictOnDelete` で `QueryException`、`cascadeOnDelete` で連動削除されること）
+- `role` が Mass assignment されないこと（`User::create()` に `role` を渡しても `Member` のままであること）
 
 ```sh
 php artisan test tests/Unit/Models
@@ -170,15 +195,27 @@ php artisan test tests/Unit/Models
 
 で all green を確認。
 
+### Pint 自動修正
+
+モデルテストを書き終えてから実行する（`tests/Unit/Models` が存在しないとエラーになる）:
+
+```sh
+vendor/bin/pint app/Models app/Enums database/migrations database/factories tests/Unit/Models
+```
+
+その後 `vendor/bin/pint --test` が違反 0 であることを確認する。
+
 ## このフェーズの完了基準
 
 - [ ] `php artisan migrate:status` で全マイグレーションが `Ran`
+- [ ] `php artisan migrate:rollback` → `php artisan migrate` が両方成功する（可逆性）
 - [ ] `php artisan test tests/Unit/Models` が all green
+- [ ] `php artisan test` 全体が all green（Phase 1 の Breeze 認証テストを壊していない）
 - [ ] マイグレーション定義（`database/migrations/`）が `docs/db-schema.md` の定義と一致
 - [ ] 各モデルのリレーション・enum キャストが定義済み
 - [ ] enum キャストを持つモデルに `@property` 注釈があり、`vendor/bin/phpstan analyse --memory-limit=512M` がエラー 0
 - [ ] `role` が `User` の Mass assignment 対象（fillable）に**含まれていない**
-- [ ] `books` テーブルに CHECK 制約が存在する
+- [ ] `books` テーブルに CHECK 制約が 2 つ存在する（`information_schema.CHECK_CONSTRAINTS` で確認）
 - [ ] `vendor/bin/pint --test` が違反 0
 
 ## やらないこと
