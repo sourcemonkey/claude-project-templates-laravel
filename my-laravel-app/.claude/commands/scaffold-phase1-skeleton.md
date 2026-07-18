@@ -72,11 +72,11 @@ laravel new tmp-skeleton --no-interaction --pest
 生成完了後、ドットファイルを含む全生成物を `my-laravel-app/` 直下へ移動し、一時ディレクトリを削除する（同一シェル内で実行すること）:
 
 ```sh
-shopt -s dotglob
-mv tmp-skeleton/* . 2>/dev/null || true
-shopt -u dotglob
+bash -c 'shopt -s dotglob; mv tmp-skeleton/* . 2>/dev/null || true'
 rmdir tmp-skeleton 2>/dev/null || true
 ```
+
+> **注意（実行シェル）**: `shopt` は bash 専用ビルトインで、zsh には存在しない（`shopt not found` になる）。Claude Code の Bash ツールがコマンドを **zsh** で評価する環境（このテンプレートのヘッドレス実行環境がこれに該当）では、`shopt -s dotglob` を素で書くとエラーになり、続く `mv tmp-skeleton/* .` がドットファイル（`.env`, `.env.example`, `.editorconfig`, `.gitattributes` 等）を移動しない。`.env` が移動されないと以降の `key:generate` / `migrate` が全滅するため、上記のように **`bash -c` で明示的に bash を起動して** dotglob を効かせること（POSIX/zsh から呼んでも安全）。
 
 `.npmrc`（npm のサプライチェーン対策 `ignore-scripts=true` / `audit=true`）は `laravel new` が生成し、**本テンプレートにも `my-laravel-app/.npmrc` として同梱・git 追跡している**。通常実行では上記の移動で配置され、直後の `git checkout`（下記）でテンプレート版に揃う。
 
@@ -97,6 +97,8 @@ git checkout -- .npmrc .gitignore CLAUDE.md docs/ .claude/ compose.yaml docker/ 
 - `charset: utf8mb4` / `collation: utf8mb4_0900_ai_ci` を明示
 - `host` / `username` / `password` / `port` を `.env` 経由で読み込む（Laravel の既定のまま）
 
+> **補足（Laravel 13 の既定値）**: `laravel new`（Laravel 13.x）が生成する `config/database.php` の `mysql` 接続は既定で `'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci')`・`'database' => env('DB_DATABASE', 'laravel')`・`'username' => env('DB_USERNAME', 'root')` になっている。`.env` 側で `DB_DATABASE` / `DB_USERNAME` / `DB_PASSWORD` を明示するので接続自体は通るが、`docs/stack.md` の規約に合わせて `env()` の第 2 引数（既定値）も `bookkeeper` / `app` / `app_password` / `utf8mb4_0900_ai_ci` に揃えておく。なお Laravel 13 の既定 `mysql` 接続は接続文字列方式として `'url' => env('DB_URL')` を持つ（`DATABASE_URL` ではなく `DB_URL`）。本プロジェクトでは Step 7 の通り URL 方式は使わないので `DB_URL` は `.env` に設定しない。
+
 ### 5. Composer パッケージの追加
 
 `docs/stack.md` の「手動追加」列が ✅ のパッケージを追加する:
@@ -108,7 +110,7 @@ composer require --dev larastan/larastan laravel/dusk laravel-lang/lang
 
 > **注意**: 当初 `enlightn/enlightn` を予定していたが、Laravel 13.x に対応するバージョンが存在しない（`laravel/framework ^9.0|^10.0|^11.0` までのサポート）ため `larastan/larastan`（PHPStan の Laravel 版）に変更した。詳細は `docs/stack.md` 参照。
 
-> **補足**: `livewire/livewire` はこの時点では v4 系で解決されることがあるが、Step 6 の `laravel/breeze`（Livewire スタック）導入時に Breeze の制約で v3 系（`^3.6`）に解決し直される。`docs/stack.md` の想定（Livewire v3）と一致するため問題ない。
+> **補足**: `livewire/livewire` はこの時点では v4 系（`^4.3`）で解決される。Step 6 の `laravel/breeze`（Livewire スタック）導入時に Breeze の制約で v3 系（`^3.6.4`）に解決し直される（`breeze:install livewire` が composer 依存を書き換え、v3.8.2 系に落ちることを確認済み）。`docs/stack.md` の想定（Livewire v3）と一致するため問題ない。
 
 ### 6. 各種初期化
 
@@ -122,14 +124,14 @@ composer require --dev larastan/larastan laravel/dusk laravel-lang/lang
   ```sh
   php artisan lang:add ja
   ```
-  `config/app.php` の `'locale'` を `'ja'` に、`'faker_locale'` を `'ja_JP'` に変更する。**`laravel new` が生成する `.env` / `.env.example` には `APP_LOCALE=en` / `APP_FAKER_LOCALE=en_US` が明示的に設定されており、`.env` の値が `config/app.php` のデフォルト値より優先されるため、`config/app.php` だけを変更しても反映されない。** Step 7 で `.env` / `.env.example` の `APP_LOCALE` を `ja`、`APP_FAKER_LOCALE` を `ja_JP` に変更すること。
+  `config/app.php` の `'locale'` / `'faker_locale'` は Laravel 13 では `env('APP_LOCALE', 'en')` / `env('APP_FAKER_LOCALE', 'en_US')` として `.env` を参照する。したがって値の切り替えは **`.env` 側で行う**（Step 7 で `APP_LOCALE=ja` / `APP_FAKER_LOCALE=ja_JP` に変更する）。**`config/app.php` のハードコード編集は不要**（`.env` が優先されるため）。
 - **Laravel Dusk**:
   ```sh
   php artisan dusk:install
   ```
   ChromeDriver のインストールも自動で行われる。
 
-  > **注意**: Dusk 8.6 の `dusk:install` は `tests/Pest.php` の先頭に完全修飾名（`Tests\DuskTestCase::class`）でコードを挿入するため、直後の `php artisan test` は通る。ただし Step 9 で Pint を適用すると `fully_qualified_strict_types` / `ordered_imports` フィクサが短縮名 + `use` 文へ書き換え、`use Tests\DuskTestCase;` が参照より後ろに置かれるため、以後の `php artisan test` が `Class "DuskTestCase" not found` で失敗するようになる。**Pint 適用後に** `tests/Pest.php` を開き、`use` 文をファイル冒頭（`pest()->extend(DuskTestCase::class)...` より前）に移動すること。
+  > **注意**: Dusk 8.6 の `dusk:install` は `tests/Pest.php` の先頭に完全修飾名（`Tests\DuskTestCase::class`）でコードを挿入するため、直後の `php artisan test` は通る。ただし Step 9 で Pint を適用すると `fully_qualified_strict_types` / `ordered_imports` フィクサが短縮名 + `use` 文へ書き換え、`use Tests\DuskTestCase;` が `pest()->extend(DuskTestCase::class)` の呼び出しより後ろに置かれる。Pest は `pest()->extend()` をブートストラップ段階で評価するため、この状態だと `php artisan test` が `The class DuskTestCase was not found.` で失敗する（トライアルで実際に再現確認済み）。**Pint 適用後に** `tests/Pest.php` を開き、`use` 文をファイル冒頭（`pest()->extend(DuskTestCase::class)...` より前）に移動すること。
 - **larastan/larastan**: `artisan` 経由のインストールコマンドはないため、`phpstan.neon` をリポジトリ直下に手動作成する:
   ```neon
   includes:
@@ -165,15 +167,15 @@ composer require --dev larastan/larastan laravel/dusk laravel-lang/lang
 php artisan key:generate
 ```
 
-`DB_DATABASE=bookkeeper` を追記する。`MAIL_MAILER=log` を設定する（`docs/stack.md` の「メール確認」セクション参照）。
+`DB_DATABASE=bookkeeper` を追記する。`MAIL_MAILER` は Laravel 13 の `.env` では既定で `log` になっている（`docs/stack.md` の「メール確認」セクション参照）。既定から変わっている場合のみ `log` に設定する。
 
 `.env` はテンプレート同梱の `.gitignore` で除外済み。`.env.example` は git 管理対象に含める（`APP_KEY=` は空のままにしておく）。
 
-> **注意: `DATABASE_URL` を `.env` に追加しないこと**
+> **注意: `DB_URL`（接続文字列方式）を `.env` に追加しないこと**
 >
 > このプロジェクトの `config/database.php` は `DB_HOST` / `DB_USERNAME` / `DB_PASSWORD` / `DB_PORT` の個別変数で接続情報を受け取る設計になっている。
-> `DATABASE_URL` 方式と個別変数方式を混在させると接続設定の優先順位が複雑になりデバッグが困難になる。
-> プロジェクト全体で個別変数方式に統一するため、`DATABASE_URL` は設定しないこと。
+> Laravel 13 の既定 `mysql` 接続は `'url' => env('DB_URL')` を持つが、URL 方式と個別変数方式を混在させると接続設定の優先順位が複雑になりデバッグが困難になる。
+> プロジェクト全体で個別変数方式に統一するため、`DB_URL` は設定しないこと。
 
 ### 8. bin/setup と bin/dev の作成
 
@@ -216,6 +218,13 @@ php artisan migrate --seed
    docker compose exec -T db mysql -uroot -proot_password -e \
      "CREATE DATABASE IF NOT EXISTS bookkeeper_test CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci; GRANT ALL PRIVILEGES ON \`bookkeeper_test\`.* TO 'app'@'%'; FLUSH PRIVILEGES;"
    ```
+
+   > **重要（phpunit.xml のテスト DB 設定）**: `laravel new`（Laravel 13.x）が生成する `phpunit.xml` は既定で `DB_CONNECTION=sqlite` / `DB_DATABASE=:memory:` を設定しており、**このままだとテストが MySQL の `bookkeeper_test` ではなく SQLite で走る**。本プロジェクトは MySQL 固有の DDL（`docs/db-schema.md` の `books` テーブルの `ALTER TABLE ... ADD CONSTRAINT ... CHECK`）を使うため、SQLite ではマイグレーションが構文エラーで失敗する（Phase 1 時点では該当マイグレーションが無いため表面化しないが、Phase 2 で必ず壊れる）。`docs/stack.md` の規約通りテストは `bookkeeper_test`（MySQL）で実行するため、`phpunit.xml` の該当 env を次のように書き換える:
+   > ```xml
+   > <env name="DB_CONNECTION" value="mysql"/>
+   > <env name="DB_DATABASE" value="bookkeeper_test"/>
+   > ```
+   > （`DB_URL` の env が空文字で定義されている場合はそのままでよい。）
 2. `php artisan migrate`
    - 失敗時の典型原因: コンテナ未起動 / `.env` の認証情報不一致 / Step 2 で触れた Docker named volume の衝突（`Access denied for user 'app'@'%' to database 'bookkeeper'` のようなエラーが出る場合はこれを疑う）
    - エラー時は勝手に MySQL のユーザー権限をいじらず、状況を報告して指示を仰ぐ
@@ -229,6 +238,7 @@ php artisan migrate --seed
 - [ ] `bin/dev` で http://localhost:8000 が 200
 - [ ] `php artisan migrate` が成功（`bookkeeper` データベースに対して）
 - [ ] `bookkeeper_test` データベースが作成済み
+- [ ] `phpunit.xml` の `DB_CONNECTION` が `mysql`・`DB_DATABASE` が `bookkeeper_test`（既定の sqlite / :memory: から変更済み）
 - [ ] `composer.lock` がコミット対象に入っている
 - [ ] Laravel Breeze（Livewire スタック）/ larastan / Dusk の初期化済み
 - [ ] `my-laravel-app/.env` が存在し、`.gitignore` で除外されている
