@@ -113,7 +113,7 @@ audit_logs (独立、polymorphic 相当のカラム構成)
 |---|---|---|
 | id | bigint | PK |
 | user_id | bigint | NOT NULL, FK |
-| kind | tinyInteger | NOT NULL, default: 0（enum: `LendingApproved`, `LendingRejected`, `ReturnReminder`） |
+| kind | tinyInteger | NOT NULL, default: 0（enum: `LendingApproved: 0`, `LendingRejected: 1`, `ReturnReminder: 2`） |
 | title | string | NOT NULL |
 | body | text | nullable |
 | read_at | timestamp | nullable |
@@ -169,7 +169,9 @@ audit_logs (独立、polymorphic 相当のカラム構成)
 | `User has many Notification` | ユーザー削除時に連動削除 | マイグレーションで `->cascadeOnDelete()` |
 | `Book has many Lending` | 貸出履歴がある書籍は削除不可 | マイグレーションで `->restrictOnDelete()` |
 | `Book has many BookTag`（中間テーブル） | 書籍削除時に連動削除 | マイグレーションで `->cascadeOnDelete()` |
+| `Tag has many BookTag`（中間テーブル） | タグ削除時に連動削除（書籍からタグが外れるだけで、書籍自体は残る） | マイグレーションで `->cascadeOnDelete()` |
 | `Category has many Book` | 書籍が紐づくカテゴリは削除不可 | マイグレーションで `->restrictOnDelete()` |
+| `User has many AuditLog` | 操作者が削除されてもログは残し、`user_id` を NULL にする | マイグレーションで `->nullOnDelete()`（`user_id` は nullable） |
 
 ## テスト teardown でのレコード削除順序
 
