@@ -144,7 +144,7 @@ Laravel 本体はホスト側で動き、`127.0.0.1:3306` 経由でコンテナ�
 flowchart LR
     subgraph Host["ホスト OS"]
         direction TB
-        subgraph LaravelApp["Laravel (bin/dev)"]
+        subgraph LaravelApp["Laravel (composer run dev)"]
             artisan["php artisan serve"]
             vite["vite dev server"]
         end
@@ -165,7 +165,7 @@ flowchart LR
 ```
 
 - Laravel と DB の間はホストの `127.0.0.1:3306` を経由する（Docker のポートフォワーディング）。
-- アプリのソースコードはホスト側にあり、`bin/dev` のファイル監視や IDE 連携をそのまま使える。
+- アプリのソースコードはホスト側にあり、`composer run dev`（Vite）のファイル監視や IDE 連携をそのまま使える。
 - DB のデータは Docker ボリューム `db-data` に永続化される。`docker compose down` してもデータは残る。
 
 ## MySQL 固有の注意（実装時）

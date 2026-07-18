@@ -77,27 +77,28 @@ Laravel 標準の Queue（database ドライバ）・Cache（database/file ド�
 | `docker compose down` | DB コンテナ停止 |
 | `docker compose down -v` | DB を完全初期化（ボリュームごと削除） |
 | `bin/setup` | 初回セットアップ（DB 起動 + composer/npm install + migrate --seed） |
-| `bin/dev` | 開発サーバー起動（`php artisan serve` + `npm run dev`） |
+| `composer run dev` | 開発サーバー起動（`php artisan serve` + `php artisan pail` + `npm run dev` を並行起動） |
 | `php artisan test` | 単体・機能テスト（Pest） |
 | `php artisan dusk` | システムテスト |
 | `vendor/bin/pint --test` | Lint（チェックのみ） |
 | `vendor/bin/pint` | Lint（自動修正） |
 | `vendor/bin/phpstan analyse` | 静的解析（larastan/larastan） |
 
-## bin/dev（正規形）
+## 開発サーバー起動（正規形）
 
-`bin/dev` は `php artisan serve` と `npm run dev`（Vite）を並行起動するシェルスクリプト。`laravel new` 既定の `composer.json` の `dev` スクリプトには Queue ワーカーと `pail` の起動が含まれるが、本プロジェクトでは Queue を使わないため以下の 2 プロセスのみに絞る。
+開発サーバーは `laravel new` 既定の `composer.json` の `dev` スクリプト（`composer run dev`）で起動する。concurrently により `php artisan serve` / `php artisan pail` / `npm run dev`（Vite）が並行起動する。**同内容の自前スクリプト（`bin/dev` 等）は作らない**（`composer.json` 側との二重管理になるため）。
 
-```sh
-#!/usr/bin/env bash
-set -euo pipefail
-trap 'kill 0' EXIT
-php artisan serve &
-npm run dev &
-wait
-```
+ただし `laravel new` の既定生成物には `php artisan queue:listen --tries=1` が含まれる。本プロジェクトでは Queue を使わない方針（前述）に従い、`dev` スクリプトから **`queue:listen` の要素を削除する**。`--names` と `-c`（色指定）からも `queue` に対応する要素を落とすこと（残すと名前と実プロセスの対応がずれる）。
 
-`php artisan queue:listen` の行は含めない。
+## 採用しなかった開発環境ツール（Herd / Sail / Valet）
+
+ローカル開発環境として以下の公式・準公式ツールを検討した上で、「ホスト側 PHP（asdf）+ DB のみ Docker」の構成を採っている。知らずに外したのではなく、選ばなかった理由は次のとおり。
+
+- **Laravel Herd**: GUI アプリのためバージョンや設定をリポジトリ内で固定・共有できず、CI やヘッドレスの自動検証に組み込めない。MySQL 等の DB サービスは有料の Pro 機能であり、チーム標準の前提に置けない。
+- **Laravel Sail**: PHP ごとコンテナ化するため全コマンドが `sail` ラッパー経由になり、IDE 統合や実行速度（macOS のバインドマウント）で不利。`php` / `composer` をホストで直接実行できる現構成を優先する。
+- **Laravel Valet**: macOS 専用で、位置づけとして Herd に後継されている。新規採用する理由がない。
+
+なお、開発者個人が Herd を併用すること自体は本構成と衝突しない（Herd がアプリを配信し、DB は本リポジトリの `compose.yaml` を使う形で共存できる）。ただしチーム共通の手順・CI・自動検証は本構成（`composer run dev` ベース）を正とする。
 
 ## ディレクトリ規約
 

@@ -58,7 +58,7 @@ Phase 1 で作成済みの `bin/setup` が以下を一発で実行できるこ�
 - プロジェクト概要（1-2 段落）
 - 必要なランタイム（`docs/stack.md` の「ランタイム」表からコピー）
 - セットアップ手順（`bin/setup`）
-- 起動手順（`bin/dev`）
+- 起動手順（`composer run dev`）
 - テストアカウント表（`docs/seeds.md` の「アカウント」表をコピー）
 - 主要 URL（`/`, `/admin`）
 - テスト実行コマンド
@@ -81,7 +81,7 @@ vendor/bin/pint database/seeders tests
 5. `vendor/bin/pint --test` が違反 0
 6. `vendor/bin/phpstan analyse` でエラー 0
 7. `composer audit` で既知の脆弱性 0
-8. `bin/dev` で起動し、以下を curl で確認:
+8. `composer run dev` で起動し、以下を curl で確認:
    - `GET /` → 200 または 302（ログインへ）
    - `GET /login` → 200
 9. ブラウザでアクセスして以下を目視確認（コマンドだけでは見えない部分の最終確認をユーザーに依頼）:
@@ -91,7 +91,7 @@ vendor/bin/pint database/seeders tests
 ## このフェーズの完了基準（= プロジェクト全体の完成）
 
 - [ ] `bin/setup` 一発でセットアップ完了
-- [ ] `bin/dev` で起動して全機能が動作
+- [ ] `composer run dev` で起動して全機能が動作
 - [ ] Seeder で各画面に表示すべきデータが入る
 - [ ] `php artisan test` および `php artisan dusk` が all green
 - [ ] カバレッジが 80% 以上（`coverage/index.html` で確認）

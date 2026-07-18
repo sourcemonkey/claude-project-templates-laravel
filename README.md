@@ -149,8 +149,8 @@ Claude Code のセッションで順番にスラッシュコマンドを実行�
 
 ```sh
 cd my-laravel-app
-bin/setup    # MySQL コンテナ起動 + composer/npm install + migrate --seed
-bin/dev      # 開発サーバ起動
+bin/setup           # MySQL コンテナ起動 + composer/npm install + migrate --seed
+composer run dev    # 開発サーバ起動
 ```
 
 具体的な起動 URL・テストアカウントは Phase 4 で生成される

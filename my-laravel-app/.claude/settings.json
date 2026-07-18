@@ -22,7 +22,7 @@
       "Bash(php artisan *)",
       "Bash(vendor/bin/pint*)",
       "Bash(vendor/bin/phpstan*)",
-      "Bash(bin/dev)",
+      "Bash(composer run dev)",
       "Bash(bin/setup)",
       "Bash(docker compose *)",
       "Bash(docker version*)",

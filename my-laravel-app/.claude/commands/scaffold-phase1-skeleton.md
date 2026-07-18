@@ -218,9 +218,9 @@ DB_PASSWORD=app_password
 > Laravel 13 の既定 `mysql` 接続は `'url' => env('DB_URL')`（環境変数名は `DATABASE_URL` ではなく `DB_URL`）を持つが、URL 方式と個別変数方式を混在させると接続設定の優先順位が複雑になりデバッグが困難になる。
 > プロジェクト全体で個別変数方式に統一するため、`DB_URL` は設定しないこと。
 
-### 8. bin/setup と bin/dev の作成
+### 8. dev スクリプトの調整と bin/setup の作成
 
-Laravel には Rails の `bin/setup` / `bin/dev` に相当する標準スクリプトが無いため、新規作成する。
+開発サーバーの起動は `laravel new` 既定の `composer.json` の `dev` スクリプト（`composer run dev`）をそのまま使う。**自前の起動スクリプト（`bin/dev` 等）は作らない**（`composer.json` 側との二重管理になるため。`docs/stack.md` の「開発サーバー起動（正規形）」参照）。一方、セットアップには Laravel に相当する標準スクリプトが無いため、`bin/setup` を新規作成する。
 
 先に `composer.json` の `scripts.dev` を確認する。`laravel new` の既定生成物には `php artisan queue:listen ...` を含む concurrently コマンドが入っているため、`docs/stack.md` の規約（Queue ワーカーを起動しない）に従い、この行を削除する（`pail` と `npm run dev` はそのまま残してよい）。`--names` と `-c`（色指定）からも `queue` に対応する要素を落とすこと（残すと名前と実プロセスの対応がずれる）。
 
@@ -239,9 +239,7 @@ npm install
 php artisan migrate --seed
 ```
 
-`bin/dev` は `docs/stack.md` の「bin/dev（正規形）」セクションの内容をそのまま使う。
-
-両ファイルに `chmod +x` で実行権限を付与する。
+`bin/setup` に `chmod +x` で実行権限を付与する。
 
 ### 9. DB の作成と起動確認
 
@@ -263,8 +261,8 @@ php artisan migrate --seed
 3. **Pint による自動修正**: `vendor/bin/pint` を実行する。`laravel new` / `breeze:install` / `lang:add` が生成するファイル（`bootstrap/providers.php`, `lang/ja/*.php` 等）はデフォルトで Pint の規約に違反しているため自動修正が入る。その後 `vendor/bin/pint --test` が 0 件になることを確認する。
    - Step 6 の指示どおり `tests/Pest.php` を先に並べ替えてあれば、Pint はこのファイルを書き換えない。書き換えられた場合は並べ替えが漏れているので Step 6 に戻ること
 4. `php artisan test` が green であることを確認する。
-5. **起動確認**: `bin/dev` をバックグラウンドで立ち上げ、`curl -sS --retry 15 --retry-all-errors --retry-delay 1 -o /dev/null -w "%{http_code}" http://localhost:8000` が 200 を返すことを確認する。`/login` `/register` も 200 になること。確認後サーバを停止（`pkill -f "php artisan serve"` と `pkill -f vite`）。
-   - `--retry` を付けるのは、`bin/dev` の起動直後は `php artisan serve` がまだ listen していないため。Bash ツールでは `sleep` を伴う待機ループが書けないので `curl` 側のリトライで吸収する
+5. **起動確認**: `composer run dev` をバックグラウンドで立ち上げ、`curl -sS --retry 15 --retry-all-errors --retry-delay 1 -o /dev/null -w "%{http_code}" http://localhost:8000` が 200 を返すことを確認する。`/login` `/register` も 200 になること。確認後サーバを停止する（`pkill -f "php artisan serve"`、`pkill -f "artisan pail"`、`pkill -f vite`。concurrently に `--kill-others` が付いている場合は最初の 1 つで残りも終了するが、3 つとも実行して確実に止める）。
+   - `--retry` を付けるのは、`composer run dev` の起動直後は `php artisan serve` がまだ listen していないため。Bash ツールでは `sleep` を伴う待機ループが書けないので `curl` 側のリトライで吸収する
 6. **`bin/setup` の一気通貫確認**: `bin/setup` を実行し、DB 起動 → `composer install` → `npm install` → `migrate --seed` が最後まで通ることを確認する（Phase 1 時点では Seeder が空なので `Seeding database.` のみ出る）。
 7. **git status の確認**: `git status --short` に、`.gitignore` で除外されるべき生成物（`public/hot`, `storage/pail`, `.phpunit.result.cache` 等）が現れていないことを確認する。現れた場合はテンプレートの `.gitignore` 側を補うこと。
 
@@ -272,7 +270,7 @@ php artisan migrate --seed
 
 - [ ] `docker compose up -d --wait db` で DB が healthy になる
 - [ ] `bin/setup` で DB 起動 → セットアップ完了まで一気通貫で動く
-- [ ] `bin/dev` で http://localhost:8000 が 200
+- [ ] `composer run dev` で http://localhost:8000 が 200
 - [ ] `php artisan migrate` が成功（`bookkeeper` データベースに対して）
 - [ ] `bookkeeper_test` データベースが作成済み
 - [ ] `phpunit.xml` の `DB_CONNECTION` が `mysql`・`DB_DATABASE` が `bookkeeper_test`（既定の sqlite / :memory: から変更済み）
@@ -281,7 +279,7 @@ php artisan migrate --seed
 - [ ] Laravel Breeze（Livewire スタック）/ laravel-lang / larastan / Dusk の初期化済み
 - [ ] `my-laravel-app/.env` が存在し、`.gitignore` で除外されている
 - [ ] `my-laravel-app/.env.example` が存在し、コミット対象に含まれている。`.env` の設定（`DB_*` / `APP_LOCALE` / `APP_FAKER_LOCALE` / `MAIL_FROM_ADDRESS`）が同期されている
-- [ ] `bin/dev` に Queue ワーカー（`php artisan queue:work` / `queue:listen`）の行が**含まれていない**
+- [ ] `composer.json` の `dev` スクリプトに Queue ワーカー（`php artisan queue:work` / `queue:listen`）が**含まれていない**
 - [ ] `php artisan test` が green
 - [ ] `vendor/bin/pint --test` が違反 0
 - [ ] `vendor/bin/phpstan analyse --memory-limit=512M` がエラー 0

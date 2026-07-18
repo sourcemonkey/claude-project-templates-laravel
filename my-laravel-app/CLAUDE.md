@@ -15,7 +15,7 @@
 ## このプロジェクトでの作業方針
 
 - **仕様優先**: docs/ の記述と実装が食い違ったら docs/ が正。違和感があれば実装前に質問する。
-- **動く状態を維持**: 各フェーズの終わりに必ず `php artisan test` と `php artisan serve` / `npm run dev` で起動確認をする。
+- **動く状態を維持**: 各フェーズの終わりに必ず `php artisan test` と `composer run dev` で起動確認をする。
 - **段階的に作る**: 後述のフェーズ順序を守る。先回りで他フェーズの作業をしない。
 - **Seeder 必須**: ローカルですぐ触れるよう、各モデルに最低 3 件のサンプルデータを Seeder に入れる。
 
@@ -33,7 +33,7 @@
 ## 完了の定義（プロジェクト全体）
 
 - [ ] `composer install && npm install` + `php artisan migrate --seed` 一発でセットアップが完了し、各画面に表示すべきサンプルデータが入る
-- [ ] `php artisan serve` + `npm run dev` で起動し、ログインから主要画面遷移まで動作
+- [ ] `composer run dev` で起動し、ログインから主要画面遷移まで動作
 - [ ] `php artisan test` が all green
 - [ ] Laravel Dusk のシステムテストが all green
 - [ ] カバレッジ 80% 以上（`coverage/index.html` で確認）

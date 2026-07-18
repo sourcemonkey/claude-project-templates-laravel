@@ -51,6 +51,7 @@ reset_to_template() {
   echo ">> 開発サーバーを停止..."
   pkill -f "php artisan serve" 2>/dev/null || true
   pkill -f "artisan queue:listen" 2>/dev/null || true
+  pkill -f "artisan pail" 2>/dev/null || true
   pkill -f "vite" 2>/dev/null || true
 
   # 2. DB コンテナ・ボリューム破棄
