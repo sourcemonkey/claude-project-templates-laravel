@@ -23,9 +23,18 @@
 /storage/framework/views/*
 !/storage/framework/views/.gitignore
 
+# php artisan pail のバッファ。
+/storage/pail
+
+# 署名鍵など storage 直下に生成される鍵ファイル。
+/storage/*.key
+
 # Active Storage 相当のローカル保存ファイル(開発・テスト環境)。
 /storage/app/public/*
 !/storage/app/public/.gitignore
+
+# php artisan storage:link が張るシンボリックリンク。
+/public/storage
 
 # Laravel Dusk のスクリーンショット・コンソールログ。
 /tests/Browser/screenshots/*
@@ -37,11 +46,16 @@
 /public/build
 /node_modules/
 
+# Vite の開発サーバー稼働マーカーとフォントマニフェスト(bin/dev 実行中に生成)。
+/public/hot
+/public/fonts-manifest.dev.json
+
 # テストカバレッジレポート。
 /coverage/
 
 # PHPUnit/Pest のキャッシュ。
 /.phpunit.cache
+/.phpunit.result.cache
 
 # 認証情報ファイル(Composer プライベートリポジトリ用トークン等)。絶対にコミットしない。
 auth.json
