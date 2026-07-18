@@ -16,9 +16,7 @@ PHP 8.4.23 / Laravel 13 向けに移植したものです。フェーズ分割�
 ```
 .
 ├── .claude/
-│   ├── prompts/
-│   │   └── trial-phase.md       ← フェーズファイルのヘッドレス・トライアル用プロンプト
-│   └── settings.json            ← Claude Code 共通設定（使用モデル・git 系コマンドの許可）
+│   └── settings.json            ← Claude Code 共通設定（コマンドの許可リスト）
 ├── .gitignore                   ← テンプレートリポジトリ用の除外設定
 ├── .tool-versions               ← リポジトリ全体での PHP / Node.js バージョン（asdf）
 ├── bin/
@@ -26,6 +24,8 @@ PHP 8.4.23 / Laravel 13 向けに移植したものです。フェーズ分割�
 │   └── reset-phase.sh           ← my-laravel-app/ をフェーズ実行前の状態に戻す
 ├── CLAUDE.md                    ← チーム共通ルール（このリポジトリ配下全体に適用）
 ├── env.example                  ← 環境変数のサンプル（リポジトリルート用）
+├── prompts/                     ← ヘッドレス実行用プロンプト（.claude/ 外に置き修正可能にする）
+│   └── trial-phase.md           ← フェーズファイルのヘッドレス・トライアル用プロンプト
 ├── team-rules/                  ← チーム共通ルールの本体
 │   ├── coding-standards.md
 │   ├── git-workflow.md
@@ -303,13 +303,18 @@ Phase 1 は開発サーバー停止・Docker コンテナ/ボリューム破棄�
 
 ### ヘッドレスでのトライアル自動化
 
-`.claude/prompts/trial-phase.md` に、対象フェーズの実行 → 問題点の洗い出し →
+`prompts/trial-phase.md` に、対象フェーズの実行 → 問題点の洗い出し →
 コマンドファイル/docs の修正 → `bin/reset-phase.sh` の更新 → コミットまでを自動で
 行うためのプロンプトを用意しています。
 
 ```sh
-claude -p "$(cat .claude/prompts/trial-phase.md)"
+claude -p "$(cat prompts/trial-phase.md)"
 ```
+
+> このプロンプトを `.claude/` の外に置いているのは、Claude Code の
+> センシティブファイル保護により `.claude/` 配下がヘッドレスセッションから
+> 書き換えられないためです。トライアル中に判明した修正をその場で反映できるよう、
+> 配置に制約のないファイルはリポジトリルート直下に置いています。
 
 ファイル冒頭の「実行対象フェーズ」の1行を書き換えることで対象範囲を段階的に
 広げられます（例: `Phase 1 のみ` → `Phase 1〜2`）。各フェーズの指示は最初から
