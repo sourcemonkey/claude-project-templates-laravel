@@ -72,11 +72,18 @@ laravel new tmp-skeleton --no-interaction --pest
 生成完了後、ドットファイルを含む全生成物を `my-laravel-app/` 直下へ移動し、一時ディレクトリを削除する（同一シェル内で実行すること）:
 
 ```sh
-bash -c 'shopt -s dotglob; mv tmp-skeleton/* . 2>/dev/null || true'
+find tmp-skeleton -mindepth 1 -maxdepth 1 -exec mv {} . \;
 rmdir tmp-skeleton 2>/dev/null || true
+ls -a .env .env.example artisan composer.json
 ```
 
-> **注意（実行シェル）**: `shopt` は bash 専用ビルトインで、zsh には存在しない（`shopt not found` になる）。Claude Code の Bash ツールがコマンドを **zsh** で評価する環境（このテンプレートのヘッドレス実行環境がこれに該当）では、`shopt -s dotglob` を素で書くとエラーになり、続く `mv tmp-skeleton/* .` がドットファイル（`.env`, `.env.example`, `.editorconfig`, `.gitattributes` 等）を移動しない。`.env` が移動されないと以降の `key:generate` / `migrate` が全滅するため、上記のように **`bash -c` で明示的に bash を起動して** dotglob を効かせること（POSIX/zsh から呼んでも安全）。
+最後の `ls` は移動が成功したことの確認。1 つでも「No such file」になる場合は先に進まず、原因を調べること。
+
+> **注意（実行シェル）**: この移動を **glob に頼って書かないこと**。`mv tmp-skeleton/* .` はドットファイル（`.env`, `.env.example`, `.editorconfig`, `.gitattributes`）を含まず、`.env` を欠いたまま以降の `key:generate` / `migrate` が全滅する。しかもエラーは移動時点では出ず、フェーズ後半まで表面化しない。
+>
+> bash の `shopt -s dotglob` で解決する手もあるが**採らない**。Claude Code の Bash ツールはコマンドを **zsh** で評価するため `shopt not found` になり（しかも後続の `mv` は実行されるので上記のサイレント障害を招く）、かといって `bash -c '...'` で包む形はヘッドレス実行の許可リストで許可されていない（任意コマンドを渡せてしまい `rm -rf` 等の deny を迂回できるため）ので権限で停止する。
+>
+> 上記の `find` はシェルの glob 展開に依存せずドットファイルを含めて列挙するため、zsh / bash のどちらで評価されても同じ結果になる。
 
 `laravel new` は `.gitignore` / `.npmrc`（npm のサプライチェーン対策 `ignore-scripts=true` / `audit=true`）を独自に生成し、上記の移動でテンプレート同梱版が上書きされうる。テンプレート同梱の内容を正とするため、移動直後に以下を実行してテンプレート側のファイルへ戻す:
 
