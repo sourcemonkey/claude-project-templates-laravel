@@ -19,14 +19,17 @@
 |---|---|---|---|
 | `laravel/framework` (^13.0) | フレームワーク本体 | — | — |
 | `ext-pdo_mysql` | MySQL アダプタ（PHP 拡張） | — | — |
-| `laravel/vite-plugin` | フロントビルド | — | — |
+| `laravel-vite-plugin` | フロントビルド（**npm パッケージ**。`package.json` の `devDependencies`） | — | — |
 | `livewire/livewire` | Hotwire (Turbo) 相当のサーバー駆動 UI | ✅ | ルート |
+| `livewire/volt` | Livewire の単一ファイルコンポーネント記法 | — | ルート（`breeze:install livewire` が追加する） |
 | `laravel/breeze` | 認証（Livewire スタック） | ✅ | `require-dev`（scaffold 生成後は実行時に不要） |
 | `laravel-lang/lang` | 日本語バリデーションメッセージ・Breeze ビュー翻訳 | ✅ | `require-dev`（`lang:add ja` で翻訳ファイルを publish 済みのため実行時に不要） |
 | `spatie/laravel-query-builder` | 検索・絞り込み（Ransack 相当） | ✅ | ルート |
 | `blade-ui-kit/blade-heroicons` | アイコン（Heroicons の Blade コンポーネント） | ✅ | ルート |
 
 Alpine.js は Livewire に同梱される（`livewire/livewire` インストール時に自動的に読み込まれる）ため、別途 npm パッケージとしての追加は不要。
+
+`livewire/volt` は手動追加せず、`breeze:install livewire`（Phase 1）が依存として追加する。Breeze はこれを使って認証画面を単一ファイルコンポーネント（`resources/views/livewire/pages/auth/*.blade.php`）として生成する。本プロジェクトで新規に書く Livewire コンポーネントは Volt 記法ではなくクラスベース（`app/Livewire/`）に揃える（`docs/architecture.md` のディレクトリ規約参照）。
 
 ### 開発・テスト用
 

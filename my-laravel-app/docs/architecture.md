@@ -89,6 +89,7 @@ Laravel 本体はホスト側で動き、`127.0.0.1:3306` 経由でコンテナ�
 - Blade。ロジックは Blade コンポーネントか Livewire コンポーネントに逃がす。
 - 共通レイアウトは `layouts/app.blade.php`、管理画面用に `layouts/admin.blade.php` を別途用意。
 - サーバー往復を伴う動的処理（検索結果の絞り込み、フォームのリアルタイムバリデーション）は Livewire コンポーネントとして実装。
+- **本プロジェクトで新規に書く Livewire コンポーネントはクラスベース（`app/Livewire/`）に揃える。** Breeze が生成する認証画面だけは `livewire/volt` の単一ファイルコンポーネント（`resources/views/livewire/pages/auth/*.blade.php`）である。Breeze の生成物はそのまま使い、Volt 記法を他の画面へ広げない（記法が混在すると読み手がコンポーネントの所在を推測できなくなるため）。
 - フォームは Livewire を使わない箇所では通常の Blade `<form>` + `@csrf` を使う。
 
 ## URL 設計の方針
