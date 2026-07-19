@@ -67,7 +67,7 @@ PHP 8.4.23 / Laravel 13 向けに移植したものです。フェーズ分割�
 | PHP | 8.4.23 | `.tool-versions`（asdf）で固定 |
 | Composer | 2.x | PHP パッケージ管理 |
 | Laravel Installer | 最新版 | `laravel new` コマンド用 |
-| Node.js | 22.x (Active LTS) | Vite ビルド用 |
+| Node.js | 24.x (Active LTS) | Vite ビルド用 |
 | Docker | 24.x 以上 | 開発用 MySQL の起動 |
 | Docker Compose | v2 (`docker compose`) | 同上 |
 | Claude Code | 最新版 | フェーズ実行 |

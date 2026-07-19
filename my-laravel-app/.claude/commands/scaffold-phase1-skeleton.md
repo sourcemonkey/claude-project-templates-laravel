@@ -27,7 +27,11 @@ Laravel 本体はホスト側で動かす。
 
 1. **PHP バージョン確認**: `my-laravel-app/` 内で `php -v` を実行し 8.4.23 系が出るか確認。出ない場合は asdf 等でインストールを促し中断。
 2. **PHP 拡張の確認**: `php -m | grep -i zip` で `zip` 拡張が有効か確認する（`laravel/dusk` v8.x 系が `ext-zip` を要求するため）。無効な場合、`pecl install zip` でビルドし、`php --ini` で表示される `conf.d` 配下の ini ファイルに `extension=zip.so` を追記する（このホストの PHP 全体に適用される変更のため、事前にユーザーへ確認する）。`libzip` が未インストールの場合は `brew install libzip` を促す。
-3. **Node.js バージョン確認**: `node -v` を実行し `.tool-versions` の `nodejs 22.14.0` 系と一致するか確認する。一致しない場合、`which node` で実際に使われているバージョンマネージャ（asdf/mise/nodenv/nvm 等）を特定する。**複数のバージョンマネージャが併存し、`.tool-versions`（asdf/mise 用）を無視して別のマネージャ（例: nodenv）が優先されるケースがある**ため、その場合は優先されているマネージャ側で該当バージョンをインストールし、プロジェクトディレクトリにローカルピン留め（例: `nodenv local 22.14.0`）する。バージョン不一致のまま進めると `npm run build` で Vite 系パッケージのネイティブバインディングが解決できず失敗することがある。
+3. **Node.js バージョン確認**: `node -v` を実行し、`.tool-versions` の `nodejs` 行と一致するか確認する（バージョンは `.tool-versions` が一次情報。この手順書に数値を書かない）。バージョン不一致のまま進めると `npm run build` で Vite 系パッケージのネイティブバインディングが解決できず失敗することがある。
+
+   一致しない場合は `which -a node` で**どのバージョンマネージャが解決しているか**を確認する。`.tool-versions` は asdf / mise の形式なので、**nodenv や nvm が併存して PATH で先に解決されると、この指定が無視される**。対処は 2 通り:
+   - **推奨**: 併存しているマネージャを PATH から外し、`.tool-versions` を読むマネージャ（asdf / mise）に一本化する（例: nodenv なら `~/.zprofile` の `eval "$(nodenv init -)"` を無効化）
+   - 一本化できない事情がある場合は、優先されているマネージャ側で該当バージョンを入れ、プロジェクトディレクトリにローカルピン留めする（例: `nodenv local <version>`）。ただしフェーズを回すたびに再設定が要る
 4. **Laravel Installer の確認**: `laravel --version` を実行。存在しない場合は `composer global require laravel/installer` を提案し、`~/.composer/vendor/bin`（または `~/.config/composer/vendor/bin`）に PATH が通っているか確認。
 5. **Docker の確認**:
    - `docker version` で Docker Engine が利用可能か確認
