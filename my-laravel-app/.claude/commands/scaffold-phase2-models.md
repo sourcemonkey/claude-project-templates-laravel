@@ -236,6 +236,7 @@ vendor/bin/pint app/Models app/Enums database/migrations database/factories test
 ## やらないこと
 
 - Controller / View（Phase 3 で実施）
+- Enum の `label()` メソッド（Phase 3 で実施）
 - Action クラス（Phase 3 で実施）
 - Seeder（Phase 4 で実施）
 - Queue 関連のマイグレーション・モデル・設定ファイルへの手出し
