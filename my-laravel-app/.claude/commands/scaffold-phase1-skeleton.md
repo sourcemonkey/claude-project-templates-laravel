@@ -115,6 +115,8 @@ composer require --dev larastan/larastan laravel/dusk laravel-lang/lang
 
 > **補足**: `livewire/livewire` はこの時点では v4 系（`^4.3`）で解決される。Step 6 の `laravel/breeze`（Livewire スタック）導入時に Breeze の制約で v3 系（`^3.6.4`）に解決し直される（`breeze:install livewire` が composer 依存を書き換え、v3.8.2 系に落ちることを確認済み）。`docs/stack.md` の想定（Livewire v3）と一致するため問題ない。
 
+> **補足（spatie/laravel-query-builder は v7 系で解決される）**: v7 の `allowedFilters()` / `allowedSorts()` は**可変長引数のみ**を受け取り、v6 までの配列渡しは `TypeError` になる。Phase 3 で使うときの書き方は `docs/architecture.md` の Model セクション参照。
+
 ### 6. 各種初期化
 
 - **Laravel Breeze（Livewire スタック）**:
@@ -123,6 +125,8 @@ composer require --dev larastan/larastan laravel/dusk laravel-lang/lang
   php artisan breeze:install livewire --no-interaction
   ```
   このコマンドで認証ビュー（ログイン・登録・パスワードリセット等）が Livewire コンポーネントとして生成され、Tailwind CSS と Alpine.js のセットアップも同時に行われる。`npm install` と `npm run build` も内部で実行される。非 TTY 環境では `WARN TTY mode requires /dev/tty to be read/writable.` が出るが処理は継続するので無視してよい。
+
+  > **注意（Breeze 生成物は `dashboard` / `profile` ルートに依存する）**: `breeze:install` は `routes/web.php` に `dashboard` と `profile` の 2 ルートを追加し、生成したビュー・Controller・Feature テストがそれを参照する。一方 `docs/api-spec.md` の `routes/web.php` にはこの 2 つが無い。Phase 3 でルーティングを仕様通りに置き換える際、参照側の追従が必須になる（詳細は Phase 3 手順書と `docs/api-spec.md` の注記参照）。Phase 1 の時点では Breeze の生成物をそのまま残しておくこと。
 - **laravel-lang（日本語化）**:
   ```sh
   php artisan lang:add ja --no-interaction
@@ -131,8 +135,13 @@ composer require --dev larastan/larastan laravel/dusk laravel-lang/lang
 - **Laravel Dusk**:
   ```sh
   php artisan dusk:install --no-interaction
+  php artisan dusk:chrome-driver --detect
   ```
-  ChromeDriver のインストールも自動で行われる。
+  `dusk:install` は ChromeDriver も自動でインストールするが、入るのは**最新版**である。
+
+  > **重要（`dusk:chrome-driver --detect` を必ず続けて実行する）**: ホストの Google Chrome が 1 世代古いと、`dusk:install` が入れた ChromeDriver とメジャーバージョンが噛み合わず、Phase 3 の `php artisan dusk` が全件
+  > `session not created: This version of ChromeDriver only supports Chrome version NNN / Current browser version is MMM ...`
+  > で失敗する。`--detect` はホストにインストールされた Chrome のバージョンを検出して対応する ChromeDriver を入れ直すため、Phase 1 の時点で実行しておく（Chrome を更新した場合も同じコマンドで追従する）。
 
   > **重要（`tests/Pest.php` を先に並べ替える）**: Dusk 8.6 の `dusk:install` は `tests/Pest.php` の**先頭**（`use` 文より前）に完全修飾名で次の行を挿入する:
   > ```php
@@ -277,6 +286,7 @@ php artisan migrate --seed
 - [ ] `composer.lock` がコミット対象に入っている
 - [ ] `composer.json` に `docs/stack.md` の「手動追加 ✅」パッケージがすべて記載
 - [ ] Laravel Breeze（Livewire スタック）/ laravel-lang / larastan / Dusk の初期化済み
+- [ ] `php artisan dusk:chrome-driver --detect` を実行済み（ホストの Chrome とバージョンが一致）
 - [ ] `my-laravel-app/.env` が存在し、`.gitignore` で除外されている
 - [ ] `my-laravel-app/.env.example` が存在し、コミット対象に含まれている。`.env` の設定（`DB_*` / `APP_LOCALE` / `APP_FAKER_LOCALE` / `MAIL_FROM_ADDRESS`）が同期されている
 - [ ] `composer.json` の `dev` スクリプトに Queue ワーカー（`php artisan queue:work` / `queue:listen`）が**含まれていない**
