@@ -17,6 +17,7 @@
       "Bash(composer audit)",
       "Bash(composer dump-autoload*)",
       "Bash(composer show*)",
+      "Bash(composer why*)",
       "Bash(npm install)",
       "Bash(npm install --ignore-scripts)",
       "Bash(npm run *)",
