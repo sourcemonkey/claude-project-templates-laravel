@@ -9,7 +9,7 @@
 | Node.js | 22.x (Active LTS) | Vite ビルド用 |
 | MySQL | 8.x | 開発は Docker (`compose.yaml`)、本番はマネージド |
 | Docker | 24.x 以上 | 開発時の DB 起動に必須 |
-| Docker Compose | v2 (`docker compose` コマンド) | `docker-compose` (旧 v1) は使わない |
+| Docker Compose | v2 以上（`docker compose` サブコマンド形式） | `docker-compose` (旧 v1) は使わない。Docker Desktop 同梱版はすでに v5 系に達しているため、上限は設けない |
 
 ## フレームワーク・主要パッケージ
 
