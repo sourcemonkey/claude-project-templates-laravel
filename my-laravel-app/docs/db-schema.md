@@ -57,7 +57,7 @@ audit_logs (独立、polymorphic 相当のカラム構成)
 | published | boolean | NOT NULL, default: false |
 | created_at / updated_at | timestamp | |
 
-インデックス: `category_id`, `isbn`, `title`
+インデックス: `category_id`, `isbn`, `title`（`category_id` は `$table->foreignId('category_id')` の外部キー制約が、`isbn` は `->unique()` がそれぞれインデックスを自動生成するため、マイグレーションで個別に `index()` を呼ぶのは `title` のみ）
 
 制約: `available_copies >= 0`, `available_copies <= total_copies`（CHECK 制約）
 
