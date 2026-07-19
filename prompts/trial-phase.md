@@ -19,10 +19,20 @@
    ルート起動のセッションには適用されない。フェーズ実行に必要な許可
    （`php artisan *`, `composer *`, `docker compose *`, `laravel new *`,
    `Edit`, `Write` 等）はルート側の許可リストに含めておくこと。
-   なお **`php -r '<code>'` は意図的に許可リストへ含めていない**（任意の
-   PHP コードを実行でき、`rm -rf` 等の deny を迂回できてしまうため。
-   `bash -c` を許可しないのと同じ理由）。今後も追加しない。composer.json 等の
+   なお **`php -r '<code>'` は許可リストへ含めていない**（`bash -c` を
+   許可しないのと同じ理由）。今後も追加しない。composer.json 等の
    ファイル内容の確認は `grep` / `cat` で行う。
+
+   > **ただしこの除外を「任意コード実行を防ぐ対策」と考えないこと。**
+   > 許可リストには既に `Bash(php artisan *)`（`php artisan tinker --execute=`
+   > で任意の PHP を実行できる）・`Bash(npm run *)` / `Bash(composer run dev)` /
+   > `Bash(composer run setup)`（`Edit` / `Write` で `package.json` /
+   > `composer.json` の `scripts` を書き換えてから実行できる）が含まれており、
+   > 同等の経路が複数開いている。`php -r` を外しているのは慣習としての
+   > 最小権限であって、deny リスト（`rm -rf *` 等）を実効的に守るものではない。
+   > **deny の強制力は「Claude Code が意図的に迂回しようとしない」ことに
+   > 依存している**。この前提を変えたい場合は許可リスト全体の設計を
+   > 見直す必要があり、`php -r` を足す / 足さないの判断では解決しない。
 3. **スラッシュコマンドの読み込み**: ルート起動のセッションには
    `my-laravel-app/.claude/commands/` のスラッシュコマンドが読み込まれない
    場合がある。`/scaffold-phaseN-xxx` が実行できないときは、対象のコマンド
