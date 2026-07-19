@@ -59,6 +59,20 @@ enum UserRole: int
 > class User extends Authenticatable
 > ```
 > 同様に enum キャストを持つ他モデル（`Lending::$state`, `Notification::$kind`）にも `@property` を付ける。
+>
+> **date / datetime キャストも同じ理由で `@property` が要る。** larastan はこれらも `string` と
+> 推論するため、`Carbon` のメソッドを呼ぶコードが `Cannot call method toDateString() on string.`
+> でエラーになる（Phase 3 の `ApproveLendingAction` が `$lending->due_on->toDateString()` を
+> 使うため必ず踏む）。`Lending` には次を付けておくこと:
+> ```php
+> /**
+>  * @property LendingState $state
+>  * @property Carbon $requested_at
+>  * @property Carbon|null $approved_at
+>  * @property Carbon|null $due_on
+>  * @property Carbon|null $returned_at
+>  */
+> ```
 
 > **注意4（`Notifiable` トレイトとの衝突）**: `User` に `notifications()` の `hasMany` を定義しないこと。Breeze が付与する `Illuminate\Notifications\Notifiable` トレイトが既に `notifications()`（`MorphMany` 返り、パスワードリセットで利用）を提供しており、これを `HasMany` 返りで上書きすると larastan が非共変な戻り値型としてエラーにする。独自 `Notification` へのアクセスは `Notification` 側の `belongsTo(User::class)` で表現する。`User` に必要なリレーションは `lendings()`（`hasMany`）のみ。
 
@@ -166,6 +180,7 @@ php artisan migrate
 `make:model -f` が生成するファクトリは中身が空（`return [];`）なので、`docs/db-schema.md` の定義に合わせて書くこと（ファイルが既に存在するため Read してから編集する）。
 
 - `User` ファクトリのメールは `@test.local` ドメインにする（Breeze 標準ファクトリの既定ドメインとテスト実行時に衝突しないようにするため）。`role` を扱う `admin()` state も追加する
+  - **`definition()` にも `'role' => UserRole::Member` を明示すること**。マイグレーションの `default(0)` に任せると、`User::factory()->create()` が返す**インスタンスに `role` 属性が載らない**（DB 側の既定値は INSERT 後に再取得しない限りモデルへ反映されない）。この状態で `$user->role` を読むと enum キャストが効かず `null` が返り、後述のモデルテスト「enum キャストの確認」が `Failed asserting that null is identical to an object of class "App\Enums\UserRole".` で落ちる
 - **`Book` ファクトリは `available_copies <= total_copies` を必ず満たすように生成すること**。`fake()->numberBetween()` を 2 つ独立に呼ぶと CHECK 制約違反で `QueryException` になり、`Book::factory()` に依存する全テストが不安定になる。先に `total_copies` を決め、`available_copies` はその範囲内で採る
 - `Lending` ファクトリには state ごとの state メソッド（`approved()`, `overdue()`, `returned()`, `rejected()`）を用意しておくと、モデルテストと Phase 4 の Seeder の両方で使える
 

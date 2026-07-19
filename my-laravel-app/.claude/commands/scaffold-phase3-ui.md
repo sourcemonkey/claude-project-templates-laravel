@@ -40,6 +40,11 @@ Feature テストが壊れる**。次を必ず行うこと。
    - `resources/views/livewire/profile/update-profile-information-form.blade.php`
    - `resources/views/livewire/layout/navigation.blade.php`
    - `app/Http/Controllers/Auth/VerifyEmailController.php`
+
+   > **置換の手段**: `sed -i` による一括置換は Claude Code の Bash ツールが拒否する
+   > （作業ディレクトリ内のファイルであっても `sed in '<path>' was blocked.` になる）。
+   > `Edit` ツールでファイルごとに置換すること。同一ファイル内の複数箇所は
+   > `replace_all` で一度に処理できる。
 2. Breeze の Feature テストの assert も同様に更新する:
    - `tests/Feature/Auth/AuthenticationTest.php`（`route('dashboard')` → `route('home')`、
      ナビ描画確認の `$this->get('/dashboard')` → 認証必須の任意の画面。例: `/books`）
@@ -52,11 +57,28 @@ Feature テストが壊れる**。次を必ず行うこと。
      仕様の `PATCH /profile`（`ProfileController@update` + `UpdateProfileRequest`）で行う
    - パスワード変更・退会の Volt コンポーネントは Breeze の生成物をそのまま `/profile/edit` に載せる
    - `tests/Feature/ProfileTest.php` をこの構成に合わせて書き換える
+     （`assertSeeVolt('profile.update-profile-information-form')` の行は、当該 Volt を
+     画面から外すため**削除する**。残すと `profile page is displayed` が失敗する）
 4. 不要になったビューを削除する: `resources/views/dashboard.blade.php`,
    `resources/views/profile.blade.php`, `resources/views/welcome.blade.php`,
    `resources/views/livewire/welcome/`
+
+   > 削除は `git clean -fdxq <path>` で行う（いずれも `laravel new` / `breeze:install` が
+   > 生成した git 未追跡ファイルであり、追跡ファイルを巻き込む事故が起きない）。
 5. `resources/views/livewire/layout/navigation.blade.php` のナビ項目を `docs/screens.md` の
    レイアウト（蔵書 / 自分の貸出 / 通知、管理者には管理）に差し替える
+
+   > **重要（未ログイン時の nav）**: Breeze 生成の navigation は `auth()->user()->name` /
+   > `auth()->user()->email` を**無条件に**参照する。Breeze の構成では nav を出す画面が
+   > すべて認証必須だったため問題にならなかったが、本仕様では `GET /`（ランディング）が
+   > 公開画面かつ `layouts/app.blade.php` を使うため、**未ログインで `/` を開くと
+   > `Attempt to read property "name" on null` で 500 になる**。ユーザー名・ドロップダウン・
+   > 各ナビ項目を `@auth` で囲み、`@guest` 側にはログイン / 新規登録へのリンクを置くこと。
+6. **`tests/Browser/ExampleTest.php` を書き換える**: `dusk:install` が生成するこのテストは
+   `visit('/')->assertSee('Laravel')` で **welcome ページの文言**を見に行く。手順 4 で
+   `welcome.blade.php` を削除するため、そのままだと
+   `Did not see expected text [Laravel] within element [body].` で `php artisan dusk` が落ちる。
+   本プロジェクトのランディングに実在する文言（例: `BookKeeper`）へ差し替えること。
 
 ## `$this->authorize()` を使う前提
 
@@ -111,6 +133,9 @@ $exceptions->render(function (AccessDeniedHttpException $e, Request $request) {
   **クラスコンポーネント**（`app/View/Components/AppLayout.php` / `GuestLayout.php`）として提供している。
   `x-admin-layout` を使うには `app/View/Components/AdminLayout.php` を同じ形で作ること
   （`resources/views/layouts/admin.blade.php` を置くだけでは解決されない）
+- **フォームの部分ビュー（`_form.blade.php` 等）に `@props` を使わないこと**。`@props` は
+  Blade コンポーネント（`x-` 記法で解決されるもの）専用のディレクティブで、`@include` した
+  ビューでは機能しない。既定値が要る変数は `@php($book = $book ?? null)` のように書く
 
 ## レイアウトのスタイル（実装ブレ防止のため明示）
 
@@ -161,7 +186,8 @@ class BookPolicy
 `make:policy --model=` が生成する雛形には `restore` / `forceDelete` も含まれるが、
 ソフトデリートを使わない本プロジェクトでは削除してよい。承認・却下のように
 CRUD に対応しないアビリティ（`approve` / `reject`）は Policy にメソッドを足し、
-Controller から `$this->authorize('approve', $lending)` で呼ぶ。
+Controller から `$this->authorize('approve', $lending)` で呼ぶ。返却（`returnBook`）も
+同様に Policy のアビリティとして定義する（本人のみ許可）。
 
 Controller では各アクションで `$this->authorize('update', $book);` を呼ぶ。`index` アクションでは Laravel の Policy に Pundit の `Scope` 相当の仕組みがないため、絞り込みが必要なリソース（例: Lending は自分の貸出のみ）は Controller 内で明示的に分岐する:
 
@@ -232,6 +258,8 @@ Dusk は `.env.dusk.local` があればそれを読む。無いと `.env` がそ
   Dusk は自前でサーバーを起動しない
 - ChromeDriver がホストの Chrome とバージョン一致していること。ずれている場合は
   `php artisan dusk:chrome-driver --detect`（Phase 1 手順書参照）
+- 非 TTY 環境では `Warning: TTY mode requires /dev/tty to be read/writable.` が出るが
+  処理は継続するので無視してよい
 
 ### `signInAs` ヘルパー
 
@@ -270,17 +298,21 @@ function signInAs(Browser $browser, User $user): void
 
 `php artisan dusk` で確認。あわせて Feature テスト（`php artisan test`）でも
 主要フロー（借用申請の業務ルール、認可、ロール変更、通知の既読化）を押さえること。
+**各画面がデータなしでも 200 を返すことを確認する Feature テスト**（完了基準の
+「各画面が（データなしでも）500 にならずに表示できる」に対応）も書いておくと、
+Blade 側の null 参照を Dusk より早く・安く検出できる。
 
 ## このフェーズの完了基準
 
 - [ ] `php artisan route:list` で `docs/api-spec.md` の全ルートが存在
 - [ ] 各画面が（データなしでも）500 にならずに表示できる
+- [ ] 未ログインで `GET /` が 200（nav の `@auth` ガード漏れがない）
 - [ ] Policy が全リソースに存在
 - [ ] レイアウト `layouts/app.blade.php` / `layouts/admin.blade.php` が存在し、`x-admin-layout` が解決できる
 - [ ] `docs/architecture.md` の「Action 一覧」の 4 クラスが `app/Actions/` に存在
 - [ ] Breeze 生成物の `dashboard` / `profile` 参照が仕様に追従済み（`route('dashboard')` が残っていない）
 - [ ] `php artisan test` が all green（Phase 1 の Breeze 認証テストを含む）
-- [ ] `php artisan dusk` が all green
+- [ ] `php artisan dusk` が all green（`tests/Browser/ExampleTest.php` の書き換えを含む）
 - [ ] `vendor/bin/pint --test` が違反 0
 - [ ] `vendor/bin/phpstan analyse --memory-limit=512M` がエラー 0
 

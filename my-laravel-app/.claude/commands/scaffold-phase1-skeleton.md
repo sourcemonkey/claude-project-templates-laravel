@@ -80,7 +80,7 @@ ls -a .env .env.example artisan composer.json composer.lock phpunit.xml
 > - Claude Code の Bash ツールは**書き込み系コマンドの glob を拒否**する（`Glob patterns are not allowed in write operations.`）ため、そもそも `mv tmp-skeleton/* .` は実行できない
 > - `find tmp-skeleton -mindepth 1 -maxdepth 1 -exec mv {} . \;` も、`-exec` がファイルを変更するため許可リストの `Bash(find:*)` では自動許可されず拒否される
 >
-> `rsync -a` は末尾スラッシュ付きのディレクトリ指定でドットファイルを含めて再帰コピーするため、シェルの glob 展開に依存せず zsh / bash のどちらで評価されても同じ結果になる。コピー後に残る `tmp-skeleton` は未追跡なので `git clean -fdxq` で除去する（`rm -rf` は許可リストの deny 対象）。
+> `rsync -a` は末尾スラッシュ付きのディレクトリ指定でドットファイルを含めて再帰コピーするため、シェルの glob 展開に依存せず zsh / bash のどちらで評価されても同じ結果になる。コピー後に残る `tmp-skeleton` は未追跡なので `git clean -fdxq` で除去する（追跡ファイルを巻き込む事故が起きない）。
 
 `laravel new` は `.gitignore` / `.npmrc` を独自に生成するが、上記の `--exclude` により**テンプレート同梱版がそのまま残る**。テンプレート側を正とするため、除外は必ず指定すること（`--exclude=/.gitignore` の先頭 `/` は転送元ルート直下のみを対象にする指定で、`storage/framework/*/.gitignore` 等の下位ディレクトリの `.gitignore` は除外されない）。
 
