@@ -27,7 +27,7 @@
 | `laravel/framework` (^13.0) | フレームワーク本体 | — | — |
 | `ext-pdo_mysql` | MySQL アダプタ（PHP 拡張） | — | — |
 | `laravel-vite-plugin` | フロントビルド（**npm パッケージ**。`package.json` の `devDependencies`） | — | — |
-| `livewire/livewire` | Hotwire (Turbo) 相当のサーバー駆動 UI | ✅（**Breeze 導入後に**追加する） | ルート |
+| `livewire/livewire` | Hotwire (Turbo) 相当のサーバー駆動 UI | —（`breeze:install livewire` が `^3.6.4` で追加する） | ルート |
 | `livewire/volt` | Livewire の単一ファイルコンポーネント記法 | — | ルート（`breeze:install livewire` が追加する） |
 | `laravel/breeze` | 認証（Livewire スタック） | ✅ | `require-dev`（scaffold 生成後は実行時に不要） |
 | `laravel-lang/lang` | 日本語バリデーションメッセージ・Breeze ビュー翻訳 | ✅ | `require-dev`（`lang:add ja` で翻訳ファイルを publish 済みのため実行時に不要） |
@@ -36,13 +36,18 @@
 
 Alpine.js は Livewire に同梱される（`livewire/livewire` インストール時に自動的に読み込まれる）ため、別途 npm パッケージとしての追加は不要。
 
-> **Livewire は v3 系を使う。** 上流の最新は v4 系だが、`laravel/breeze`（Livewire スタック）が
-> 依存する `livewire/volt` が v3 に制約しているため。**これは意図した状態であり、
-> `composer.json` に v3 が入っているのを「古い」と判断して上げないこと。** v4 へ移行する場合は
-> Breeze 側の対応が前提になる。バージョン制約を持つのは Breeze なので、本プロジェクトの
-> `composer.json` でバージョンをピン留めはしない（二重管理を避ける）。
+> **Livewire は v3 系を使う。** 上流の最新は v4 系だが、`breeze:install livewire` が
+> `composer require livewire/livewire:^3.6.4` を実行して制約を書き込むため
+> （`vendor/laravel/breeze/src/Console/InstallsLivewireStack.php`）。**これは意図した状態であり、
+> `composer.json` に v3 が入っているのを「古い」と判断して上げないこと。**
+>
+> なお `livewire/volt` 自身の制約は `^3.6.1|^4.0` で v4 も許容している。**volt が v3 を
+> 強制しているわけではない**ため、`composer require livewire/livewire`（制約なし）を
+> 後から実行すると Breeze の `^3.6.4` を上書きして v4 が入ってしまう。v4 へ移行する場合は
+> Breeze 側の対応を確認したうえで、Phase 3 の Livewire コンポーネントの記法差分を
+> 検証すること。
 
-`livewire/volt` は手動追加せず、`breeze:install livewire`（Phase 1）が依存として追加する。Breeze はこれを使って認証画面を単一ファイルコンポーネント（`resources/views/livewire/pages/auth/*.blade.php`）として生成する。本プロジェクトで新規に書く Livewire コンポーネントは Volt 記法ではなくクラスベース（`app/Livewire/`）に揃える（`docs/architecture.md` のディレクトリ規約参照）。
+`livewire/livewire` と `livewire/volt` はどちらも手動追加せず、`breeze:install livewire`（Phase 1）が `composer.json` の `require` へ追加する（`livewire/livewire:^3.6.4` / `livewire/volt:^1.7.0`）。いずれもトップレベルの依存として入るため、自前の Livewire コンポーネントを書くうえで別途 `composer require` する必要はない。Breeze はこれを使って認証画面を単一ファイルコンポーネント（`resources/views/livewire/pages/auth/*.blade.php`）として生成する。本プロジェクトで新規に書く Livewire コンポーネントは Volt 記法ではなくクラスベース（`app/Livewire/`）に揃える（`docs/architecture.md` のディレクトリ規約参照）。
 
 ### 開発・テスト用
 
