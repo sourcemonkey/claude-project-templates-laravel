@@ -74,6 +74,7 @@ Laravel 12 以降、`laravel new` は公式スターターキット（Livewire /
 | パッケージ | 用途 | 手動追加 | 種別 |
 |---|---|---|---|
 | `laravel/pint` | Lint（コードスタイル） | — | `laravel new` の既定に含まれる |
+| `laravel/pao` | テストツール（pint / pest / phpstan）の実行結果を Agent 向けの JSON 1 行で出力する | — | `laravel new` の既定に含まれる |
 | `larastan/larastan` | 静的解析（PHPStan の Laravel 版） | ✅ | `require-dev` |
 | `pestphp/pest` | テストフレームワーク | ✅（`--pest` オプションで導入） | `require-dev` |
 | `pestphp/pest-plugin-laravel` | Pest の Laravel 統合 | ✅（`--pest` に同梱） | `require-dev` |
