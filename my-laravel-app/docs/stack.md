@@ -170,23 +170,33 @@ MAIL_FROM_ADDRESS=no-reply@example.local
 
 ### `config/database.php`
 
-`mysql` 接続に以下の設定を必ず含める:
+`mysql` 接続は **`laravel new`（Laravel 13.x）が生成する構造をそのまま使い、`env()` の第 2 引数（既定値）だけを本プロジェクトの値に揃える**。接続情報はすべて `env()` 経由で統一し、一部だけハードコードにはしない（どれが環境変数で上書きできるのかを読み手が推測せずに済むため）。
+
+下記が調整後の正規形。`laravel new` の生成物との差分は `database` / `username` / `password` / `collation` の既定値 4 つだけである:
 
 ```php
 'mysql' => [
     'driver' => 'mysql',
+    'url' => env('DB_URL'),
     'host' => env('DB_HOST', '127.0.0.1'),
     'port' => env('DB_PORT', '3306'),
-    'database' => env('DB_DATABASE', 'bookkeeper'),
-    'username' => env('DB_USERNAME', 'app'),
-    'password' => env('DB_PASSWORD', 'app_password'),
-    'charset' => 'utf8mb4',
-    'collation' => 'utf8mb4_0900_ai_ci',
+    'database' => env('DB_DATABASE', 'bookkeeper'),          // 既定は 'laravel'
+    'username' => env('DB_USERNAME', 'app'),                 // 既定は 'root'
+    'password' => env('DB_PASSWORD', 'app_password'),        // 既定は ''
+    'unix_socket' => env('DB_SOCKET', ''),
+    'charset' => env('DB_CHARSET', 'utf8mb4'),
+    'collation' => env('DB_COLLATION', 'utf8mb4_0900_ai_ci'), // 既定は 'utf8mb4_unicode_ci'
     'prefix' => '',
+    'prefix_indexes' => true,
     'strict' => true,
     'engine' => null,
+    'options' => extension_loaded('pdo_mysql') ? array_filter([
+        Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+    ]) : [],
 ],
 ```
+
+`url` / `unix_socket` / `prefix_indexes` / `options` は生成されたまま残す（消す理由がなく、Laravel 更新時の差分も増える）。ただし **`DB_URL` は `.env` に設定しない** — 理由は次項の注意参照。
 
 `.env` の `DB_DATABASE` は development では `bookkeeper`、test 実行時は `phpunit.xml` の環境変数で `bookkeeper_test` に切り替える。
 

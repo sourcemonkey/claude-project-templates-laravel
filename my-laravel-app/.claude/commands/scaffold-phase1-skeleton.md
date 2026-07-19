@@ -96,12 +96,20 @@ git status --short -- .gitignore .npmrc .claude compose.yaml docker .tool-versio
 
 ### 4. config/database.php の調整
 
-`docs/stack.md` の「MySQL 設定の規約」セクションに記載のサンプル通りに `mysql` 接続設定を修正する。要点:
+`docs/stack.md` の「MySQL 設定の規約」セクションに記載の正規形に合わせて `mysql` 接続設定を修正する。
 
-- `charset: utf8mb4` / `collation: utf8mb4_0900_ai_ci` を明示
-- `host` / `username` / `password` / `port` を `.env` 経由で読み込む（Laravel の既定のまま）
+**構造には手を入れない。`env()` の第 2 引数（既定値）を 4 か所書き換えるだけである**（`laravel new` の生成物は既に `charset` / `collation` も `env()` 経由になっている）:
 
-> **補足（Laravel 13 の既定値）**: `laravel new`（Laravel 13.x）が生成する `config/database.php` の `mysql` 接続は既定で `'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci')`・`'database' => env('DB_DATABASE', 'laravel')`・`'username' => env('DB_USERNAME', 'root')`・`'password' => env('DB_PASSWORD', '')` になっている。`.env` 側で `DB_DATABASE` / `DB_USERNAME` / `DB_PASSWORD` を明示するので接続自体は通るが、`docs/stack.md` の規約に合わせて `env()` の第 2 引数（既定値）も `bookkeeper` / `app` / `app_password` / `utf8mb4_0900_ai_ci` に揃えておく。なお `DB_URL`（接続文字列方式）は設定しない（Step 7 の注意参照）。`'url' => env('DB_URL')` の行自体は Laravel の既定のまま残してよい。
+| キー | `laravel new` の既定値 | 書き換え後 |
+|---|---|---|
+| `database` | `'laravel'` | `'bookkeeper'` |
+| `username` | `'root'` | `'app'` |
+| `password` | `''` | `'app_password'` |
+| `collation` | `'utf8mb4_unicode_ci'` | `'utf8mb4_0900_ai_ci'` |
+
+`charset` の既定値は `'utf8mb4'` で既に正しいため変更不要。`url` / `unix_socket` / `prefix_indexes` / `options` の各行は**生成されたまま残す**（削除しない）。
+
+> **注意**: `'url' => env('DB_URL')` の行は残すが、`.env` に `DB_URL` の値は設定しない（Step 7 の注意参照）。行の存在と値の設定は別問題であり、行を消す必要はない。
 
 ### 5. Composer パッケージの追加
 
