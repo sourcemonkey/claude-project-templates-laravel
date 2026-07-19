@@ -62,7 +62,7 @@ Phase 4 では Seeder が実装済みのため、`docs/seeds.md` のサンプル
 `my-laravel-app/README.md` を新規作成。含めるべき項目:
 
 - プロジェクト概要（1-2 段落）
-- 必要なランタイム（`docs/stack.md` の「ランタイム」表からコピー）
+- 必要なランタイム（`docs/stack.md` の「ランタイム」表からコピー。**PCOV の行も落とさずに含める** — `composer install` で導入されないマシン側の前提条件であり、README が唯一の周知手段になるため）
 - セットアップ手順（`composer run setup`）
 - 起動手順（`composer run dev`）
 - テストアカウント表（`docs/seeds.md` の「アカウント」表をコピー）

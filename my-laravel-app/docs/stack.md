@@ -10,6 +10,13 @@
 | MySQL | 8.x | 開発は Docker (`compose.yaml`)、本番はマネージド |
 | Docker | 24.x 以上 | 開発時の DB 起動に必須 |
 | Docker Compose | v2 以上（`docker compose` サブコマンド形式） | `docker-compose` (旧 v1) は使わない。Docker Desktop 同梱版はすでに v5 系に達しているため、上限は設けない |
+| PCOV（PHP 拡張） | 1.0 以上 | **カバレッジ計測時のみ必要**（アプリの実行・`php artisan test` 単体には不要）。`php -m \| grep pcov` で確認。未導入時の導入手順は「テストカバレッジ設定（正規形）」節 |
+
+> **PCOV は `.tool-versions` で固定できない。** PHP 拡張はバージョンマネージャ（asdf / mise）
+> が管理する PHP インストールに紐づくため、**PHP を入れ直すと失われる**。`composer install`
+> でも復元されない。各開発者が一度手で導入し、`php -m | grep pcov` が空になったら
+> 再導入する必要がある。この非再現性を解消したい場合は、カバレッジ判定を CI
+> （コンテナ内で決定論的に導入できる）へ移すのが本筋。
 
 ## フレームワーク・主要パッケージ
 
@@ -40,7 +47,8 @@ Alpine.js は Livewire に同梱される（`livewire/livewire` インストー�
 | `pestphp/pest` | テストフレームワーク | ✅（`--pest` オプションで導入） | `require-dev` |
 | `pestphp/pest-plugin-laravel` | Pest の Laravel 統合 | ✅（`--pest` に同梱） | `require-dev` |
 | `laravel/dusk` | システムテスト（Capybara + Selenium 相当） | ✅ | `require-dev` |
-| `pcov` 拡張（php.ini で有効化） | テストカバレッジ計測ドライバ | ✅（composer ではなく PHP 拡張として） | ローカル環境 |
+
+カバレッジ計測ドライバの **PCOV は composer パッケージではなく PHP 拡張**のため、この表ではなく「ランタイム」表に記載している（マシン側の前提条件であり、`composer install` では導入されない）。
 
 `factory_bot` 相当は Laravel 標準の Model Factory（`database/factories/`）、`faker` 相当は `fakerphp/faker`（Laravel の依存関係に標準で含まれる）を使う。追加インストール不要。
 
