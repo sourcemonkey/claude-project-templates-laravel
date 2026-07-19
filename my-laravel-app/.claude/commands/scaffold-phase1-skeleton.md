@@ -68,6 +68,22 @@ laravel new tmp-skeleton --no-interaction --pest
 
 `--pest` でテストフレームワークに Pest を選択する。スターターキット選択のプロンプトは `--no-interaction` によりスキップされ、認証機能なしの素の Laravel が生成される（認証は Step 6 で Breeze を個別に導入する）。`--no-interaction` かつ非 TTY で実行すると、進捗ログの代わりに `{"success":true,"name":"tmp-skeleton",...}` の JSON 1 行だけが出力される。これは正常。
 
+#### 生成された Laravel のメジャーバージョンを検証する（必須）
+
+生成直後に、`laravel/framework` が **`^13.`** であることを確認する:
+
+```sh
+grep '"laravel/framework"' tmp-skeleton/composer.json
+```
+
+`^13.` 以外だった場合は**ここで手順を中断し、ユーザーに報告する**。以降のステップへ進んではならない。
+
+> **なぜ確認が要るか**: `laravel new` には**バージョン指定オプションが無い**（`NewCommand::getVersion()` は `--dev` 指定時のみ `dev-master` を返し、通常は空文字＝最新安定版）。内部で実行されるのは `composer create-project laravel/laravel "$dir" --remove-vcs --prefer-dist --no-scripts` であり、取得されるのは**その時点の `laravel/laravel` の最新安定版**である。Laravel はメジャーリリースを毎年 ~Q1 に出すため（13 は 2026-03-17、14 は 2027 Q1 見込み）、Laravel 14 のリリース以降は同じコマンドが 14 を生成する。
+>
+> 本テンプレートの `docs/` 一式は Laravel 13 系を前提に書かれている（`docs/stack.md` の `laravel/framework (^13.0)`、`config/app.php` のロケール設定、`phpunit.xml` の既定値、`.env` の `DB_*` コメントアウト状態など）。検証せずに進むと、これらの記述と実際の生成物がずれたまま後段のステップが失敗し、原因の特定に時間がかかる。
+>
+> 14 以降で本テンプレートを使う必要が生じた場合は、`laravel new` をやめて `composer create-project laravel/laravel:^13.0 tmp-skeleton --remove-vcs --prefer-dist` に置き換え、Installer が `--pest` で行っている処理を手順に展開する（`composer remove phpunit/phpunit --dev --no-update` → `composer require pestphp/pest pestphp/pest-plugin-laravel --no-update --dev` → `composer update` → `./vendor/bin/pest --init` → `pest-plugin-drift` による変換）。判断は `docs/stack.md` の「公式スターターキットを採用しない理由」とあわせてユーザーに委ねること。
+
 生成完了後、`rsync` で全生成物（ドットファイル含む）を `my-laravel-app/` 直下へ配置し、一時ディレクトリを削除する:
 
 ```sh
@@ -328,6 +344,7 @@ DB_PASSWORD=app_password
 - [ ] `php artisan migrate` が成功（`bookkeeper` データベースに対して）
 - [ ] `bookkeeper_test` データベースが作成済み
 - [ ] `phpunit.xml` の `DB_CONNECTION` が `mysql`・`DB_DATABASE` が `bookkeeper_test`（既定の sqlite / :memory: から変更済み）
+- [ ] `composer.json` の `laravel/framework` が `^13.`（Step 3 の検証を通過している）
 - [ ] `composer.lock` がコミット対象に入っている
 - [ ] `composer.json` に `docs/stack.md` の「手動追加 ✅」パッケージがすべて記載
 - [ ] Laravel Breeze（Livewire スタック）/ laravel-lang / larastan / Dusk の初期化済み

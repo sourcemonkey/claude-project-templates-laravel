@@ -66,7 +66,7 @@ PHP 8.4.23 / Laravel 13 向けに移植したものです。フェーズ分割�
 |---|---|---|
 | PHP | 8.4.23 | `.tool-versions`（asdf）で固定 |
 | Composer | 2.x | PHP パッケージ管理 |
-| Laravel Installer | 最新版 | `laravel new` コマンド用 |
+| Laravel Installer | 5.x | `laravel new` コマンド用（後述の「Laravel のバージョン方針」参照） |
 | Node.js | 24.x (Active LTS) | Vite ビルド用 |
 | Docker | 24.x 以上 | 開発用 MySQL の起動 |
 | Docker Compose | v2 (`docker compose`) | 同上 |
@@ -74,6 +74,36 @@ PHP 8.4.23 / Laravel 13 向けに移植したものです。フェーズ分割�
 
 DBMS は MySQL 8.x を **Docker コンテナ** で起動する設計です。
 ホスト OS への MySQL インストールは不要です。
+
+### Laravel のバージョン方針
+
+**本テンプレートは Laravel 13 系を前提に書かれています。** `my-laravel-app/docs/` の
+仕様（`stack.md` の `laravel/framework (^13.0)`、`.env` / `phpunit.xml` / `config/app.php`
+の既定値に関する記述）も、`.claude/commands/` の手順書も、すべて 13 系の生成物に
+合わせています。
+
+一方 `laravel new` には**バージョン指定オプションがありません**。内部で
+`composer create-project laravel/laravel ...` を実行するため、取得されるのは
+**その時点の最新安定版**です。つまり「Installer が最新版であること」と
+「Laravel 13 が入ること」は本質的に別の話で、両者が一致しているのは
+Laravel 13 が最新である期間だけです。
+
+Laravel はメジャーリリースを**毎年 ~Q1** に出します（公式の
+[Release Notes](https://laravel.com/docs/13.x/releases) に明記）。
+
+| バージョン | リリース日 | バグ修正終了 | セキュリティ修正終了 |
+|---|---|---|---|
+| 12 | 2025-02-24 | 2026-08-13 | 2027-02-24 |
+| **13**（本テンプレートの前提） | **2026-03-17** | Q3 2027 | 2028-03-17 |
+| 14 | **2027 Q1 見込み** | — | — |
+
+このため Phase 1（`/scaffold-phase1-skeleton`）は、`laravel new` の直後に
+`composer.json` の `laravel/framework` が `^13.` であることを検証し、
+異なる場合はその場で手順を中断します。**Laravel 14 のリリース後にこのテンプレートを
+実行すると、Phase 1 の Step 3 で停止します**。その時点で、13 にピン留めして
+使い続けるか（`composer create-project laravel/laravel:^13.0` へ切り替え）、
+テンプレート側を 14 対応へ更新するかを判断してください。手順は
+`my-laravel-app/.claude/commands/scaffold-phase1-skeleton.md` の Step 3 に記載しています。
 
 ### PHP バージョンを 2 箇所で固定している理由
 
