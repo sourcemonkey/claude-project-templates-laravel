@@ -106,4 +106,21 @@ URL プレフィックス: `/admin/`
 | カテゴリフォームの name フィールド label | `カテゴリ名` |
 | タグフォームの name フィールド label | `タグ名` |
 
+### enum の表示ラベル
+
+一覧・詳細画面に表示する enum の日本語表記。**各 Enum クラスの `label(): string` メソッドとして実装し、ビューからは `{{ $lending->state->label() }}` で参照する**（Blade 側に `@if` の連鎖や配列マッピングを書かない）。
+
+| enum | 値 | 表示ラベル |
+|---|---|---|
+| `LendingState` | `Requested` | `申請中` |
+| | `Approved` | `借用中` |
+| | `Returned` | `返却済み` |
+| | `Rejected` | `却下` |
+| | `Overdue` | `延滞中` |
+| `NotificationKind` | `LendingApproved` | `承認通知` |
+| | `LendingRejected` | `却下通知` |
+| | `ReturnReminder` | `返却リマインド` |
+| `UserRole` | `Member` | `メンバー` |
+| | `Admin` | `管理者` |
+
 > **Breeze のログインフォームのラベル文言（メールアドレス欄・パスワード欄・ログインボタン）は `laravel-lang/lang` の翻訳ファイルが提供する文言をそのまま使う。** バージョンによって訳語が変わりうるため、この docs では固定値を明示しない。Phase 3 でシステムテストを書く前に、Breeze が `resources/views/` 配下に生成した認証ビュー（Livewire スタックでは `resources/views/livewire/pages/auth/` 等）と `lang/` 配下の翻訳ファイル（`lang/ja.json` 等）を実際に Read し、ラベル文言を確認してからテストコードに反映すること（推測で書くと不一致による修正ループが発生する。なお Breeze はビューを vendor ディレクトリではなくプロジェクト直下に publish する）。

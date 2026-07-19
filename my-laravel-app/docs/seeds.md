@@ -49,7 +49,7 @@ Faker でランダム生成ではなく、明示的な書籍を入れる（画�
 | 一般花子 | プロを目指す人のためのRuby入門 | Requested | 申請中 |
 | 一般花子 | 吾輩は猫である | Approved | 借用中、due_on = 7 日後 |
 | 一般次郎 | リファクタリング | Overdue | 延滞中、due_on = 3 日前（Seeder では state を直接 `Overdue` で作成する） |
-| 一般次郎 | こころ | Returned | 完了 |
+| 一般次郎 | こころ | Returned | 返却済み |
 | 一般花子 | ふつうのデザイン | Rejected | 却下サンプル |
 
 ## 通知（3 件）

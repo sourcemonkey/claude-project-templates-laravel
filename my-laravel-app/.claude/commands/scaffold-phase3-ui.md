@@ -124,6 +124,7 @@ $exceptions->render(function (AccessDeniedHttpException $e, Request $request) {
   - Livewire から使う場合、Spatie Query Builder はリクエストのクエリ文字列を読むため、
     コンポーネントの状態を `request()->merge(['filter' => [...]])` で渡してから `for()` を呼ぶ
 - **ページネーション**: Laravel 標準の `->paginate(25)`。件数は `docs/screens.md` の通り 25 件/ページ
+- **enum の画面表示**: `LendingState` / `NotificationKind` / `UserRole` の日本語表記は `docs/screens.md` の「enum の表示ラベル」表が一次情報。**各 Enum クラスに `label(): string` を実装し、ビューからは `{{ $lending->state->label() }}` で参照する**。Blade 側に `@if` の連鎖や配列マッピングを書かない（`team-rules/coding-standards.md` の「Blade に複雑な `@if` の連鎖を書かない」に従う）
 - **借用申請フォーム**: 通常の Blade `<form>` + `@csrf` で `route('lendings.store')` に POST する。`Route::post` 側は `StoreLendingRequest` で `book_id` / `note` をバリデーションする
 - **Livewire**: サーバー往復を伴う動的処理（検索結果の絞り込み、状態フィルタ）に使う。`wire:model.live` で入力と同時に結果を更新する
 - **削除確認**: Livewire コンポーネント内は `wire:confirm="削除しますか？"`。非 Livewire のフォームは Alpine.js で `x-on:submit="confirm('削除しますか？') || $event.preventDefault()"`
