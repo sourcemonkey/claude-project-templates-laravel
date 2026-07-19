@@ -66,6 +66,10 @@
      operations.`）。`mv src/* dst/` は不可。`rsync -a src/ dst/` を使う
    - **`find` の `-exec`**（`Bash(find:*)` では自動許可されない）。
      ファイルを変更する用途に `find` を使わない
+   - **`sed -i` によるインプレース置換**。作業ディレクトリ内のファイルであっても
+     `sed in '<path>' was blocked. For security, Claude Code may only edit files in
+     the allowed working directories for this session` で拒否される。複数ファイルの
+     一括置換は `Edit` ツール（同一ファイル内の複数箇所は `replace_all`）で行う
    - **`git -C <path> ...` と `cd <path> && git ...`**（前者は `Bash(git add *)`
      等の前置パターンに一致せず、後者は「移動先のフックを実行しうる形」として
      ツール自身に拒否される）。git はセッションのカレントディレクトリから
