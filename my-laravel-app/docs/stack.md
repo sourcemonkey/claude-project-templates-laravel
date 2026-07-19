@@ -79,7 +79,7 @@ Laravel 標準の Queue（database ドライバ）・Cache（database/file ド�
 | `docker compose up -d db` | 開発用 DB コンテナ起動 |
 | `docker compose down` | DB コンテナ停止 |
 | `docker compose down -v` | DB を完全初期化（ボリュームごと削除） |
-| `bin/setup` | 初回セットアップ（DB 起動 + composer/npm install + migrate --seed） |
+| `composer run setup` | 初回セットアップ（DB 起動 + composer/npm install + key:generate + migrate --seed + npm run build） |
 | `composer run dev` | 開発サーバー起動（`php artisan serve` + `php artisan pail` + `npm run dev` を並行起動） |
 | `php artisan test` | 単体・機能テスト（Pest） |
 | `php artisan dusk` | システムテスト |
@@ -92,6 +92,17 @@ Laravel 標準の Queue（database ドライバ）・Cache（database/file ド�
 開発サーバーは `laravel new` 既定の `composer.json` の `dev` スクリプト（`composer run dev`）で起動する。concurrently により `php artisan serve` / `php artisan pail` / `npm run dev`（Vite）が並行起動する。**同内容の自前スクリプト（`bin/dev` 等）は作らない**（`composer.json` 側との二重管理になるため）。
 
 ただし `laravel new` の既定生成物には `php artisan queue:listen --tries=1` が含まれる。本プロジェクトでは Queue を使わない方針（前述）に従い、`dev` スクリプトから **`queue:listen` の要素を削除する**。`--names` と `-c`（色指定）からも `queue` に対応する要素を落とすこと（残すと名前と実プロセスの対応がずれる）。
+
+## 初回セットアップ（正規形）
+
+初回セットアップも `laravel new` 既定の `composer.json` の `setup` スクリプト（`composer run setup`）を使う。**同内容の自前スクリプト（`bin/setup` 等）は作らない**（開発サーバー起動と同じ理由で、`composer.json` 側との二重管理になるため）。
+
+既定の生成物に対して本プロジェクトが加える変更は 2 点:
+
+- **先頭に `docker compose up -d --wait db` を足す** — DB を Docker で動かす構成のため、後続の `migrate` の前にコンテナを healthy にする必要がある
+- **`migrate --force` を `migrate --seed --force` にする** — `docs/seeds.md` のサンプルデータ投入まで含めて「クローンして 1 コマンドで動く」状態にする
+
+`npm install --ignore-scripts` は既定のまま残す（`.npmrc` の `ignore-scripts=true` と方針が一致するため）。具体的な JSON は `.claude/commands/scaffold-phase1-skeleton.md` の Step 8 参照。
 
 ## 採用しなかった開発環境ツール（Herd / Sail / Valet）
 

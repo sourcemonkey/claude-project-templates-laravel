@@ -44,7 +44,7 @@ Laravel 本体はホスト側で動かす。
 `my-laravel-app/` ディレクトリで以下を実行:
 
 1. `docker compose up -d --wait db` で DB コンテナを起動する。`--wait` は `compose.yaml` の `healthcheck`（`mysqladmin ping`）が healthy を報告するまでブロックするため、**待機用のシェルループを自前で書かないこと**。
-   - 準備完了の判定条件を `compose.yaml` の 1 箇所に集約でき、`bin/setup` とも同じ書き方に揃う
+   - 準備完了の判定条件を `compose.yaml` の 1 箇所に集約でき、`composer run setup`（Step 8）とも同じ書き方に揃う
    - `for i in $(seq 1 30); do ... done` のようなループは Claude Code の Bash ツールでは変数展開のガード（`Contains simple_expansion`）に掛かって実行できない。スクリプトファイル内に書く場合を除き使わない
    - healthy にならないまま終了した場合、`--wait` は非 0 で終了する。`docker compose logs db` で原因を確認する
 2. `docker compose exec -T db mysql -uapp -papp_password bookkeeper -e "SELECT 1"` で `app` ユーザが `bookkeeper` データベースに実際にアクセスできることを確認する（データベース名を指定せずに `SELECT 1` するだけではログイン可否しか確認できず、後述のボリューム衝突による権限不足を見逃す）
@@ -236,28 +236,45 @@ DB_PASSWORD=app_password
 > Laravel 13 の既定 `mysql` 接続は `'url' => env('DB_URL')`（環境変数名は `DATABASE_URL` ではなく `DB_URL`）を持つが、URL 方式と個別変数方式を混在させると接続設定の優先順位が複雑になりデバッグが困難になる。
 > プロジェクト全体で個別変数方式に統一するため、`DB_URL` は設定しないこと。
 
-### 8. dev スクリプトの調整と bin/setup の作成
+### 8. composer.json の dev / setup スクリプトの調整
 
-開発サーバーの起動は `laravel new` 既定の `composer.json` の `dev` スクリプト（`composer run dev`）をそのまま使う。**自前の起動スクリプト（`bin/dev` 等）は作らない**（`composer.json` 側との二重管理になるため。`docs/stack.md` の「開発サーバー起動（正規形）」参照）。一方、セットアップには Laravel に相当する標準スクリプトが無いため、`bin/setup` を新規作成する。
+開発サーバーの起動もセットアップも、`laravel new` 既定の `composer.json` のスクリプト（`composer run dev` / `composer run setup`）を使う。**自前のラッパースクリプト（`bin/dev`・`bin/setup` 等）は作らない**（`composer.json` 側との二重管理になるため。`docs/stack.md` の「開発サーバー起動（正規形）」「初回セットアップ（正規形）」参照）。既定の生成物を本プロジェクトの方針に合わせて編集する。
 
-先に `composer.json` の `scripts.dev` を確認する。`laravel new` の既定生成物には `php artisan queue:listen ...` を含む concurrently コマンドが入っているため、`docs/stack.md` の規約（Queue ワーカーを起動しない）に従い、この行を削除する（`pail` と `npm run dev` はそのまま残してよい）。`--names` と `-c`（色指定）からも `queue` に対応する要素を落とすこと（残すと名前と実プロセスの対応がずれる）。
+**`scripts.dev`**: `laravel new` の既定生成物には `php artisan queue:listen ...` を含む concurrently コマンドが入っているため、`docs/stack.md` の規約（Queue ワーカーを起動しない）に従い、この行を削除する（`pail` と `npm run dev` はそのまま残してよい）。`--names` と `-c`（色指定）からも `queue` に対応する要素を落とすこと（残すと名前と実プロセスの対応がずれる）。
 
-`bin/setup`（実行権限を付与すること）:
+**`scripts.setup`**: 既定の生成物は次の形になっている（Laravel Framework 13.20.0 で確認）。
 
-```sh
-#!/usr/bin/env bash
-set -euo pipefail
-
-# --wait は compose.yaml の healthcheck が healthy を報告するまでブロックする。
-# 自前のポーリングループより短く、判定条件も compose.yaml 側に一本化できる。
-docker compose up -d --wait db
-
-composer install
-npm install
-php artisan migrate --seed
+```json
+"setup": [
+    "composer install",
+    "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
+    "@php artisan key:generate",
+    "@php artisan migrate --force",
+    "npm install --ignore-scripts",
+    "npm run build"
+]
 ```
 
-`bin/setup` に `chmod +x` で実行権限を付与する。
+本プロジェクトは DB を Docker で動かし、かつ Seeder 込みで「最初から動く状態」にするため、次の 2 点を変更する:
+
+1. **先頭に `docker compose up -d --wait db` を足す** — 後続の `migrate` は DB が healthy でないと失敗するため。`--wait` を使う理由は Step 2 と同じ（判定条件を `compose.yaml` の healthcheck に一本化する）
+2. **`@php artisan migrate --force` を `@php artisan migrate --seed --force` にする** — `docs/seeds.md` のサンプルデータ投入まで含めて一発で完了させるため
+
+変更後:
+
+```json
+"setup": [
+    "docker compose up -d --wait db",
+    "composer install",
+    "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
+    "@php artisan key:generate",
+    "@php artisan migrate --seed --force",
+    "npm install --ignore-scripts",
+    "npm run build"
+]
+```
+
+`npm install --ignore-scripts` は既定のまま残す（`.npmrc` の `ignore-scripts=true` と方針が一致するため）。
 
 ### 9. DB の作成と起動確認
 
@@ -281,13 +298,15 @@ php artisan migrate --seed
 4. `php artisan test` が green であることを確認する。
 5. **起動確認**: `composer run dev` をバックグラウンドで立ち上げ、`curl -sS --retry 15 --retry-all-errors --retry-delay 1 -o /dev/null -w "%{http_code}" http://localhost:8000` が 200 を返すことを確認する。`/login` `/register` も 200 になること。確認後サーバを停止する（`pkill -f "php artisan serve"`、`pkill -f "artisan pail"`、`pkill -f vite`。concurrently に `--kill-others` が付いている場合は最初の 1 つで残りも終了するが、3 つとも実行して確実に止める）。
    - `--retry` を付けるのは、`composer run dev` の起動直後は `php artisan serve` がまだ listen していないため。Bash ツールでは `sleep` を伴う待機ループが書けないので `curl` 側のリトライで吸収する
-6. **`bin/setup` の一気通貫確認**: `bin/setup` を実行し、DB 起動 → `composer install` → `npm install` → `migrate --seed` が最後まで通ることを確認する（Phase 1 時点では Seeder が空なので `Seeding database.` のみ出る）。
+6. **`composer run setup` の一気通貫確認**: `composer run setup` を実行し、DB 起動 → `composer install` → `.env` 用意 → `key:generate` → `migrate --seed` → `npm install` → `npm run build` が最後まで通ることを確認する（Phase 1 時点では Seeder が空なので `Seeding database.` のみ出る）。
+   - `.env` と `APP_KEY` は Step 7 で用意済みのため、`copy('.env.example', '.env')` は skip され `key:generate` は既存のキーを上書きする。**この確認の前に `.env` の内容（DB 接続情報）が `.env.example` と一致していることを確かめる**。一致していないと、既存の `.env` が残る挙動に助けられて「新規クローンでは通らない設定」を見逃す
 7. **git status の確認**: `git status --short` に、`.gitignore` で除外されるべき生成物（`public/hot`, `storage/pail`, `.phpunit.result.cache` 等）が現れていないことを確認する。現れた場合はテンプレートの `.gitignore` 側を補うこと。
 
 ## このフェーズの完了基準
 
 - [ ] `docker compose up -d --wait db` で DB が healthy になる
-- [ ] `bin/setup` で DB 起動 → セットアップ完了まで一気通貫で動く
+- [ ] `composer run setup` で DB 起動 → セットアップ完了まで一気通貫で動く
+- [ ] `composer.json` の `scripts.setup` に `docker compose up -d --wait db` と `migrate --seed --force` が反映済み
 - [ ] `composer run dev` で http://localhost:8000 が 200
 - [ ] `php artisan migrate` が成功（`bookkeeper` データベースに対して）
 - [ ] `bookkeeper_test` データベースが作成済み

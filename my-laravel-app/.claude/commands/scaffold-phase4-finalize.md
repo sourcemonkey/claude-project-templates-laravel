@@ -45,13 +45,17 @@ description: フェーズ4 - Seeder、テスト、README、起動確認で完成
 - 認可: 非 admin が `/admin` にアクセスすると `home` へリダイレクトされる
 - 認可: 他人の貸出詳細にアクセスすると `home` へリダイレクトされる（Policy）
 
-### 3. bin/setup の確認
+### 3. composer run setup の確認
 
-Phase 1 で作成済みの `bin/setup` が以下を一発で実行できることを確認する:
+Phase 1 で調整済みの `composer.json` の `setup` スクリプト（`composer run setup`）が以下を一発で実行できることを確認する:
 
 1. DB コンテナの起動と待機
-2. `composer install` / `npm install`
-3. `php artisan migrate --seed`
+2. `composer install`
+3. `.env` の用意（無ければ `.env.example` からコピー）と `key:generate`
+4. `php artisan migrate --seed --force`
+5. `npm install --ignore-scripts` / `npm run build`
+
+Phase 4 では Seeder が実装済みのため、`docs/seeds.md` のサンプルデータが実際に投入されることまで確認する（Phase 1 の確認では Seeder が空だった）。
 
 ### 4. README.md の作成
 
@@ -59,7 +63,7 @@ Phase 1 で作成済みの `bin/setup` が以下を一発で実行できるこ�
 
 - プロジェクト概要（1-2 段落）
 - 必要なランタイム（`docs/stack.md` の「ランタイム」表からコピー）
-- セットアップ手順（`bin/setup`）
+- セットアップ手順（`composer run setup`）
 - 起動手順（`composer run dev`）
 - テストアカウント表（`docs/seeds.md` の「アカウント」表をコピー）
 - 主要 URL（`/`, `/admin`）
@@ -92,7 +96,7 @@ vendor/bin/pint database/seeders tests
 
 ## このフェーズの完了基準（= プロジェクト全体の完成）
 
-- [ ] `bin/setup` 一発でセットアップ完了
+- [ ] `composer run setup` 一発でセットアップ完了
 - [ ] `composer run dev` で起動して全機能が動作
 - [ ] Seeder で各画面に表示すべきデータが入る
 - [ ] `php artisan test` および `php artisan dusk` が all green

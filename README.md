@@ -152,7 +152,7 @@ Claude Code のセッションで順番にスラッシュコマンドを実行�
 
 ```sh
 cd my-laravel-app
-bin/setup           # MySQL コンテナ起動 + composer/npm install + migrate --seed
+composer run setup  # MySQL コンテナ起動 + composer/npm install + migrate --seed
 composer run dev    # 開発サーバ起動
 ```
 
