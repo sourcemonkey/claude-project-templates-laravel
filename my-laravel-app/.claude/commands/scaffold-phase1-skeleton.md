@@ -116,13 +116,17 @@ git status --short -- .gitignore .npmrc .claude compose.yaml docker .tool-versio
 `docs/stack.md` の「手動追加」列が ✅ のパッケージを追加する:
 
 ```sh
-composer require livewire/livewire spatie/laravel-query-builder blade-ui-kit/blade-heroicons
+composer require spatie/laravel-query-builder blade-ui-kit/blade-heroicons
 composer require --dev larastan/larastan laravel/dusk laravel-lang/lang
 ```
 
-> **注意**: 当初 `enlightn/enlightn` を予定していたが、Laravel 13.x に対応するバージョンが存在しない（`laravel/framework ^9.0|^10.0|^11.0` までのサポート）ため `larastan/larastan`（PHPStan の Laravel 版）に変更した。詳細は `docs/stack.md` 参照。
+> **`livewire/livewire` はここでは入れない。** バージョン制約を持っているのは Breeze
+> （`livewire/volt` 経由）であり、先に入れるとこの時点の最新（v4 系）で解決されたあと
+> Step 6 の `breeze:install livewire` で v3 系へ入れ直される。手順書側でバージョンを
+> ピン留めすると Breeze と制約が二重管理になるため、**Step 6 で Breeze を導入した後に
+> `composer require` する**（`docs/stack.md` の「フレームワーク・主要パッケージ」参照）。
 
-> **補足**: `livewire/livewire` はこの時点では v4 系（`^4.3`）で解決される。Step 6 の `laravel/breeze`（Livewire スタック）導入時に Breeze の制約で v3 系（`^3.6.4`）に解決し直される（`breeze:install livewire` が composer 依存を書き換え、v3.8.2 系に落ちることを確認済み）。`docs/stack.md` の想定（Livewire v3）と一致するため問題ない。
+> **注意**: 当初 `enlightn/enlightn` を予定していたが、Laravel 13.x に対応するバージョンが存在しない（`laravel/framework ^9.0|^10.0|^11.0` までのサポート）ため `larastan/larastan`（PHPStan の Laravel 版）に変更した。詳細は `docs/stack.md` 参照。
 
 > **補足（spatie/laravel-query-builder は v7 系で解決される）**: v7 の `allowedFilters()` / `allowedSorts()` は**可変長引数のみ**を受け取り、v6 までの配列渡しは `TypeError` になる。Phase 3 で使うときの書き方は `docs/architecture.md` の Model セクション参照。
 
@@ -134,6 +138,12 @@ composer require --dev larastan/larastan laravel/dusk laravel-lang/lang
   php artisan breeze:install livewire --no-interaction
   ```
   このコマンドで認証ビュー（ログイン・登録・パスワードリセット等）が Livewire コンポーネントとして生成され、Tailwind CSS と Alpine.js のセットアップも同時に行われる。`npm install` と `npm run build` も内部で実行される。非 TTY 環境では `WARN TTY mode requires /dev/tty to be read/writable.` が出るが処理は継続するので無視してよい。
+
+  Breeze の導入が終わったら、**続けて `livewire/livewire` を明示的な依存として追加する**:
+  ```sh
+  composer require livewire/livewire
+  ```
+  この時点では `livewire/volt` が既に入っているため、composer はその制約下で解決し v3 系が入る（バージョン指定は不要。Step 5 の注記参照）。volt の推移的依存に頼らず直接依存として宣言するのは、本プロジェクトが自前の Livewire コンポーネントを書くため（`docs/stack.md` の「種別: ルート」）。
 
   > **注意（Breeze 生成物は `dashboard` / `profile` ルートに依存する）**: `breeze:install` は `routes/web.php` に `dashboard` と `profile` の 2 ルートを追加し、生成したビュー・Controller・Feature テストがそれを参照する。一方 `docs/api-spec.md` の `routes/web.php` にはこの 2 つが無い。Phase 3 でルーティングを仕様通りに置き換える際、参照側の追従が必須になる（詳細は Phase 3 手順書と `docs/api-spec.md` の注記参照）。Phase 1 の時点では Breeze の生成物をそのまま残しておくこと。
 - **laravel-lang（日本語化）**:
