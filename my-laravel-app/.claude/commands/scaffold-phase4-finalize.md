@@ -24,7 +24,9 @@ description: フェーズ4 - Seeder、テスト、README、起動確認で完成
 
 #### 2-0. カバレッジ計測の確認（テストを書く前に必ず実施）
 
-`docs/stack.md` の「テストカバレッジ設定（正規形）」の通りに `phpunit.xml` を設定する。設定後、`php artisan test --coverage-html coverage` を一度実行して `coverage/index.html` が生成され、かつカバレッジが 0% でないことを確認してから次のステップへ進む。PCOV 拡張が無効な場合は `php -m | grep pcov` で確認し、有効化を促す。
+**まず `php -m | grep pcov` でカバレッジ計測ドライバを確認する。出力が空の場合はここで中断し、`docs/stack.md` の「テストカバレッジ設定（正規形）」の導入手順を提示してユーザーに導入を依頼する**（PHP ランタイム全体に影響する変更のため、Claude Code の単独判断で `pecl install` や php.ini の編集を行わない）。カバレッジ 80% 以上は Phase 4 の完了基準であり、ドライバ無しでは達成を確認できないため、先にテストを書き進めても手戻りになる。
+
+ドライバを確認できたら、`docs/stack.md` の「テストカバレッジ設定（正規形）」の通りに `phpunit.xml` を設定する。設定後、`php artisan test --coverage-html coverage` を一度実行して `coverage/index.html` が生成され、かつカバレッジが 0% でないことを確認してから次のステップへ進む。
 
 #### 2-1. テストシナリオの実装
 

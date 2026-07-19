@@ -40,7 +40,7 @@ Alpine.js は Livewire に同梱される（`livewire/livewire` インストー�
 | `pestphp/pest` | テストフレームワーク | ✅（`--pest` オプションで導入） | `require-dev` |
 | `pestphp/pest-plugin-laravel` | Pest の Laravel 統合 | ✅（`--pest` に同梱） | `require-dev` |
 | `laravel/dusk` | システムテスト（Capybara + Selenium 相当） | ✅ | `require-dev` |
-| `pcov/clobber` または php.ini の `pcov` 拡張 | テストカバレッジ計測ドライバ | ✅（拡張として） | ローカル環境 |
+| `pcov` 拡張（php.ini で有効化） | テストカバレッジ計測ドライバ | ✅（composer ではなく PHP 拡張として） | ローカル環境 |
 
 `factory_bot` 相当は Laravel 標準の Model Factory（`database/factories/`）、`faker` 相当は `fakerphp/faker`（Laravel の依存関係に標準で含まれる）を使う。追加インストール不要。
 
@@ -194,6 +194,12 @@ MAIL_FROM_ADDRESS=no-reply@example.local
 
 カバレッジ計測には PCOV を使う（Xdebug よりテスト実行が高速なため）。`phpunit.xml` に以下を設定する。
 
+> **前提（composer パッケージでは代替できない）**: PHP のカバレッジ計測には実行トレースを行う
+> **PHP 拡張が必須**で、選択肢は実質 PCOV か Xdebug の 2 つ（phpdbg は php-code-coverage 側で
+> サポート廃止済み）。composer パッケージの `pcov/clobber` は PHPUnit 5〜7 向けの互換シムであり
+> （最終リリース 2019 年、作者自身が PHPUnit 8 以降では不要と明記）、本プロジェクトの PHPUnit では
+> **導入してはならない**。
+
 ```xml
 <coverage>
     <report>
@@ -214,3 +220,14 @@ php artisan test --coverage-html coverage
 ```
 
 PCOV 拡張がローカル環境にインストールされている前提。`php -m | grep pcov` で確認できる。
+
+未導入の場合の導入手順（**PHP ランタイム全体に影響する変更のため、必ず事前にユーザーへ確認する**）:
+
+```sh
+pecl install pcov
+# php --ini で表示される conf.d 配下の ini に extension=pcov.so を追記する
+php -m | grep pcov   # 追記後、pcov が出れば有効
+```
+
+バージョンマネージャ（asdf / mise 等）で PHP を管理している場合、拡張はその PHP
+インストールに紐づく。**PHP を入れ直すと拡張も失われる**ため、再導入が必要になる。
