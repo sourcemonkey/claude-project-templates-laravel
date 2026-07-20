@@ -37,7 +37,6 @@ Feature テストが壊れる**。次を必ず行うこと。
    - `resources/views/livewire/pages/auth/register.blade.php`
    - `resources/views/livewire/pages/auth/confirm-password.blade.php`
    - `resources/views/livewire/pages/auth/verify-email.blade.php`
-   - `resources/views/livewire/profile/update-profile-information-form.blade.php`
    - `resources/views/livewire/layout/navigation.blade.php`
    - `app/Http/Controllers/Auth/VerifyEmailController.php`
 
@@ -54,14 +53,18 @@ Feature テストが壊れる**。次を必ず行うこと。
 3. プロフィール画面を仕様に合わせる:
    - Breeze の `Route::view('profile', 'profile')` を廃し、`GET /profile/edit`（`ProfileController@edit`）にする
    - name / email の更新は Breeze の Volt（`profile.update-profile-information-form`）ではなく
-     仕様の `PATCH /profile`（`ProfileController@update` + `UpdateProfileRequest`）で行う
+     仕様の `PATCH /profile`（`ProfileController@update` + `UpdateProfileRequest`）で行う。
+     当該 Volt はどの画面からも参照されなくなるため、手順 4 で**削除する**
    - パスワード変更・退会の Volt コンポーネントは Breeze の生成物をそのまま `/profile/edit` に載せる
    - `tests/Feature/ProfileTest.php` をこの構成に合わせて書き換える
      （`assertSeeVolt('profile.update-profile-information-form')` の行は、当該 Volt を
      画面から外すため**削除する**。残すと `profile page is displayed` が失敗する）
 4. 不要になったビューを削除する: `resources/views/dashboard.blade.php`,
    `resources/views/profile.blade.php`, `resources/views/welcome.blade.php`,
-   `resources/views/livewire/welcome/`
+   `resources/views/livewire/welcome/`,
+   `resources/views/livewire/profile/update-profile-information-form.blade.php`（手順 3 で
+   画面から外れて未使用になるため。`resources/views/livewire/profile/` にはパスワード変更・
+   退会の 2 つだけが残る）
 
    > 削除は `git clean -fdxq <path>` で行う（いずれも `laravel new` / `breeze:install` が
    > 生成した git 未追跡ファイルであり、追跡ファイルを巻き込む事故が起きない）。

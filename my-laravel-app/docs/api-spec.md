@@ -50,10 +50,10 @@ Route::middleware('auth')->group(function () {
 
 > **重要（Breeze 生成物との差分）**: 上記の `routes/web.php` は Laravel Breeze が Phase 1 で生成する `dashboard` / `profile` の 2 ルートを**持たない**。Breeze の生成物はこの 2 つを前提にしているため、Phase 3 では次の追従が必須になる（放置すると `route('dashboard')` が `RouteNotFoundException` になり、Phase 1 で green だった Breeze の Feature テストが壊れる）。
 >
-> - `route('dashboard')` を参照する Breeze 生成物（`resources/views/livewire/pages/auth/*.blade.php`、`resources/views/livewire/profile/update-profile-information-form.blade.php`、`resources/views/livewire/layout/navigation.blade.php`、`app/Http/Controllers/Auth/VerifyEmailController.php`）を **`route('home')` に置き換える**。ログイン・登録・メール確認後の遷移先は `/` とする
+> - `route('dashboard')` を参照する Breeze 生成物（`resources/views/livewire/pages/auth/*.blade.php`、`resources/views/livewire/layout/navigation.blade.php`、`app/Http/Controllers/Auth/VerifyEmailController.php`）を **`route('home')` に置き換える**。ログイン・登録・メール確認後の遷移先は `/` とする
 > - Breeze の Feature テスト（`tests/Feature/Auth/AuthenticationTest.php`・`RegistrationTest.php`・`EmailVerificationTest.php`・`PasswordConfirmationTest.php`）の `dashboard` / `/dashboard` への assert も同様に `home` / `/` へ更新する
 > - プロフィール画面は Breeze の `Route::view('profile', 'profile')` を廃し、本仕様の `GET /profile/edit`（`ProfileController@edit`）に置き換える。name / email の更新は Breeze の `profile.update-profile-information-form`（Volt）ではなく本仕様の `PATCH /profile` で行い、`tests/Feature/ProfileTest.php` をそれに合わせて書き換える。パスワード変更・退会の Volt コンポーネントは Breeze の生成物をそのまま `/profile/edit` に載せる
-> - 不要になった `resources/views/dashboard.blade.php` / `profile.blade.php` / `welcome.blade.php` は削除する
+> - 不要になった `resources/views/dashboard.blade.php` / `profile.blade.php` / `welcome.blade.php`、および画面から外れて未使用になる `resources/views/livewire/profile/update-profile-information-form.blade.php` は削除する
 
 ## エンドポイント詳細
 
