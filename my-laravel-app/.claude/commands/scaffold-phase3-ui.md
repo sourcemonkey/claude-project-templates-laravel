@@ -350,13 +350,9 @@ $browser->press('削除')
 - 管理者が申請を承認できる
 - 非 admin が `/admin` にアクセスすると `home` へリダイレクトされる（`error` フラッシュが表示される）
 
-> **承認シナリオでは書籍の在庫を明示すること。** `Lending::factory()` が連鎖生成する
-> `Book::factory()` の `available_copies` は 0 になりうるため、そのまま承認すると
-> `ApproveLendingAction` の在庫チェックに弾かれ、確率的に落ちるテストになる。
-> `Book::factory()->create(['total_copies' => 2, 'available_copies' => 2])` のように
-> 在庫を明示した書籍を作り、`Lending::factory()->create(['book_id' => $book->id])` とする。
-> （`BookFactory` の既定値自体を見直すかは `patches/issue-phase3-book-factory-zero-stock.md`
-> で保留中。）
+> `Book::factory()` の既定は在庫満杯（Phase 2 手順書の「ファクトリ」節参照）のため、
+> `Lending::factory()` が連鎖生成した書籍はそのまま承認できる。逆に在庫切れ（承認失敗）を
+> 検証するテストでは `Book::factory()->outOfStock()` を明示すること。
 
 `php artisan dusk` で確認。あわせて Feature テスト（`php artisan test`）でも
 主要フロー（借用申請の業務ルール、認可、ロール変更、通知の既読化）を押さえること。

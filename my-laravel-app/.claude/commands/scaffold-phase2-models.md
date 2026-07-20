@@ -190,7 +190,7 @@ php artisan migrate
 
 - `User` ファクトリのメールは `@test.local` ドメインにする（Breeze 標準ファクトリの既定ドメインとテスト実行時に衝突しないようにするため）。`role` を扱う `admin()` state も追加する
   - **`definition()` にも `'role' => UserRole::Member` を明示すること**。マイグレーションの `default(0)` に任せると、`User::factory()->create()` が返す**インスタンスに `role` 属性が載らない**（DB 側の既定値は INSERT 後に再取得しない限りモデルへ反映されない）。この状態で `$user->role` を読むと enum キャストが効かず `null` が返り、後述のモデルテスト「enum キャストの確認」が `Failed asserting that null is identical to an object of class "App\Enums\UserRole".` で落ちる
-- **`Book` ファクトリは `available_copies <= total_copies` を必ず満たすように生成すること**。`fake()->numberBetween()` を 2 つ独立に呼ぶと CHECK 制約違反で `QueryException` になり、`Book::factory()` に依存する全テストが不安定になる。先に `total_copies` を決め、`available_copies` はその範囲内で採る
+- **`Book` ファクトリの既定は「在庫満杯」（`available_copies` = `total_copies`）にすること**。`fake()->numberBetween()` を 2 つ独立に呼ぶと CHECK 制約違反で `QueryException` になり、`available_copies` に 0 を許すと `Lending::factory()` が連鎖生成した書籍の承認が在庫チェックに弾かれて**確率的に落ちるテスト**になる。ファクトリの既定は「素直に使って通る値」とし、在庫切れの検証用に `outOfStock()` state（`available_copies = 0`）を用意して異常系はテスト側で明示する
 - `Lending` ファクトリには state ごとの state メソッド（`approved()`, `overdue()`, `returned()`, `rejected()`）を用意しておくと、モデルテストと Phase 4 の Seeder の両方で使える
 
 ### モデルテスト
