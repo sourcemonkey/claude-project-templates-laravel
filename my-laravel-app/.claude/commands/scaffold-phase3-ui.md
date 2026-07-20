@@ -137,6 +137,14 @@ $exceptions->render(function (AccessDeniedHttpException $e, Request $request) {
   **クラスコンポーネント**（`app/View/Components/AppLayout.php` / `GuestLayout.php`）として提供している。
   `x-admin-layout` を使うには `app/View/Components/AdminLayout.php` を同じ形で作ること
   （`resources/views/layouts/admin.blade.php` を置くだけでは解決されない）
+- **`layouts/admin.blade.php` には `@livewireScripts` を明示的に書くこと**。Livewire v3 は
+  **そのページが Livewire コンポーネントを実際に描画したときだけ** `livewire.js`（Alpine を
+  同梱する）を注入する。管理レイアウトを使う画面には Livewire コンポーネントを持たないもの
+  （蔵書一覧・カテゴリ・タグ）があり、そこでは **Alpine が読み込まれず `x-on:submit` の
+  削除確認ダイアログがエラーも出さずに無効化される**（確認なしで削除が実行される）。
+  `resources/js/app.js` は `laravel new` の生成物では実質空で Alpine を import していないため、
+  この経路での補完も効かない。`layouts/app.blade.php` は `<livewire:layout.navigation />` を
+  含むため自動注入が働き、この問題は起きない。詳細は `docs/stack.md` の Alpine の項参照
 - **フォームの部分ビュー（`_form.blade.php` 等）に `@props` を使わないこと**。`@props` は
   Blade コンポーネント（`x-` 記法で解決されるもの）専用のディレクティブで、`@include` した
   ビューでは機能しない。既定値が要る変数は `@php($book = $book ?? null)` のように書く
@@ -267,9 +275,20 @@ Dusk は `.env.dusk.local` があればそれを読む。無いと `.env` がそ
 
 ### `signInAs` ヘルパー
 
-Dusk でログイン後の画面操作を行う際、リダイレクト完了を待たずに次の操作を行うと断続的に失敗するテストになる。各テストファイルの関数として以下を必ず含めること:
+Dusk でログイン後の画面操作を行う際、リダイレクト完了を待たずに次の操作を行うと断続的に失敗するテストになる。次のヘルパーを用意すること。
+
+> **置き場所は `tests/Pest.php` の「Functions」節**（`laravel new --pest` が生成する
+> コメントブロックのある箇所）。**各 Dusk テストファイルに同じ関数を書いてはならない。**
+> Pest はテストファイルをすべて読み込むため、2 つ以上のファイルで同じ関数を宣言すると
+> ```
+> Fatal error: Cannot redeclare function signInAs() (previously declared in
+> .../tests/Browser/AdminBookCrudTest.php:9) in .../tests/Browser/LendingFlowTest.php on line 15
+> ```
+> で `php artisan dusk` 全体が起動すらしなくなる。Dusk のテストファイルは Phase 4 で
+> 複数になる（借用フロー・返却・書籍 CRUD）ため、最初から共有の置き場に書くこと。
 
 ```php
+// tests/Pest.php の「Functions」節
 function signInAs(Browser $browser, User $user): void
 {
     $browser->logout() // 前テストのセッションを必ず切る（下記の注意参照）
@@ -279,7 +298,22 @@ function signInAs(Browser $browser, User $user): void
         ->press('ログイン') // 文言は docs/screens.md の注記に従い実ファイルを Read して確認
         ->waitForLocation('/'); // リダイレクト完了を待つ
 }
+
+/** signInAs が使う password123 を設定済みのユーザーを作る */
+function makeUser(bool $admin = false): User
+{
+    $factory = User::factory();
+
+    if ($admin) {
+        $factory = $factory->admin();
+    }
+
+    return $factory->create(['password' => Hash::make('password123')]);
+}
 ```
+
+`tests/Pest.php` の冒頭に `use App\Models\User;` / `use Illuminate\Support\Facades\Hash;` /
+`use Laravel\Dusk\Browser;` を足すこと。
 
 > **重要（先頭の `logout()` は省略不可）**: Dusk はブラウザインスタンスをテスト間で再利用する。
 > 前のテストのログインセッションが残ったまま `/login` を開くと認証済みとしてリダイレクトされ、
@@ -288,8 +322,24 @@ function signInAs(Browser $browser, User $user): void
 > で落ちる。単体で走らせると通り、まとめて走らせると落ちるため原因を掴みにくい。
 
 > **補足（パスワード）**: `UserFactory` の既定パスワードは `password` である。
-> `signInAs` が `password123` を使うなら、テスト側で
-> `User::factory()->create(['password' => Hash::make('password123')])` のように明示すること。
+> `signInAs` が `password123` を使うため、上記 `makeUser()` のように
+> `User::factory()->create(['password' => Hash::make('password123')])` と明示すること。
+
+### confirm ダイアログを伴う操作
+
+削除ボタンのように `confirm()` を挟む操作は、`acceptDialog()` の**前に
+`waitForDialog()` を挟む**こと。`press()` はクリック直後に戻るため、
+ダイアログ生成前に `acceptDialog()` を呼ぶと `no such alert` で落ちる。
+
+```php
+$browser->press('削除')
+    ->waitForDialog()
+    ->acceptDialog()
+    ->waitForText('書籍を削除しました');
+```
+
+なお、管理画面でダイアログがそもそも出ない場合は Alpine が読み込まれていない。
+「画面実装の注意」の `@livewireScripts` の項を確認すること。
 
 ### テストシナリオ
 
@@ -299,6 +349,14 @@ function signInAs(Browser $browser, User $user): void
 - 蔵書詳細から借用申請ができる
 - 管理者が申請を承認できる
 - 非 admin が `/admin` にアクセスすると `home` へリダイレクトされる（`error` フラッシュが表示される）
+
+> **承認シナリオでは書籍の在庫を明示すること。** `Lending::factory()` が連鎖生成する
+> `Book::factory()` の `available_copies` は 0 になりうるため、そのまま承認すると
+> `ApproveLendingAction` の在庫チェックに弾かれ、確率的に落ちるテストになる。
+> `Book::factory()->create(['total_copies' => 2, 'available_copies' => 2])` のように
+> 在庫を明示した書籍を作り、`Lending::factory()->create(['book_id' => $book->id])` とする。
+> （`BookFactory` の既定値自体を見直すかは `patches/issue-phase3-book-factory-zero-stock.md`
+> で保留中。）
 
 `php artisan dusk` で確認。あわせて Feature テスト（`php artisan test`）でも
 主要フロー（借用申請の業務ルール、認可、ロール変更、通知の既読化）を押さえること。
@@ -313,6 +371,7 @@ Blade 側の null 参照を Dusk より早く・安く検出できる。
 - [ ] 未ログインで `GET /` が 200（nav の `@auth` ガード漏れがない）
 - [ ] Policy が全リソースに存在
 - [ ] レイアウト `layouts/app.blade.php` / `layouts/admin.blade.php` が存在し、`x-admin-layout` が解決できる
+- [ ] `layouts/admin.blade.php` に `@livewireScripts` があり、管理画面の削除確認ダイアログが実際に出る
 - [ ] `docs/architecture.md` の「Action 一覧」の 4 クラスが `app/Actions/` に存在
 - [ ] Breeze 生成物の `dashboard` / `profile` 参照が仕様に追従済み（`route('dashboard')` が残っていない）
 - [ ] `php artisan test` が all green（Phase 1 の Breeze 認証テストを含む）

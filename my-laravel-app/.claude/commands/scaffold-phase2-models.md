@@ -93,6 +93,15 @@ enum UserRole: int
 Enum クラスは `app/Enums/` に置く。値は `docs/db-schema.md` の各テーブル定義に明示されているものを使い、**推測で採番しない**（`UserRole` / `LendingState` / `NotificationKind` の 3 つ）。
 
 > **注意（`audit_logs` の `$timestamps`）**: `audit_logs` は不変レコードで `updated_at` を持たない（`created_at` のみ）。`AuditLog` モデルに `public $timestamps = false;` を設定すること。設定しないと Eloquent が保存時に `updated_at` を書こうとして「Unknown column 'updated_at'」で失敗する。`created_at` はマイグレーションの `useCurrent()` により DB 側で設定される。`changes_json` は `'changes_json' => 'array'` でキャストする。
+>
+> **`created_at` は生成直後のインスタンスに載らない。** `useCurrent()` が生成するのは DB 側の
+> `DEFAULT CURRENT_TIMESTAMP` であり、`$timestamps = false` の Eloquent は `created_at` を
+> 自分で設定せず、INSERT 後の再取得も行わない。そのため
+> `AuditLog::factory()->create()->created_at` は **`null` を返す**。値を読むときは
+> `->fresh()` を挟むこと（`$log->fresh()->created_at`）。後述のモデルテストで
+> `created_at` の存在を検証する場合、`fresh()` を忘れると
+> `Expecting null not to be null.` で落ちる。これは `User::$role` を DB の `default(0)` に
+> 任せた場合と同じ理屈であり、後述のファクトリの注意と対になっている。
 
 ジェネレータの自動生成だけでは制約が足りないので、以下を必ず確認:
 
