@@ -34,7 +34,20 @@
 | `spatie/laravel-query-builder` | 検索・絞り込み（Ransack 相当） | ✅ | ルート |
 | `blade-ui-kit/blade-heroicons` | アイコン（Heroicons の Blade コンポーネント） | ✅ | ルート |
 
-Alpine.js は Livewire に同梱される（`livewire/livewire` インストール時に自動的に読み込まれる）ため、別途 npm パッケージとしての追加は不要。
+Alpine.js は Livewire に同梱されるため、別途 npm パッケージとしての追加は不要。
+
+> **ただし「自動的に読み込まれる」のはページ単位の条件付きである。** Livewire v3 は
+> **そのページが Livewire コンポーネントを実際に描画したときだけ** `livewire.js`
+> （Alpine を同梱する）をレスポンスへ注入する。Livewire コンポーネントを 1 つも
+> 持たないレイアウト・画面では Alpine が読み込まれず、`x-data` / `x-on:submit` が
+> **エラーも出さずに無効化される**。削除確認（`x-on:submit="confirm(...) || ..."`）が
+> 効かなくなり、確認なしで削除が実行される。
+>
+> `resources/js/app.js` は `laravel new` の生成物では実質空で Alpine を import して
+> いないため、この経路での補完も効かない。**Livewire コンポーネントを持たない画面が
+> ありうるレイアウトには `@livewireScripts` を明示的に書くこと**（本プロジェクトでは
+> `resources/views/layouts/admin.blade.php` が該当する。`layouts/app.blade.php` は
+> `<livewire:layout.navigation />` を含むため自動注入が働く）。
 
 > **Livewire は v3 系を使う。** 上流の最新は v4 系だが、`breeze:install livewire` が
 > `composer require livewire/livewire:^3.6.4` を実行して制約を書き込むため
