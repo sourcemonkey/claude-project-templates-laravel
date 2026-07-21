@@ -130,7 +130,7 @@ $exceptions->render(function (AccessDeniedHttpException $e, Request $request) {
 - **enum の画面表示**: `LendingState` / `NotificationKind` / `UserRole` の日本語表記は `docs/screens.md` の「enum の表示ラベル」表が一次情報。**各 Enum クラスに `label(): string` を実装し、ビューからは `{{ $lending->state->label() }}` で参照する**。Blade 側に `@if` の連鎖や配列マッピングを書かない（`team-rules/coding-standards.md` の「Blade に複雑な `@if` の連鎖を書かない」に従う）
 - **借用申請フォーム**: 通常の Blade `<form>` + `@csrf` で `route('lendings.store')` に POST する。`Route::post` 側は `StoreLendingRequest` で `book_id` / `note` をバリデーションする
 - **Livewire**: サーバー往復を伴う動的処理（検索結果の絞り込み、状態フィルタ）に使う。`wire:model.live` で入力と同時に結果を更新する
-- **削除確認**: Livewire コンポーネント内は `wire:confirm="削除しますか？"`。非 Livewire のフォームは Alpine.js で `x-on:submit="confirm('削除しますか？') || $event.preventDefault()"`
+- **削除確認**: Livewire コンポーネント内は `wire:confirm="削除しますか？"`。非 Livewire のフォームは Alpine.js で `<form x-data x-on:submit="confirm('削除しますか？') || $event.preventDefault()">`。**`x-data`（空でよい）を必ず付けること**。Alpine v3 は `x-data` スコープ内の要素しか `x-on:` ディレクティブを処理しないため、`x-data` の無い素の `<form x-on:submit>` は**エラーも出さず無視され、確認なしで削除・却下・返却が実行される**。これは `livewire.js` が読み込まれ Alpine が起動していても起きる（Alpine 読み込みの有無とは別問題。詳細は `docs/stack.md` の Alpine の項参照）。ナビの `x-data="{ open: false }"` は nav にスコープされるため外側のフォームには効かない
 - **フラッシュ**: `layouts/app.blade.php` の上部で `session('status')` / `session('error')` を Tailwind の色で表示
 - **エラー表示**: フォーム部分の Blade コンポーネントを作成し、`$errors->first('field')` を表示
 - **管理者レイアウトのコンポーネント登録**: Breeze は `x-app-layout` / `x-guest-layout` を
@@ -145,6 +145,8 @@ $exceptions->render(function (AccessDeniedHttpException $e, Request $request) {
   `resources/js/app.js` は `laravel new` の生成物では実質空で Alpine を import していないため、
   この経路での補完も効かない。`layouts/app.blade.php` は `<livewire:layout.navigation />` を
   含むため自動注入が働き、この問題は起きない。詳細は `docs/stack.md` の Alpine の項参照
+  （ただし Alpine が読み込まれても、前述のとおりフォーム側に `x-data` が無ければ発火しない。
+  両方を満たすこと）
 - **フォームの部分ビュー（`_form.blade.php` 等）に `@props` を使わないこと**。`@props` は
   Blade コンポーネント（`x-` 記法で解決されるもの）専用のディレクティブで、`@include` した
   ビューでは機能しない。既定値が要る変数は `@php($book = $book ?? null)` のように書く
@@ -338,8 +340,16 @@ $browser->press('削除')
     ->waitForText('書籍を削除しました');
 ```
 
-なお、管理画面でダイアログがそもそも出ない場合は Alpine が読み込まれていない。
-「画面実装の注意」の `@livewireScripts` の項を確認すること。
+なお、ダイアログがそもそも出ず `waitForDialog()` が
+`Waited 5 seconds for dialog.` で落ちる場合、原因は 2 つある。順に確認すること:
+
+1. **フォームに `x-data` が無い**（`livewire.js` は読み込まれているのにダイアログが出ない
+   場合はこれ）。Alpine v3 は `x-data` スコープ内の要素しか `x-on:` を処理しないため、
+   `<form x-on:submit="confirm(...)">` は `x-data` が無いと発火しない。`<form x-data
+   x-on:submit="...">` にする（「画面実装の注意」の削除確認の項参照）。`layouts/app.blade.php`
+   を使うメンバー画面（返却フォーム等）でも起きる
+2. **そもそも Alpine が読み込まれていない**（管理画面で顕著）。「画面実装の注意」の
+   `@livewireScripts` の項を確認すること
 
 ### テストシナリオ
 
