@@ -49,6 +49,17 @@ Alpine.js は Livewire に同梱されるため、別途 npm パッケージと�
 > `resources/views/layouts/admin.blade.php` が該当する。`layouts/app.blade.php` は
 > `<livewire:layout.navigation />` を含むため自動注入が働く）。
 
+> **Alpine の読み込みとは別に、`x-on:` を書くフォームには `x-data`（空でよい）が要る。**
+> Alpine v3 は `x-data` スコープ内の要素しか `x-on:` / `x-bind:` 等のディレクティブを
+> 処理しない。`livewire.js` が読み込まれ Alpine が起動していても、`x-data` の無い素の
+> `<form x-on:submit="confirm(...) || $event.preventDefault()">` は**エラーも出さず無視され、
+> 確認ダイアログが出ないまま削除・却下・返却が実行される**。削除確認等のフォームは
+> 必ず `<form x-data x-on:submit="...">` の形にすること（`layouts/app.blade.php` を使う
+> `lendings/show` の返却フォームでも、`@livewireScripts` を持つ管理画面でも、いずれも
+> `x-data` が無ければ発火しない。Phase 3 のトライアルで Dusk が
+> `Waited 5 seconds for dialog.` で失敗して判明）。ナビの `x-data="{ open: false }"` は
+> nav 要素にスコープされるため、その外側にあるフォームには効かない。
+
 > **Livewire は v3 系を使う。** 上流の最新は v4 系だが、`breeze:install livewire` が
 > `composer require livewire/livewire:^3.6.4` を実行して制約を書き込むため
 > （`vendor/laravel/breeze/src/Console/InstallsLivewireStack.php`）。**これは意図した状態であり、

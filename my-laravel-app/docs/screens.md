@@ -90,7 +90,7 @@ URL プレフィックス: `/admin/`
 
 - 一覧画面はページネーション（Laravel 標準の `paginate(25)`）。
 - 検索フォームは Spatie Query Builder（`QueryBuilder::for(Model::class)->allowedFilters([...])`）。
-- 削除は確認ダイアログ必須。Livewire コンポーネント内は `wire:confirm="削除しますか？"`（Livewire v3 標準機能）、非 Livewire のフォームは Alpine.js で `x-on:submit="confirm('削除しますか？') || $event.preventDefault()"` のように実装する。
+- 削除は確認ダイアログ必須。Livewire コンポーネント内は `wire:confirm="削除しますか？"`（Livewire v3 標準機能）、非 Livewire のフォームは Alpine.js で `<form x-data x-on:submit="confirm('削除しますか？') || $event.preventDefault()">` のように実装する。**`x-data` を必ず付けること**（空でよい）。Alpine v3 は `x-data` スコープ内の要素しか `x-on:` ディレクティブを処理しないため、`x-data` の無い素の `<form x-on:submit>` は Alpine に**エラーも出さず無視され、確認なしで削除が実行される**。これは Livewire 経由で Alpine が読み込まれていても起きる（Alpine の読み込み有無とは別問題）。
 - フラッシュメッセージは画面上部、Tailwind の色でステータス表示（`session('status')` = 緑、`session('error')` = 赤）。
 - フォームエラーは入力欄の直下に赤字で表示（`$errors->first('field')`）。
 
