@@ -80,7 +80,15 @@ vendor/bin/pint database/seeders tests
 
 順番に実行:
 
-1. `php artisan migrate:fresh --seed` ですべて再構築できることを確認
+1. **クリーン再構築の確認**: `docker compose down -v` で DB をボリュームごと破棄し、
+   `composer run setup` が新規クローン相当の状態から最後まで通ることを確認する
+   （DB 起動 → `migrate --seed` → `npm run build` まで一気通貫）。続けて
+   `php artisan db:seed` をもう一度実行し、冪等（レコード数が増えない）であることも確認する
+
+   > `php artisan migrate:fresh --seed` は使わない。破壊的コマンドとして
+   > `.claude/settings.json` の deny リスト（ルート CLAUDE.md 厳守事項 #2 に対応）で
+   > 拒否され、ヘッドレスでは確認応答ができず実行不能。マイグレーションのクリーン適用
+   > 自体は Feature テストの `RefreshDatabase` がテスト DB で毎回検証している
 2. `php artisan test` が all green
 3. `coverage/index.html` を確認し、行カバレッジが 80% 以上
 4. `php artisan dusk` が all green
