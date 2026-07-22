@@ -175,6 +175,27 @@ audit_logs (独立、polymorphic 相当のカラム構成)
 | `Category has many Book` | 書籍が紐づくカテゴリは削除不可 | マイグレーションで `->restrictOnDelete()` |
 | `User has many AuditLog` | 操作者が削除されてもログは残し、`user_id` を NULL にする | マイグレーションで `->nullOnDelete()`（`user_id` は nullable） |
 
+> **「削除不可」の画面挙動（実装ブレ防止のため固定）**: `restrictOnDelete` の関連レコードが
+> ある状態で削除しようとすると DB が `QueryException`（`errno 1451`）を投げる。**Controller の
+> `destroy` では、この例外を `try/catch` で捕まえずに、削除前に関連の有無を `exists()` で
+> 事前チェックする**こと。
+> ```php
+> if ($book->lendings()->exists()) {
+>     return back()->with('error', '貸出履歴があるため削除できません。');
+> }
+> $book->delete();
+> ```
+> `try/catch (QueryException)` で書くと、larastan が「例外を投げうる処理が catch 節の外に無い」
+> と見て **Dead catch（`Dead catch - QueryException is never thrown in the try block.`）** で
+> `phpstan analyse` を落とす（Eloquent の `delete()` の型が例外送出を宣言しないため）。事前
+> チェックならこれを踏まない。フラッシュ文言は下表で固定する。
+>
+> | 削除対象（関連レコードあり） | フラッシュ文言 |
+> |---|---|
+> | ユーザー（貸出履歴あり） | `貸出履歴があるため削除できません。` |
+> | 書籍（貸出履歴あり） | `貸出履歴があるため削除できません。` |
+> | カテゴリ（書籍が紐づく） | `書籍が登録されているため削除できません。` |
+
 ## テスト teardown でのレコード削除順序
 
 FK 制約を持つテーブルは依存先を後に削除する（ER 図の矢印の逆順）:
