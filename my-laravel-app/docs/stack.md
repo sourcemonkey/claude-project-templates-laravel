@@ -232,7 +232,9 @@ MAIL_FROM_ADDRESS=no-reply@example.local
 | アプリ用ユーザ | `app` / `app_password` |
 | root ユーザ | `root` / `root_password` |
 
-`bookkeeper_test` は Phase 1 で手動作成する（Laravel の `migrate` はデータベース自体の作成は行わないため）。
+Laravel の `migrate` はデータベース自体の作成を行わないため、**両データベースとも DB コンテナの初回起動時に作成する**。`bookkeeper` は `compose.yaml` の `MYSQL_DATABASE`、`bookkeeper_test` は `docker/mysql/initdb/01-create-test-database.sql`（`docker-entrypoint-initdb.d` にマウント）が担当する。これにより、クローン直後に `composer run setup` を実行するだけで `php artisan test` まで動く。
+
+> `docker-entrypoint-initdb.d` のスクリプトは**データディレクトリが空のときにしか実行されない**。init スクリプトを追加・変更した場合は `docker compose down -v` でボリュームを作り直さないと反映されない。
 
 ## MySQL 固有の注意（実装時）
 

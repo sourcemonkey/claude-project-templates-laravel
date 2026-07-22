@@ -13,6 +13,8 @@ services:
     volumes:
       - db-data:/var/lib/mysql
       - ./docker/mysql/conf.d:/etc/mysql/conf.d:ro
+      # bookkeeper_test を開発用 DB と同時に作る（データディレクトリが空のときのみ実行される）
+      - ./docker/mysql/initdb:/docker-entrypoint-initdb.d:ro
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_0900_ai_ci

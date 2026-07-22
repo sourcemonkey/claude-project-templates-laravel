@@ -311,11 +311,17 @@ DB_PASSWORD=app_password
 
 ### 9. DB の作成と起動確認
 
-1. **データベースの作成**（`bookkeeper` は `compose.yaml` の `MYSQL_DATABASE` で自動作成済み。`bookkeeper_test` を手動作成する）:
+1. **データベースの確認**（`bookkeeper` は `compose.yaml` の `MYSQL_DATABASE` が、`bookkeeper_test` は `docker/mysql/initdb/01-create-test-database.sql` がそれぞれ自動作成する。手動作成は不要）:
    ```sh
-   docker compose exec -T db mysql -uroot -proot_password -e \
-     "CREATE DATABASE IF NOT EXISTS bookkeeper_test CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci; GRANT ALL PRIVILEGES ON \`bookkeeper_test\`.* TO 'app'@'%'; FLUSH PRIVILEGES;"
+   docker compose exec -T db mysql -uroot -proot_password -e "SHOW DATABASES LIKE 'bookkeeper%';"
    ```
+   `bookkeeper` と `bookkeeper_test` の 2 つが並ぶこと。
+
+   > **`bookkeeper_test` が無い場合は、既存ボリュームを使い回している**。`docker-entrypoint-initdb.d` の
+   > スクリプトは**データディレクトリが空のときにしか実行されない**ため、init スクリプト追加より前に
+   > 作られたボリュームには適用されない。`docker compose down -v` でボリュームごと作り直してから
+   > `docker compose up -d --wait db` し直すこと（開発用 DB のデータも消えるが、Phase 1 時点では
+   > 失うものが無い）。
 
    > **重要（phpunit.xml のテスト DB 設定）**: `laravel new`（Laravel 13.x）が生成する `phpunit.xml` は既定で `DB_CONNECTION=sqlite` / `DB_DATABASE=:memory:` を設定しており、**このままだとテストが MySQL の `bookkeeper_test` ではなく SQLite で走る**。本プロジェクトは MySQL 固有の DDL（`docs/db-schema.md` の `books` テーブルの `ALTER TABLE ... ADD CONSTRAINT ... CHECK`）を使うため、SQLite ではマイグレーションが構文エラーで失敗する（Phase 1 時点では該当マイグレーションが無いため表面化しないが、Phase 2 で必ず壊れる）。`docs/stack.md` の規約通りテストは `bookkeeper_test`（MySQL）で実行するため、`phpunit.xml` の該当 env を次のように書き換える:
    > ```xml
@@ -342,7 +348,7 @@ DB_PASSWORD=app_password
 - [ ] `composer.json` の `scripts.setup` に `docker compose up -d --wait db` と `migrate --seed --force` が反映済み
 - [ ] `composer run dev` で http://localhost:8000 が 200
 - [ ] `php artisan migrate` が成功（`bookkeeper` データベースに対して）
-- [ ] `bookkeeper_test` データベースが作成済み
+- [ ] `bookkeeper_test` データベースが存在する（init スクリプトによる自動作成。手動作成していないこと）
 - [ ] `phpunit.xml` の `DB_CONNECTION` が `mysql`・`DB_DATABASE` が `bookkeeper_test`（既定の sqlite / :memory: から変更済み）
 - [ ] `composer.json` の `laravel/framework` が `^13.`（Step 3 の検証を通過している）
 - [ ] `composer.lock` がコミット対象に入っている
