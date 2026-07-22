@@ -36,14 +36,22 @@ description: フェーズ4 - Seeder、テスト、README、起動確認で完成
 - **Dusk の `select()` には `<option>` の `value` 属性を渡す**（表示テキストではない）。表示テキストで選択したい場合は `$browser->script(...)` を使わず、`selectByText()`（Dusk 3 系以降で利用可能な場合）の有無を確認して使う
 - **承認済み貸出を使う返却テストでは、`Lending::factory()->approved()->create(...)` の前に `$book->update(['available_copies' => 1])` で在庫を確保すること**。Factory のトレイトは state のみ設定し `available_copies` は操作しないため、返却後に `available_copies > total_copies` になるケースでエラーになる。
 
-`docs/screens.md` の主要動線を Dusk で網羅。網羅すべきシナリオ:
+`docs/screens.md` の主要動線を Dusk で網羅する。Phase 3 で 4 件（蔵書一覧の表示 /
+借用申請 / 申請の承認 / 非 admin の `/admin` リダイレクト）を実装済みなので、
+**本フェーズではそれに加えて次の 3 件を新規に追加する**:
+
+- メンバー: 自分の貸出を返却する
+- 管理者: 書籍 CRUD（作成 → 編集 → 削除）
+- 認可: 他人の貸出詳細にアクセスすると `home` へリダイレクトされる（Policy）
+
+あわせて Phase 3 で書いた既存 2 件を、動線として通しで確認する形へ広げる:
 
 - メンバー: ログイン → 蔵書検索 → 詳細 → 借用申請 → 自分の貸出一覧で確認
-- メンバー: 自分の貸出を返却
 - 管理者: ログイン → 申請一覧 → 承認 → 通知が作られ在庫が減ること
-- 管理者: 書籍 CRUD（作成 → 編集 → 削除）
-- 認可: 非 admin が `/admin` にアクセスすると `home` へリダイレクトされる
-- 認可: 他人の貸出詳細にアクセスすると `home` へリダイレクトされる（Policy）
+
+> **「Phase 3 で似たテストがあるから網羅済み」と判断しないこと。** 上記 3 件は
+> Phase 3 のシナリオに含まれておらず、書かなくても `php artisan dusk` は green に
+> なる（＝完了基準をすり抜ける）。**最終的に Dusk のテストは 7 件以上**になる。
 
 ### 3. composer run setup の確認
 
@@ -80,15 +88,24 @@ vendor/bin/pint database/seeders tests
 
 順番に実行:
 
-1. **クリーン再構築の確認**: `docker compose down -v` で DB をボリュームごと破棄し、
-   `composer run setup` が新規クローン相当の状態から最後まで通ることを確認する
-   （DB 起動 → `migrate --seed` → `npm run build` まで一気通貫）。続けて
-   `php artisan db:seed` をもう一度実行し、冪等（レコード数が増えない）であることも確認する
+1. **クリーン再構築の確認（非破壊）**: 次の 2 つで担保する。**開発用 DB のデータは消さない**。
+   - `php artisan test` が all green であること（手順 2 で実施）。Feature テストの
+     `RefreshDatabase` はテスト DB の全テーブルを毎回削除して全マイグレーションを
+     適用し直すため、**マイグレーションがゼロから通ることはこれで検証済み**になる
+   - `php artisan db:seed` を 2 回連続で実行し、冪等（レコード数が増えない）かつ
+     `docs/seeds.md` の全件が投入されることを確認する
 
-   > `php artisan migrate:fresh --seed` は使わない。破壊的コマンドとして
+   > **`php artisan migrate:fresh --seed` は使わない。** 破壊的コマンドとして
    > `.claude/settings.json` の deny リスト（ルート CLAUDE.md 厳守事項 #2 に対応）で
-   > 拒否され、ヘッドレスでは確認応答ができず実行不能。マイグレーションのクリーン適用
-   > 自体は Feature テストの `RefreshDatabase` がテスト DB で毎回検証している
+   > 拒否される。
+
+   > **`docker compose down -v` → `composer run setup` による完全な再構築確認は任意。**
+   > これが固有に検証できるのは「まっさらなボリュームから `composer run setup` 一発で
+   > 立ち上がるか」だけで、マイグレーションのクリーン適用は上記でカバーされている。
+   > **`down -v` は開発用 DB のデータを消す**ため、実行するのは破棄してよい場合に限ること
+   > （Seeder で戻せるのは `docs/seeds.md` のデータのみで、画面から手で入れたデータは戻らない）。
+   > なお `bookkeeper_test` は `docker/mysql/initdb/` の init スクリプトが再作成するため、
+   > `down -v` してもテスト DB は失われない。
 2. `php artisan test` が all green
 3. `coverage/index.html` を確認し、行カバレッジが 80% 以上
 4. `php artisan dusk` が all green
@@ -108,6 +125,8 @@ vendor/bin/pint database/seeders tests
 - [ ] `composer run dev` で起動して全機能が動作
 - [ ] Seeder で各画面に表示すべきデータが入る
 - [ ] `php artisan test` および `php artisan dusk` が all green
+- [ ] 「2-1. テストシナリオの実装」に列挙した Dusk シナリオが**すべてテストとして存在する**
+      （本フェーズで追加する 3 件を含め 7 件以上。green であることと網羅していることは別）
 - [ ] カバレッジが 80% 以上（`coverage/index.html` で確認）
 - [ ] `vendor/bin/pint --test` 違反 0、`vendor/bin/phpstan analyse` エラー 0
 - [ ] README にテストアカウント・起動方法が記載
