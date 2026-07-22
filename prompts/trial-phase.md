@@ -84,6 +84,17 @@
      ツール自身に拒否される）。git はセッションのカレントディレクトリから
      そのまま実行し、対象は相対パスの pathspec で絞る（例: `my-laravel-app/`
      から `git status --short -- docs ../prompts`）
+   - **`git -c <key>=<value> ...`**（サブコマンドの前に設定オプションを挟む形）。
+     `git status` / `git log` / `git diff` が承認なしで通るのは許可リストではなく
+     **Claude Code が読み取り専用コマンドとして自動承認しているため**で、`-c` を
+     前置するとこの判定が効かなくなり承認待ちになる（例:
+     `git -c core.quotepath=false status --short` が拒否された）。オプション無しの
+     素の形で呼ぶこと。
+
+     > **この形を許可リストへ足さないこと。** deny リストは `Bash(git push*)` の
+     > ような前置パターンなので、`git -c foo=bar push` は一致せず**deny を迂回できて
+     > しまう**。加えて `-c core.pager=...` / `-c alias.x=!cmd` は任意コマンド実行の
+     > 経路にもなる。
    - **セッションの作業ディレクトリ外への出力リダイレクト**（`> /tmp/foo.log`）。
      バックグラウンド実行はツールの `run_in_background` を使う
    - **`&&` / `||` / `;` で複数コマンドを繋いだ形**。「複数操作を含む」として
