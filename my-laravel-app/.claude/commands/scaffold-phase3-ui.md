@@ -269,8 +269,14 @@ Dusk は `.env.dusk.local` があればそれを読む。無いと `.env` がそ
 
 ### Dusk 実行時の前提
 
-- `php artisan serve` で `APP_URL`（`http://localhost:8000`）が応答していること。
-  Dusk は自前でサーバーを起動しない
+- **`php artisan serve --env=dusk.local`** で `APP_URL`（`http://localhost:8000`）が応答して
+  いること。Dusk は自前でサーバーを起動しない
+
+  > **`--env=dusk.local` を必ず付けること。** 素の `php artisan serve` は `.env`
+  > （開発用の `bookkeeper`）を読むため、`.env.dusk.local`（`bookkeeper_test`）で
+  > truncate / seed する**テストプロセスとブラウザが叩くサーバーとで DB が食い違う**。
+  > テストが用意したデータが画面に出ず、`waitForText` 等が軒並みタイムアウトする
+  > （データが無いだけなので、原因が分かりにくい形で落ちる）。
 - ChromeDriver がホストの Chrome とバージョン一致していること。ずれている場合は
   `php artisan dusk:chrome-driver --detect`（Phase 1 手順書参照）
 - 非 TTY 環境では `Warning: TTY mode requires /dev/tty to be read/writable.` が出るが
@@ -296,6 +302,8 @@ function signInAs(Browser $browser, User $user): void
 {
     $browser->logout() // 前テストのセッションを必ず切る（下記の注意参照）
         ->visit('/login')
+        ->waitUntil('window.Livewire') // ハイドレーション完了を待つ（下記の注意参照）
+        ->waitForInput('email')
         ->type('email', $user->email)
         ->type('password', 'password123')
         ->press('ログイン') // 文言は docs/screens.md の注記に従い実ファイルを Read して確認
@@ -328,21 +336,34 @@ function makeUser(bool $admin = false): User
 > `signInAs` が `password123` を使うため、上記 `makeUser()` のように
 > `User::factory()->create(['password' => Hash::make('password123')])` と明示すること。
 
+> **重要（`waitUntil('window.Livewire')` は省略不可）**: Breeze のログインフォームは
+> Livewire コンポーネントである。`livewire.js` のロード前に `press('ログイン')` すると
+> **Livewire のハンドラではなくネイティブ submit** が走り、action 属性の無いフォームが
+> 空の値で `/login` にリロードされる。結果 `waitForLocation('/')` が
+> `Waited 5 seconds for location [/].` でタイムアウトする（失敗時のスクリーンショットは
+> **入力欄が空のログイン画面**になる）。テストが数件のうちは偶然通ってしまい、
+> **Phase 4 で Dusk が増えると実行ごとに別のテストが落ちるフレーキーな症状**として
+> 顕在化するため、最初から入れておくこと。
+
 ### confirm ダイアログを伴う操作
 
 削除ボタンのように `confirm()` を挟む操作は、`acceptDialog()` の**前に
 `waitForDialog()` を挟む**こと。`press()` はクリック直後に戻るため、
 ダイアログ生成前に `acceptDialog()` を呼ぶと `no such alert` で落ちる。
 
+また、`press()` の**前に `waitUntil('window.Alpine')` を挟む**こと。確認ダイアログは
+Alpine の `x-on:submit` が発火させるため、Alpine のロード前に押すと素通りする。
+
 ```php
-$browser->press('削除')
+$browser->waitUntil('window.Alpine') // Alpine のロードを待ってから押す
+    ->press('削除')
     ->waitForDialog()
     ->acceptDialog()
     ->waitForText('書籍を削除しました');
 ```
 
 なお、ダイアログがそもそも出ず `waitForDialog()` が
-`Waited 5 seconds for dialog.` で落ちる場合、原因は 2 つある。順に確認すること:
+`Waited 5 seconds for dialog.` で落ちる場合、原因は 3 つある。順に確認すること:
 
 1. **フォームに `x-data` が無い**（`livewire.js` は読み込まれているのにダイアログが出ない
    場合はこれ）。Alpine v3 は `x-data` スコープ内の要素しか `x-on:` を処理しないため、
@@ -351,6 +372,10 @@ $browser->press('削除')
    を使うメンバー画面（返却フォーム等）でも起きる
 2. **そもそも Alpine が読み込まれていない**（管理画面で顕著）。「画面実装の注意」の
    `@livewireScripts` の項を確認すること
+3. **1・2 を満たしているが、ハイドレーション完了前に `press()` している**。`x-data` があり
+   `@livewireScripts` もあるのに落ちる場合はこれ。上記のとおり `press()` の前に
+   `waitUntil('window.Alpine')` を挟む。**実行するたびに落ちるテストが変わる**場合は
+   まずこれを疑うこと（1・2 が原因なら毎回同じ箇所で落ちる）
 
 ### テストシナリオ
 
