@@ -107,7 +107,21 @@ vendor/bin/pint database/seeders tests
    > なお `bookkeeper_test` は `docker/mysql/initdb/` の init スクリプトが再作成するため、
    > `down -v` してもテスト DB は失われない。
 2. `php artisan test` が all green
-3. `coverage/index.html` を確認し、行カバレッジが 80% 以上
+3. **カバレッジが 80% 以上**であることを `coverage/index.html` の数値で確認する。
+   `php artisan test --coverage-html coverage` で HTML を生成したうえで、次で数値を読む:
+   ```sh
+   grep -o 'Total[^%]*%' coverage/index.html | head -5
+   ```
+
+   > **`--min=80` の結果を信用しないこと。** `laravel/pao`（`laravel new` の既定に含まれる。
+   > `docs/stack.md` 参照）がテストツールの出力を JSON 1 行へ整形する際、**カバレッジの数値も
+   > `--min` の失敗も握りつぶす**。実際には 78.87%（未達）でも
+   > `{"tool":"pest","result":"passed",...}` と返るため、**コマンドの成否では 80% 判定が
+   > できない**。数値は必ず上記の HTML から取ること。
+   >
+   > `vendor/bin/pest --coverage --min=80` なら pao を経由せず数値と判定を直接得られるが、
+   > ルートの `.claude/settings.json` の許可リストに無くヘッドレスでは実行できない
+   > （許可を足すかは方針判断。現状は HTML を一次情報とする）。
 4. `php artisan dusk` が all green
 5. `vendor/bin/pint --test` が違反 0
 6. `vendor/bin/phpstan analyse` でエラー 0
