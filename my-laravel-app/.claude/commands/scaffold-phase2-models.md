@@ -94,6 +94,8 @@ Enum クラスは `app/Enums/` に置く。値は `docs/db-schema.md` の各テ�
 
 > **注意（`audit_logs` の `$timestamps`）**: `audit_logs` は不変レコードで `updated_at` を持たない（`created_at` のみ）。`AuditLog` モデルに `public $timestamps = false;` を設定すること。設定しないと Eloquent が保存時に `updated_at` を書こうとして「Unknown column 'updated_at'」で失敗する。`created_at` はマイグレーションの `useCurrent()` により DB 側で設定される。`changes_json` は `'changes_json' => 'array'` でキャストする。
 >
+> **`created_at` も `'created_at' => 'datetime'` でキャストすること。** `$timestamps = false` のモデルは `created_at` を**自動ではキャストしない**ため、明示しないと DB から読んだ値が文字列のままになる。Phase 3 の監査ログ画面で `{{ $log->created_at?->format('Y-m-d H:i') }}` と書くと `Call to a member function format() on string` で **500** になる（`?->` は null 用であり、文字列には効かない）。あわせて larastan 用に `@property \Illuminate\Support\Carbon|null $created_at` を付ける（日時キャストに `@property` を要求する前述の方針と揃える）。
+>
 > **`created_at` は生成直後のインスタンスに載らない。** `useCurrent()` が生成するのは DB 側の
 > `DEFAULT CURRENT_TIMESTAMP` であり、`$timestamps = false` の Eloquent は `created_at` を
 > 自分で設定せず、INSERT 後の再取得も行わない。そのため
