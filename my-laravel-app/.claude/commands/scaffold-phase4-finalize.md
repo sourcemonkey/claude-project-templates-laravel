@@ -110,8 +110,17 @@ vendor/bin/pint database/seeders tests
 3. **カバレッジが 80% 以上**であることを `coverage/index.html` の数値で確認する。
    `php artisan test --coverage-html coverage` で HTML を生成したうえで、次で数値を読む:
    ```sh
-   grep -o 'Total[^%]*%' coverage/index.html | head -5
+   grep -oE '[0-9]+\.[0-9]+%' coverage/index.html | head -1
    ```
+   PHPUnit の HTML レポートは先頭に「Total」行（プロジェクト全体の集計）を出力し、
+   **ファイル内で最初に現れる `NN.NN%` がその Total 行の行カバレッジ**にあたる。
+   これが 80% 以上であることを確認する。
+
+   > **`grep -o 'Total[^%]*%'` のように 1 行で `Total` から `%` までを拾う書き方は使えない。**
+   > レポートでは `<td class="success">Total</td>` のセルと百分率（`<td ...>93.41%</td>` や
+   > `aria-valuenow="93.41"`）が**別々の行**に出力されるため、行単位で動く `grep` は
+   > `Total` と `%` を 1 行内で連結できず、**何もマッチせず空を返す**（80% 判定が
+   > できないまま「達成」と誤認しかねない）。上記のとおり百分率だけを拾って先頭を取る。
 
    > **`--min=80` の結果を信用しないこと。** `laravel/pao`（`laravel new` の既定に含まれる。
    > `docs/stack.md` 参照）がテストツールの出力を JSON 1 行へ整形する際、**カバレッジの数値も
