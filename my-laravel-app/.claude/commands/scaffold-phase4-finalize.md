@@ -72,6 +72,7 @@ Phase 4 では Seeder が実装済みのため、`docs/seeds.md` のサンプル
 - プロジェクト概要（1-2 段落）
 - 必要なランタイム（`docs/stack.md` の「ランタイム」表からコピー。**PCOV の行も落とさずに含める** — `composer install` で導入されないマシン側の前提条件であり、README が唯一の周知手段になるため）
 - セットアップ手順（`composer run setup`）
+- **別マシン・別ディレクトリへの持ち込み手順**: `node_modules/` と `vendor/` は**コピーせず、持ち込み先で `composer run setup`（`composer install` + `npm install` を含む）により生成する**こと。`cp -r`（macOS）でこれらを含めて丸ごとコピーすると、`node_modules/.bin/` 配下のシンボリックリンクが実ファイルに化けて `npm run build` が `ERR_MODULE_NOT_FOUND`（例: `Cannot find module '.../node_modules/dist/node/cli.js'`）で失敗する。git 管理外（`.gitignore` 済み）なので `git clone` すればそもそも含まれない。どうしてもコピーするなら `rsync -a --exclude=node_modules --exclude=vendor` で生成物を除外する
 - 起動手順（`composer run dev`）
 - テストアカウント表（`docs/seeds.md` の「アカウント」表をコピー）
 - 主要 URL（`/`, `/admin`）
