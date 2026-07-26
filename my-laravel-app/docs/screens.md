@@ -86,6 +86,22 @@ URL プレフィックス: `/admin/`
 └──────────┴──────────────────────────────────┘
 ```
 
+ヘッダ右端の `▾` はユーザーメニューで、**ログアウト**を提供する。
+
+> **ログアウトは Breeze の Livewire コンポーネントに任せ、`logout` の名前付きルートを作らない。**
+> Breeze（Livewire スタック）はログアウトを名前付きルートではなく Volt コンポーネントの
+> アクション（`App\Livewire\Actions\Logout`）として提供するため、`docs/api-spec.md` の
+> `routes/web.php` に `logout` は存在しない。管理レイアウトからログアウトフォームを
+> `route('logout')` で組むと `Route [logout] not defined.` で 500 になる。
+>
+> `layouts/admin.blade.php` は素の Blade で `<livewire:layout.navigation />` を持たないため、
+> **ログアウト専用の小さな Livewire コンポーネント**（`App\Livewire\Actions\Logout` を呼んで
+> `route('home')` へリダイレクトする）をヘッダに埋め込む。`layouts/admin.blade.php` には
+> `@livewireScripts` が既に必須（`docs/stack.md` の Alpine の項）なので、追加コストは無い。
+>
+> 認証まわりで経路を 2 系統に分けないための方針であり、`CLAUDE.md` の「Breeze の生成物を
+> そのまま使い、自前認証を書かない」に沿う。
+
 ## 画面共通の作法
 
 - 一覧画面はページネーション（Laravel 標準の `paginate(25)`）。

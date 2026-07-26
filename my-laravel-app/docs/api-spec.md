@@ -48,6 +48,8 @@ Route::middleware('auth')->group(function () {
 
 > `return` は PHP の予約語のためメソッド名に使えない。貸出の返却アクションは `LendingController::returnBook()` として定義し、ルートのパス自体は仕様通り `/lendings/{lending}/return` とする。
 
+> **`logout` ルートが無いのは意図的**。Breeze（Livewire スタック）はログアウトを名前付きルートではなく Volt コンポーネントのアクション（`App\Livewire\Actions\Logout`）として提供する。**`Route::post('/logout', ...)->name('logout')` をここに足さないこと**。管理レイアウトからのログアウトも Livewire コンポーネント経由で行う（`docs/screens.md` の管理レイアウトの注記参照）。
+
 > **重要（Breeze 生成物との差分）**: 上記の `routes/web.php` は Laravel Breeze が Phase 1 で生成する `dashboard` / `profile` の 2 ルートを**持たない**。Breeze の生成物はこの 2 つを前提にしているため、Phase 3 では次の追従が必須になる（放置すると `route('dashboard')` が `RouteNotFoundException` になり、Phase 1 で green だった Breeze の Feature テストが壊れる）。
 >
 > - `route('dashboard')` を参照する Breeze 生成物（`resources/views/livewire/pages/auth/*.blade.php`、`resources/views/livewire/layout/navigation.blade.php`、`app/Http/Controllers/Auth/VerifyEmailController.php`）を **`route('home')` に置き換える**。ログイン・登録・メール確認後の遷移先は `/` とする

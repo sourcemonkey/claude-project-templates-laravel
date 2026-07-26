@@ -12,6 +12,15 @@ description: フェーズ3 - Controller / View / Policy を生成し UI を完�
 2. **Breeze 生成物の追従**（ルーティング置き換えの直後に行うこと。詳細は後述の「Breeze 生成物の追従」）
 3. **基底 Controller に `AuthorizesRequests` を取り込む**（後述の「`$this->authorize()` を使う前提」）
 4. **レイアウト**: `layouts/app.blade.php`（メンバー用）と `layouts/admin.blade.php`（管理者用）を作成。ヘッダ / フッタ / サイドバーの構造は `docs/screens.md` の「レイアウト」セクション参照
+
+   > **管理レイアウトのログアウトに `route('logout')` を使わないこと。** Breeze（Livewire
+   > スタック）はログアウトを名前付きルートではなく Volt のアクションとして提供するため、
+   > **`logout` ルートは存在しない**（`docs/api-spec.md` の `routes/web.php` にも無い）。
+   > POST フォームを `route('logout')` で組むと `Route [logout] not defined.` で 500 になる。
+   > `layouts/admin.blade.php` は `<livewire:layout.navigation />` を持たないので、
+   > `App\Livewire\Actions\Logout` を呼ぶ**小さな Livewire コンポーネント**をヘッダに置く
+   > （詳細は `docs/screens.md` の管理レイアウトの注記）。`routes/web.php` に `logout` を
+   > 足して解決してはならない。
 5. **例外ハンドリング（`bootstrap/app.php`）**:
    - `withExceptions()` 内で認可エラーを `render()` し、`flash('error', 'この操作を行う権限がありません。')` の上で `redirect()->route('home')` を返す（挙動は `@docs/architecture.md` の「認可エラーの挙動」参照）
    - **コールバックの型は `Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException` にする**。`Illuminate\Auth\Access\AuthorizationException` を指定してはならない（後述の「認可エラーの render コールバック」）
