@@ -21,7 +21,8 @@ PHP 8.4.23 / Laravel 13 向けに移植したものです。フェーズ分割�
 ├── .tool-versions               ← リポジトリ全体での PHP / Node.js バージョン（asdf）
 ├── bin/
 │   ├── init-project.sh          ← 新規リポジトリの初期化スクリプト
-│   └── reset-phase.sh           ← my-laravel-app/ をテンプレート状態に戻す
+│   ├── reset-phase.sh           ← my-laravel-app/ をテンプレート状態に戻す
+│   └── watch-trial.sh           ← 実行中のヘッドレストライアルを別ターミナルで追う
 ├── CLAUDE.md                    ← チーム共通ルール（このリポジトリ配下全体に適用）
 ├── env.example                  ← 環境変数のサンプル（リポジトリルート用）
 ├── patches/                     ← ヘッドレス実行の申し送り置き場（通常は .gitkeep のみ）
@@ -29,6 +30,7 @@ PHP 8.4.23 / Laravel 13 向けに移植したものです。フェーズ分割�
 │   └── issue-*.md               ← 判断が必要で自動修正しなかった事項
 ├── prompts/                     ← ヘッドレス実行用プロンプト（.claude/ 外に置き修正可能にする）
 │   └── trial-phase.md           ← フェーズファイルのヘッドレス・トライアル用プロンプト
+├── README.md                    ← このファイル
 ├── team-rules/                  ← チーム共通ルールの本体
 │   ├── coding-standards.md
 │   ├── git-workflow.md
@@ -36,6 +38,7 @@ PHP 8.4.23 / Laravel 13 向けに移植したものです。フェーズ分割�
 │   └── security.md
 └── my-laravel-app/              ← 個別プロジェクトのルート（ここで claude を起動）
     ├── .gitignore               ← Laravel アプリ用の除外設定（.env / coverage/ 等を含む）
+    ├── .npmrc                   ← npm の方針（ignore-scripts / audit）。生成物ではなくテンプレート同梱
     ├── .tool-versions           ← my-laravel-app 配下での PHP / Node.js バージョン
     ├── CLAUDE.md                ← プロジェクト固有のエントリポイント
     ├── compose.yaml              ← 開発用 MySQL コンテナ定義
