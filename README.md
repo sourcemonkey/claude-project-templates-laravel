@@ -40,7 +40,13 @@ PHP 8.4.23 / Laravel 13 向けに移植したものです。フェーズ分割�
     ├── CLAUDE.md                ← プロジェクト固有のエントリポイント
     ├── compose.yaml              ← 開発用 MySQL コンテナ定義
     ├── docker/                  ← Docker 関連の追加設定
-    │   └── mysql/conf.d/
+    │   └── mysql/
+    │       ├── conf.d/
+    │       └── initdb/          ← 初回起動時に bookkeeper / bookkeeper_test を作成
+    ├── config/
+    │   └── boost.php            ← Laravel Boost の出力先設定（生成物は Phase 1 で作られる）
+    ├── .ai/
+    │   └── guidelines/          ← Boost の AI ガイドラインの上書き（本プロジェクトの方針を優先）
     ├── docs/                    ← 仕様ドキュメント
     │   ├── stack.md             ← 技術スタック
     │   ├── architecture.md      ← レイヤ設計

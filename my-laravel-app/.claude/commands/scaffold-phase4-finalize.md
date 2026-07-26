@@ -77,6 +77,7 @@ Phase 4 では Seeder が実装済みのため、`docs/seeds.md` のサンプル
 - テストアカウント表（`docs/seeds.md` の「アカウント」表をコピー）
 - 主要 URL（`/`, `/admin`）
 - テスト実行コマンド
+- **AI エージェント向けの設定**: `composer run setup` が `php artisan boost:install --mcp --guidelines` を実行し、`.mcp.json`（Laravel Boost の MCP サーバー登録）と `docs/boost-guidelines.md`（AI ガイドライン）を生成すること。**どちらも `.gitignore` 済みでリポジトリには含まれない**ため、クローン後に `composer run setup` を実行して初めて有効になる旨を明記する
 - 関連ドキュメントへのリンク（`docs/` 配下）
 
 ### 5. Pint 自動修正

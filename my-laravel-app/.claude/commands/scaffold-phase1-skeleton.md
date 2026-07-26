@@ -325,12 +325,15 @@ DB_PASSWORD=app_password
     "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
     "@php artisan key:generate",
     "@php artisan migrate --seed --force",
+    "@php artisan boost:install --mcp --guidelines --no-interaction",
     "npm install --ignore-scripts",
     "npm run build"
 ]
 ```
 
 `npm install --ignore-scripts` は既定のまま残す（`.npmrc` の `ignore-scripts=true` と方針が一致するため）。
+
+3. **`@php artisan boost:install --mcp --guidelines --no-interaction` を足す** — `.mcp.json` と `docs/boost-guidelines.md` は `.gitignore` 済みで**リポジトリをクローンしても存在しない**ため。setup に含めないと、新規クローンした利用者は MCP サーバーが未設定のまま作業を始めることになり、`CLAUDE.md` の `@docs/boost-guidelines.md` も解決できない。Step 6 でも同じコマンドを実行するが、あちらは Phase 1 の生成時、こちらは**クローン後の再現性**のためで役割が異なる（コマンドは冪等なので二重実行しても問題ない）。
 
 ### 9. DB の作成と起動確認
 
