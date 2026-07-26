@@ -137,8 +137,11 @@ git status --short -- .gitignore .npmrc .claude compose.yaml docker .tool-versio
 
 ```sh
 composer require spatie/laravel-query-builder blade-ui-kit/blade-heroicons
-composer require --dev larastan/larastan laravel/dusk laravel-lang/lang
+composer require --dev larastan/larastan laravel/dusk laravel-lang/lang laravel/boost
 ```
+
+> `laravel/boost` は、AI エージェント向けの MCP サーバー（DB スキーマ・ログ・Laravel
+> エコシステムのドキュメント検索）と AI ガイドラインを提供する。導入手順は Step 6 参照。
 
 > **`livewire/livewire` は手動で `composer require` しない。** Step 6 の
 > `php artisan breeze:install livewire` が内部で
@@ -237,6 +240,26 @@ composer require --dev larastan/larastan laravel/dusk laravel-lang/lang
 
   > **注意**: `phpstan analyse` の出力には「ベースラインで抑制するな、根本原因を直せ」という PHPStan 一般の指示文が含まれるが、**この 1 件に限っては上記の判断（ベースライン化）を優先する**。エラー元が Breeze の scaffold 出力であり、`docs/` にもチームのコード規約にも属さないため。アプリケーションコード由来のエラーをベースラインに追加してはならない。
 - **Laravel Pint**: `laravel new` で既定導入済み。確認のみ（`vendor/bin/pint --version`）。
+- **Laravel Boost**:
+  ```sh
+  php artisan boost:install --mcp --guidelines --no-interaction
+  ```
+  生成物は 3 つ。いずれも `.gitignore` 済みで、`git status` には現れない:
+  - `.mcp.json` — MCP サーバーの登録（`php artisan boost:mcp`）
+  - `docs/boost-guidelines.md` — AI ガイドライン。`CLAUDE.md` から `@` 参照で読み込まれる
+  - `boost.json` — 導入状態の記録
+
+  > **`--mcp --guidelines` を明示し、`--skills` は付けないこと。** Skills の出力先は
+  > `.claude/skills/` で、ヘッドレス実行ではセンシティブファイル保護により書き込めず失敗する
+  > （`prompts/trial-phase.md` の前提条件 5 参照）。上記 2 つの出力先は `.claude/` の外なので
+  > ヘッドレスでも生成できる。
+
+  > **ガイドラインの出力先は `CLAUDE.md` ではなく `docs/boost-guidelines.md`。** Boost の既定は
+  > `CLAUDE.md` への書き込みだが、テンプレート同梱の `config/boost.php`（`agents.claude_code.guidelines_path`）
+  > で退避させている。`CLAUDE.md` は本テンプレートの成果物であり、Boost に再生成させない。
+  > あわせて `.ai/guidelines/volt/core.blade.php` が Boost の Volt ガイドラインを本プロジェクトの
+  > 方針（新規コンポーネントはクラスベース）へ上書きする。**どちらもテンプレート同梱の
+  > 追跡ファイルなので、リセット後もそのまま残る。**
 
 ### 7. .env の準備
 
@@ -359,6 +382,10 @@ DB_PASSWORD=app_password
 - [ ] `php artisan migrate` が成功（`bookkeeper` データベースに対して）
 - [ ] `bookkeeper_test` データベースが存在する（init スクリプトによる自動作成。手動作成していないこと）
 - [ ] `phpunit.xml` の `DB_CONNECTION` が `mysql`・`DB_DATABASE` が `bookkeeper_test`（既定の sqlite / :memory: から変更済み）
+- [ ] `.mcp.json` と `docs/boost-guidelines.md` が生成されている（`boost:install` が通っている）
+- [ ] `docs/boost-guidelines.md` の Volt の節が、`.ai/guidelines/` による上書き後の内容
+      （「新規コンポーネントはクラスベース」）になっている
+- [ ] `CLAUDE.md` が `boost:install` に書き換えられていない（`git status` に現れないこと）
 - [ ] `composer.json` の `laravel/framework` が `^13.`（Step 3 の検証を通過している）
 - [ ] `composer.lock` がコミット対象に入っている
 - [ ] `composer.json` に `docs/stack.md` の「手動追加 ✅」パッケージがすべて記載

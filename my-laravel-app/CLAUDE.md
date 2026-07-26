@@ -12,6 +12,12 @@
 @docs/api-spec.md  
 @docs/seeds.md  
 
+Laravel エコシステムの一般的な規約は Laravel Boost が生成する次のファイルにある（Phase 1 で
+生成されるため、それ以前は存在しない）。**上記 `docs/*.md` と `team-rules/` が優先し、Boost の
+ガイドラインはそれらが触れていない領域を補完する位置づけ**とする。
+
+@docs/boost-guidelines.md  
+
 ## このプロジェクトでの作業方針
 
 - **仕様優先**: docs/ の記述と実装が食い違ったら docs/ が正。違和感があれば実装前に質問する。

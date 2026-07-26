@@ -103,8 +103,13 @@ Laravel 12 以降、`laravel new` は公式スターターキット（Livewire /
 | `pestphp/pest` | テストフレームワーク | ✅（`--pest` オプションで導入） | `require-dev` |
 | `pestphp/pest-plugin-laravel` | Pest の Laravel 統合 | ✅（`--pest` に同梱） | `require-dev` |
 | `laravel/dusk` | システムテスト（Capybara + Selenium 相当） | ✅ | `require-dev` |
+| `laravel/boost` | AI エージェント向けの MCP サーバー（DB スキーマ・ログ・ドキュメント検索）と AI ガイドライン生成 | ✅ | `require-dev` |
 
 カバレッジ計測ドライバの **PCOV は composer パッケージではなく PHP 拡張**のため、この表ではなく「ランタイム」表に記載している（マシン側の前提条件であり、`composer install` では導入されない）。
+
+> **`laravel/boost` の導入範囲**: Phase 1 の `boost:install --mcp --guidelines` により、MCP サーバー設定（`.mcp.json`）と AI ガイドライン（`docs/boost-guidelines.md`）だけを生成する。**Agent Skills（`--skills`）は導入しない** — 出力先の `.claude/` はヘッドレス実行で書き込めず、かつテンプレートへコミットすると `boost:update` の同期責任が人手に残るため。
+>
+> ガイドラインの出力先は `config/boost.php` で `CLAUDE.md` から `docs/` へ退避させている（`CLAUDE.md` はテンプレートの成果物であり Boost に再生成させない）。Boost の Volt ガイドラインは本プロジェクトの方針と衝突するため `.ai/guidelines/volt/core.blade.php` で上書きしている。**`team-rules/` と `docs/*.md` が優先、Boost は補完**という関係を保つこと。
 
 `factory_bot` 相当は Laravel 標準の Model Factory（`database/factories/`）、`faker` 相当は `fakerphp/faker`（Laravel の依存関係に標準で含まれる）を使う。追加インストール不要。
 

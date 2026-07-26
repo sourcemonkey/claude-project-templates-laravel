@@ -64,5 +64,11 @@ auth.json
 /.claude/settings.local.json
 /CLAUDE.local.md
 
+# Laravel Boost が boost:install で生成する。Phase 1 で毎回作り直されるため追跡しない
+# （config/boost.php と .ai/guidelines/ はテンプレート同梱の追跡ファイルなので対象外）。
+/.mcp.json
+/boost.json
+/docs/boost-guidelines.md
+
 # OS が生成するメタデータ。
 .DS_Store
