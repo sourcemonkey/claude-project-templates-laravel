@@ -21,6 +21,31 @@ usage() {
   echo "  例: bin/reset-phase.sh 1" >&2
 }
 
+# 本スクリプトは手動実行を前提とし、DB（Docker ボリューム）の破棄前に必ず対話で
+# 確認を取る。引数を打ち間違えた程度では消えないようにするため、y/N ではなく
+# 明示的に "yes" のタイプを求める。
+confirm_destroy() {
+  if [ ! -t 0 ]; then
+    echo "エラー: 対話的な確認が必要なため、端末以外からは実行できません。" >&2
+    echo "ターミナルから手動で実行してください。" >&2
+    exit 1
+  fi
+
+  echo ""
+  echo "⚠️  次のものを破棄します（元に戻せません）:"
+  echo "   - ${APP_REL} の DB コンテナと Docker ボリューム（データは全消去）"
+  echo "   - ${APP_REL} 配下の未追跡ファイル（vendor / node_modules / .env / 生成コード）"
+  echo "   - ${APP_REL} 配下の追跡ファイルへの変更"
+  echo ""
+  printf "続行するには yes と入力してください: "
+  read -r answer
+  if [ "$answer" != "yes" ]; then
+    echo "中止しました。" >&2
+    exit 1
+  fi
+  echo ""
+}
+
 if [ -z "$PHASE" ]; then
   usage
   exit 1
@@ -47,6 +72,10 @@ fi
 # （中間スナップショット方式にすれば Phase N 単体の巻き戻しも可能だが、vendor 込みの
 #  スナップショットは重く運用も複雑になるため現状は採用しない。）
 reset_to_template() {
+  # 0. 破棄内容の確認（Docker 接続確認のあとに置き、daemon 未起動で
+  #    どのみち中断するケースでは確認を求めない）
+  confirm_destroy
+
   # 1. 開発サーバー停止
   echo ">> 開発サーバーを停止..."
   pkill -f "php artisan serve" 2>/dev/null || true
