@@ -156,9 +156,11 @@ audit_logs (独立、polymorphic 相当のカラム構成)
 
 > **注意**: v7 の `allowedFilters()` / `allowedSorts()` は**可変長引数のみ**を受け取る。下表の内容は配列ではなく引数の並びとして渡すこと（`->allowedFilters('title', 'author', AllowedFilter::exact('category_id'))`）。詳細は `docs/architecture.md` の Model セクション参照。
 
+> **注意（`published` はメンバー画面では効かない）**: メンバー向けの蔵書一覧・詳細は `published = true` の**強制スコープ**が掛かるため、`published` フィルタが意味を持つのは管理画面だけである（`docs/screens.md` のメンバー領域の注記が一次情報）。メンバー画面のクエリでこのフィルタを許可しても、強制スコープが優先して結果は変わらない。
+
 | モデル | allowedFilters | allowedSorts |
 |---|---|---|
-| Book | title, author, publisher, isbn, description, published, `AllowedFilter::exact('category_id')`, `AllowedFilter::exact('tags.id')` | created_at, title |
+| Book | title, author, publisher, isbn, description, published（**管理画面のみ有効**）, `AllowedFilter::exact('category_id')`, `AllowedFilter::exact('tags.id')` | created_at, title |
 | User（admin 画面） | name, email, `AllowedFilter::exact('role')` | created_at, name |
 | Lending（admin 画面） | `AllowedFilter::exact('state')`, `AllowedFilter::exact('user_id')`, `AllowedFilter::exact('book_id')` | requested_at, due_on |
 | AuditLog | `AllowedFilter::exact('action')`, `AllowedFilter::exact('target_type')` | created_at |

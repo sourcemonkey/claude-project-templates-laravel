@@ -12,8 +12,8 @@
 
 | パス | 画面名 | 概要 |
 |---|---|---|
-| `GET /books` | 蔵書一覧 | 検索 / ページネーション / タグ・カテゴリで絞り込み（Livewire コンポーネント） |
-| `GET /books/{book}` | 蔵書詳細 | 在庫数表示、借用申請ボタン |
+| `GET /books` | 蔵書一覧 | 検索 / ページネーション / タグ・カテゴリで絞り込み（Livewire コンポーネント）。**`published = true` の書籍のみ**（下記） |
+| `GET /books/{book}` | 蔵書詳細 | 在庫数表示、借用申請ボタン。**`published = false` は 404**（下記） |
 | `POST /lendings` | 借用申請 | 詳細画面から POST |
 | `GET /lendings` | 自分の貸出一覧 | 状態フィルタ（Livewire コンポーネント） |
 | `GET /lendings/{lending}` | 自分の貸出詳細 | 返却ボタン |
@@ -22,6 +22,18 @@
 | `PATCH /notifications/{notification}/read` | 既読化 | |
 | `GET /profile/edit` | プロフィール編集 | |
 | `PATCH /profile` | プロフィール更新 | name / email の更新 |
+
+> **未公開書籍（`published = false`）はメンバーには見せない。** `GET /books` の一覧クエリに
+> `where('published', true)` を強制スコープとして掛け、`GET /books/{book}` は未公開なら
+> **404 を返す**（借用申請の導線ごと塞ぐ）。これは利用者が指定するフィルタではなく、
+> メンバー画面側で常に効く条件である。
+>
+> `docs/db-schema.md` の Spatie Query Builder 対応表にある `published` フィルタは
+> **管理画面専用**（管理者は公開・未公開を切り替えて絞り込める）。メンバー画面では
+> 強制スコープが優先するため、利用者が `filter[published]=false` を指定しても結果は変わらない。
+>
+> Seeder は「未公開書籍サンプル」を 1 件投入するため、**メンバーには 8 件中 7 件が見える**
+> （`docs/seeds.md` の書籍表参照）。テストで件数を検証する際はこの差に注意すること。
 
 ## 管理者領域（要ログイン + admin ロール）
 
