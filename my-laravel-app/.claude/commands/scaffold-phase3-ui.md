@@ -139,6 +139,13 @@ $exceptions->render(function (AccessDeniedHttpException $e, Request $request) {
 - **enum の画面表示**: `LendingState` / `NotificationKind` / `UserRole` の日本語表記は `docs/screens.md` の「enum の表示ラベル」表が一次情報。**各 Enum クラスに `label(): string` を実装し、ビューからは `{{ $lending->state->label() }}` で参照する**。Blade 側に `@if` の連鎖や配列マッピングを書かない（`team-rules/coding-standards.md` の「Blade に複雑な `@if` の連鎖を書かない」に従う）
 - **借用申請フォーム**: 通常の Blade `<form>` + `@csrf` で `route('lendings.store')` に POST する。`Route::post` 側は `StoreLendingRequest` で `book_id` / `note` をバリデーションする
 - **Livewire**: サーバー往復を伴う動的処理（検索結果の絞り込み、状態フィルタ）に使う。`wire:model.live` で入力と同時に結果を更新する
+  - **`wire:model` の入力欄には `id` を付け、Dusk からは `#id` セレクタで指定すること。** Dusk の
+    `type('title', ...)` のような**名前指定は `name` 属性を前提**にしているが、Livewire の入力欄は
+    `wire:model` でバインドするため `name` を書かないのが普通で、
+    `no such element: {"method":"css selector","selector":"body title"}` で落ちる
+    （Breeze 生成のログインフォームは `name` を持つので `type('email', ...)` が通る。この違いが
+    紛らわしい）。検索欄を `<input id="title" wire:model.live="title">` とし、テスト側は
+    `->type('#title', 'Ruby')` と書く
 - **削除確認**: Livewire コンポーネント内は `wire:confirm="削除しますか？"`。非 Livewire のフォームは Alpine.js で `<form x-data x-on:submit="confirm('削除しますか？') || $event.preventDefault()">`。**`x-data`（空でよい）を必ず付けること**。Alpine v3 は `x-data` スコープ内の要素しか `x-on:` ディレクティブを処理しないため、`x-data` の無い素の `<form x-on:submit>` は**エラーも出さず無視され、確認なしで削除・却下・返却が実行される**。これは `livewire.js` が読み込まれ Alpine が起動していても起きる（Alpine 読み込みの有無とは別問題。詳細は `docs/stack.md` の Alpine の項参照）。ナビの `x-data="{ open: false }"` は nav にスコープされるため外側のフォームには効かない
 - **削除失敗（`restrictOnDelete`）の扱い**: 貸出履歴のある書籍・ユーザー、書籍が紐づくカテゴリの `destroy` は、削除前に `exists()` で関連の有無を事前チェックし、あれば `back()->with('error', ...)` で戻す。**`try/catch (QueryException)` で書くと larastan が Dead catch で落とす**。実装パターンと固定のフラッシュ文言は `docs/db-schema.md` の「削除不可の画面挙動」参照
 - **フラッシュ**: `layouts/app.blade.php` の上部で `session('status')` / `session('error')` を Tailwind の色で表示
