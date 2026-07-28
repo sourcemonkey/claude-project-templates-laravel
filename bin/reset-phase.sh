@@ -21,10 +21,12 @@ usage() {
   echo "  例: bin/reset-phase.sh 1" >&2
 }
 
-# 本スクリプトは手動実行を前提とし、DB（Docker ボリューム）の破棄前に必ず対話で
-# 確認を取る。引数を打ち間違えた程度では消えないようにするため、y/N ではなく
-# 明示的に "yes" のタイプを求める。
-confirm_destroy() {
+# DB（Docker ボリューム）を破棄するかどうか。ファイル側のリセットは常に行う。
+DESTROY_DB=""
+
+# 本スクリプトは手動実行を前提とし、DB を消すかどうかだけ対話で選ばせる。
+# 誤って Enter を押しても消えないよう、既定は「消さない」側に倒す。
+confirm_destroy_db() {
   if [ ! -t 0 ]; then
     echo "エラー: 対話的な確認が必要なため、端末以外からは実行できません。" >&2
     echo "ターミナルから手動で実行してください。" >&2
@@ -32,17 +34,18 @@ confirm_destroy() {
   fi
 
   echo ""
-  echo "⚠️  次のものを破棄します（元に戻せません）:"
-  echo "   - ${APP_REL} の DB コンテナと Docker ボリューム（データは全消去）"
-  echo "   - ${APP_REL} 配下の未追跡ファイル（vendor / node_modules / .env / 生成コード）"
-  echo "   - ${APP_REL} 配下の追跡ファイルへの変更"
+  echo "以下は DB の選択にかかわらず実行します:"
+  echo "   - 開発サーバーの停止"
+  echo "   - ${APP_REL} 配下の未追跡ファイルの削除（vendor / node_modules / .env / 生成コード）"
+  echo "   - ${APP_REL} 配下の追跡ファイルへの変更の復元"
+  echo "   （リセット自体を取りやめる場合は Ctrl-C）"
   echo ""
-  printf "続行するには yes と入力してください: "
+  printf "DB（Docker ボリューム）も削除しますか？ データは元に戻せません [y/N]: "
   read -r answer
-  if [ "$answer" != "yes" ]; then
-    echo "中止しました。" >&2
-    exit 1
-  fi
+  case "$answer" in
+    [yY] | [yY][eE][sS]) DESTROY_DB=1 ;;
+    *) DESTROY_DB="" ;;
+  esac
   echo ""
 }
 
@@ -72,9 +75,9 @@ fi
 # （中間スナップショット方式にすれば Phase N 単体の巻き戻しも可能だが、vendor 込みの
 #  スナップショットは重く運用も複雑になるため現状は採用しない。）
 reset_to_template() {
-  # 0. 破棄内容の確認（Docker 接続確認のあとに置き、daemon 未起動で
+  # 0. DB を消すかどうかの確認（Docker 接続確認のあとに置き、daemon 未起動で
   #    どのみち中断するケースでは確認を求めない）
-  confirm_destroy
+  confirm_destroy_db
 
   # 1. 開発サーバー停止
   echo ">> 開発サーバーを停止..."
@@ -83,9 +86,16 @@ reset_to_template() {
   pkill -f "artisan pail" 2>/dev/null || true
   pkill -f "vite" 2>/dev/null || true
 
-  # 2. DB コンテナ・ボリューム破棄
-  echo ">> Docker コンテナ・ボリュームを破棄..."
-  docker compose -f "$APP_DIR/compose.yaml" down -v 2>/dev/null || true
+  # 2. DB コンテナ停止（DESTROY_DB のときのみボリュームまで破棄）
+  #    ボリュームを残す場合もコンテナは落とす。compose.yaml は次の手順の
+  #    git clean で消えるため、ここで down しないと停止手段が無くなる。
+  if [ -n "$DESTROY_DB" ]; then
+    echo ">> Docker コンテナ・ボリュームを破棄..."
+    docker compose -f "$APP_DIR/compose.yaml" down -v 2>/dev/null || true
+  else
+    echo ">> Docker コンテナを停止（ボリューム＝DB データは保持）..."
+    docker compose -f "$APP_DIR/compose.yaml" down 2>/dev/null || true
+  fi
 
   # 3. Laravel 生成ファイルを削除（gitignore 対象含む）
   #    ただし個人ローカル設定（承認履歴・個人メモ）はリセットのたびに
@@ -104,6 +114,12 @@ reset_to_template() {
   # 4. テンプレートファイルへの変更を復元
   echo ">> テンプレートファイルを復元..."
   git -C "$REPO_ROOT" checkout -- "$APP_DIR/"
+
+  # DB を残した場合、同名ボリュームが再利用されて旧スキーマのデータが
+  # そのまま見えるため、リセット直後に明示しておく
+  if [ -z "$DESTROY_DB" ]; then
+    echo ">> ℹ️  DB ボリュームは保持しました。次回起動時に既存データが再利用されます。"
+  fi
 }
 
 case "$PHASE" in
