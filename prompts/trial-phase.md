@@ -85,6 +85,11 @@
      `sed in '<path>' was blocked. For security, Claude Code may only edit files in
      the allowed working directories for this session` で拒否される。複数ファイルの
      一括置換は `Edit` ツール（同一ファイル内の複数箇所は `replace_all`）で行う
+   - **`rm` によるファイル削除**。`sed -i` と同じく、削除対象が作業ディレクトリ配下に
+     あっても `rm in '<path>' was blocked. For security, Claude Code may only remove
+     files from the allowed working directories for this session` で拒否される
+     （`my-laravel-app/storage/` 配下の一時ファイルで観測）。未追跡ファイルの削除は
+     `git clean -fdxq <path>` を使う（同じファイルに対して通る）
    - **`git -C <path> ...` と `cd <path> && git ...`**（前者は `Bash(git add *)`
      等の前置パターンに一致せず、後者は「移動先のフックを実行しうる形」として
      ツール自身に拒否される）。git はセッションのカレントディレクトリから
