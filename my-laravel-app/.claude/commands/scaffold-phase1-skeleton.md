@@ -286,6 +286,21 @@ DB_PASSWORD=app_password
 
 `.env` はテンプレート同梱の `.gitignore` で除外済み。`.env.example` は git 管理対象に含める（`APP_KEY=` は空のままにしておく）。**`.env` に加えた変更（`DB_*` / `APP_LOCALE` / `APP_FAKER_LOCALE` / `MAIL_FROM_ADDRESS`）は `.env.example` にも同じく反映する**（`team-rules/security.md` の「`.env.example` をリポジトリに含めて同期する」）。
 
+> **注意: `APP_URL` も `.env.example` 側を `http://localhost:8000` に揃えること**
+>
+> `laravel new` は `.env` にだけ `APP_URL=http://localhost:8000` を書き込み、`.env.example` は
+> 素の `APP_URL=http://localhost`（ポートなし＝80 番）のまま残す。**この差は Installer が
+> 生成時に付けるもので、手を入れないと `.env.example` 側だけがずれる。**
+>
+> 放置すると、リポジトリを新規クローンして `composer run setup` した利用者の `.env` は
+> `.env.example` からコピーされるため `APP_URL=http://localhost` になる。一方 `composer run dev`
+> の `php artisan serve` が listen するのは 8000 番なので、`url()` / `route()` が組み立てる
+> 絶対 URL（パスワード再発行メールのリンク等）が到達しないポートを指す。Phase 3 の Dusk は
+> `.env` から `.env.dusk.local` を作るため表面化しないぶん、発見が遅れる。
+>
+> `APP_KEY` だけは例外で、`.env.example` では空のままにする（秘密情報をコミットしないため）。
+> それ以外の行は `diff .env .env.example` の差分が `APP_KEY` の 1 行だけになる状態を正とする。
+
 > **注意: `DB_URL`（接続文字列方式）を `.env` に追加しないこと**
 >
 > このプロジェクトの `config/database.php` は `DB_HOST` / `DB_USERNAME` / `DB_PASSWORD` / `DB_PORT` の個別変数で接続情報を受け取る設計になっている。
@@ -297,6 +312,15 @@ DB_PASSWORD=app_password
 開発サーバーの起動もセットアップも、`laravel new` 既定の `composer.json` のスクリプト（`composer run dev` / `composer run setup`）を使う。**自前のラッパースクリプト（`bin/dev`・`bin/setup` 等）は作らない**（`composer.json` 側との二重管理になるため。`docs/stack.md` の「開発サーバー起動（正規形）」「初回セットアップ（正規形）」参照）。既定の生成物を本プロジェクトの方針に合わせて編集する。
 
 **`scripts.dev`**: `laravel new` の既定生成物には `php artisan queue:listen ...` を含む concurrently コマンドが入っているため、`docs/stack.md` の規約（Queue ワーカーを起動しない）に従い、この行を削除する（`pail` と `npm run dev` はそのまま残してよい）。`--names` と `-c`（色指定）からも `queue` に対応する要素を落とすこと（残すと名前と実プロセスの対応がずれる）。
+
+変更後（`laravel new` 既定の 4 プロセスから `queue` を抜いた 3 プロセス構成）:
+
+```json
+"dev": [
+    "Composer\\Config::disableProcessTimeout",
+    "npx concurrently -c \"#93c5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,logs,vite --kill-others"
+]
+```
 
 **`scripts.setup`**: 既定の生成物は次の形になっている（Laravel Framework 13.20.0 で確認）。
 
@@ -372,9 +396,13 @@ DB_PASSWORD=app_password
        // users.email の UNIQUE 制約へ衝突するため空にしておく。
    }
    ```
+   `run()` を空にすると `use App\Models\User;` が未使用になる。**この import も併せて削除する**
+   （残すと Pint の `no_unused_imports` が Step 9-3 で外しにくる）。
 7. **`composer run setup` の一気通貫確認**: `composer run setup` を実行し、DB 起動 → `composer install` → `.env` 用意 → `key:generate` → `migrate --seed` → `npm install` → `npm run build` が最後まで通ることを確認する（上記で空化したため Seeder は何も投入せず `Seeding database.` のみ出る）。**続けてもう一度 `composer run setup` を実行し、2 回目も同じく通る（非冪等で落ちない）ことを確認する。**
    - `.env` と `APP_KEY` は Step 7 で用意済みのため、`copy('.env.example', '.env')` は skip され `key:generate` は既存のキーを上書きする。**この確認の前に `.env` の内容（DB 接続情報）が `.env.example` と一致していることを確かめる**。一致していないと、既存の `.env` が残る挙動に助けられて「新規クローンでは通らない設定」を見逃す
+   - 確認は `diff .env .env.example` で行う。**差分が `APP_KEY` の 1 行だけ**になっていれば正しい（`APP_URL` が差分に出た場合は Step 7 の注意を参照）
 8. **git status の確認**: `git status --short` に、`.gitignore` で除外されるべき生成物（`public/hot`, `storage/pail`, `.phpunit.result.cache` 等）が現れていないことを確認する。現れた場合はテンプレートの `.gitignore` 側を補うこと。
+   - この時点では Laravel の生成物一式（`app/`, `config/`, `public/` 等）がすべて未追跡として並ぶため、`git status` の表示はディレクトリ単位に畳まれる。個別の生成物が除外されているかは `git check-ignore -v <path>...` で確かめる
 
 ## このフェーズの完了基準
 
@@ -395,7 +423,7 @@ DB_PASSWORD=app_password
 - [ ] Laravel Breeze（Livewire スタック）/ laravel-lang / larastan / Dusk の初期化済み
 - [ ] `php artisan dusk:chrome-driver --detect` を実行済み（ホストの Chrome とバージョンが一致）
 - [ ] `my-laravel-app/.env` が存在し、`.gitignore` で除外されている
-- [ ] `my-laravel-app/.env.example` が存在し、コミット対象に含まれている。`.env` の設定（`DB_*` / `APP_LOCALE` / `APP_FAKER_LOCALE` / `MAIL_FROM_ADDRESS`）が同期されている
+- [ ] `my-laravel-app/.env.example` が存在し、コミット対象に含まれている。`diff .env .env.example` の差分が `APP_KEY` の 1 行だけ（`DB_*` / `APP_LOCALE` / `APP_FAKER_LOCALE` / `MAIL_FROM_ADDRESS` / `APP_URL` が同期されている）
 - [ ] `composer.json` の `dev` スクリプトに Queue ワーカー（`php artisan queue:work` / `queue:listen`）が**含まれていない**
 - [ ] `php artisan test` が green
 - [ ] `vendor/bin/pint --test` が違反 0

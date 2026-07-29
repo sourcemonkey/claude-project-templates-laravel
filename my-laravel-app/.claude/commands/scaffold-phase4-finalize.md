@@ -20,6 +20,25 @@ description: フェーズ4 - Seeder、テスト、README、起動確認で完成
 - `php artisan db:seed` で投入。エラー時は `migrate:fresh` する前に原因を報告
 - Seeder 投入後、admin ダッシュボードで申請待ち件数・延滞件数が表示されることを確認する
 
+> **`UserSeeder` の `role` は `firstOrCreate()` に渡さず、取得後に明示代入すること。**
+> `role` は Mass assignment 対象外（`team-rules/security.md` / Phase 2 手順書）のため、
+> `firstOrCreate([...], ['role' => ...])` の第 2 引数に入れても**黙って捨てられ、
+> 全員が `Member` のまま作られる**（例外は出ないので気付きにくい）。
+> ```php
+> $user = User::firstOrCreate(['email' => $attributes['email']], [...]);
+> $user->role = $attributes['role'];
+> $user->save();
+> ```
+> 管理者アカウントが Member で作られると、後続の Dusk（管理者動線）が
+> 「`/admin` からリダイレクトされる」形で落ちる。
+
+> **`available_copies` の出どころを 1 箇所に決めること。** `docs/seeds.md` の「注意」節は
+> 承認済み・延滞中の貸出が消費した**後**の値を書籍ごとに明示している。この値をそのまま
+> `BookSeeder` に書くなら、`LendingSeeder` では在庫を触らないこと（両方で調整すると
+> 二重に引かれる）。逆に `LendingSeeder` 側で減らす方式を採るなら、`firstOrCreate` が
+> 既存行を返したときは減算しないようにする（2 回目の `db:seed` で在庫だけ減り、
+> 冪等でなくなるため）。
+
 ### 2. 主要動線のシステムテスト
 
 #### 2-0. カバレッジ計測の確認（テストを書く前に必ず実施）
@@ -27,6 +46,9 @@ description: フェーズ4 - Seeder、テスト、README、起動確認で完成
 **まず `php -m | grep pcov` でカバレッジ計測ドライバを確認する。出力が空の場合はここで中断し、`docs/stack.md` の「テストカバレッジ設定（正規形）」の導入手順を提示してユーザーに導入を依頼する**（PHP ランタイム全体に影響する変更のため、Claude Code の単独判断で `pecl install` や php.ini の編集を行わない）。カバレッジ 80% 以上は Phase 4 の完了基準であり、ドライバ無しでは達成を確認できないため、先にテストを書き進めても手戻りになる。
 
 ドライバを確認できたら、`docs/stack.md` の「テストカバレッジ設定（正規形）」の通りに `phpunit.xml` を設定する。設定後、`php artisan test --coverage-html coverage` を一度実行して `coverage/index.html` が生成され、かつカバレッジが 0% でないことを確認してから次のステップへ進む。
+
+> `laravel new` が生成する `phpunit.xml` には `<source><include>` が既にある（`<directory>app</directory>`）。
+> `<coverage>` ブロックを新規に足し、`<directory>` には `suffix=".php"` を付ける。
 
 #### 2-1. テストシナリオの実装
 
@@ -67,7 +89,11 @@ Phase 4 では Seeder が実装済みのため、`docs/seeds.md` のサンプル
 
 ### 4. README.md の作成
 
-`my-laravel-app/README.md` を新規作成。含めるべき項目:
+`my-laravel-app/README.md` を書く。**`laravel new` が生成した Laravel 既定の README
+（フレームワークの紹介・スポンサー一覧）が既に存在するので、新規作成ではなく
+全文の置き換えになる。** Write ツールを使う場合は先に Read が必要。
+
+含めるべき項目:
 
 - プロジェクト概要（1-2 段落）
 - 必要なランタイム（`docs/stack.md` の「ランタイム」表からコピー。**PCOV の行も落とさずに含める** — `composer install` で導入されないマシン側の前提条件であり、README が唯一の周知手段になるため）
@@ -76,7 +102,9 @@ Phase 4 では Seeder が実装済みのため、`docs/seeds.md` のサンプル
 - 起動手順（`composer run dev`）
 - テストアカウント表（`docs/seeds.md` の「アカウント」表をコピー）
 - 主要 URL（`/`, `/admin`）
-- テスト実行コマンド
+- テスト実行コマンド。**`php artisan dusk` は別ターミナルで
+  `php artisan serve --env=dusk.local` を先に起動する必要がある**旨も書く
+  （Dusk は自前でサーバーを起動しない。Phase 3 手順書の「Dusk 実行時の前提」参照）
 - **AI エージェント向けの設定**: `composer run setup` が `php artisan boost:install --mcp --guidelines` を実行し、`.mcp.json`（Laravel Boost の MCP サーバー登録）と `docs/boost-guidelines.md`（AI ガイドライン）を生成すること。**どちらも `.gitignore` 済みでリポジトリには含まれない**ため、クローン後に `composer run setup` を実行して初めて有効になる旨を明記する
 - 関連ドキュメントへのリンク（`docs/` 配下）
 
@@ -96,6 +124,14 @@ vendor/bin/pint database/seeders tests
      適用し直すため、**マイグレーションがゼロから通ることはこれで検証済み**になる
    - `php artisan db:seed` を 2 回連続で実行し、冪等（レコード数が増えない）かつ
      `docs/seeds.md` の全件が投入されることを確認する
+
+   > 件数の確認は SQL で一括して取れる:
+   > ```sh
+   > docker compose exec -T db mysql -uapp -papp_password bookkeeper -e "SELECT 'users' t, COUNT(*) n FROM users UNION ALL SELECT 'categories', COUNT(*) FROM categories UNION ALL SELECT 'tags', COUNT(*) FROM tags UNION ALL SELECT 'books', COUNT(*) FROM books UNION ALL SELECT 'lendings', COUNT(*) FROM lendings UNION ALL SELECT 'notifications', COUNT(*) FROM notifications UNION ALL SELECT 'audit_logs', COUNT(*) FROM audit_logs;"
+   > ```
+   > 期待値は users 3 / categories 4 / tags 7 / books 8 / lendings 5 / notifications 3 /
+   > audit_logs 3（`docs/seeds.md`）。**日本語のカラム値は端末の文字コードによって
+   > `???` と表示されることがあるが、DB の中身は壊れていない**（アプリ側の表示・テストで確認できる）。
 
    > **`php artisan migrate:fresh --seed` は使わない。** 破壊的コマンドとして
    > `.claude/settings.json` の deny リスト（ルート CLAUDE.md 厳守事項 #2 に対応）で
@@ -133,7 +169,8 @@ vendor/bin/pint database/seeders tests
    > `vendor/bin/pest --coverage --min=80` なら pao を経由せず数値と判定を直接得られるが、
    > ルートの `.claude/settings.json` の許可リストに無くヘッドレスでは実行できない
    > （許可を足すかは方針判断。現状は HTML を一次情報とする）。
-4. `php artisan dusk` が all green
+4. `php artisan dusk` が all green。**別ターミナルで
+   `php artisan serve --env=dusk.local` を起動してから実行する**（Phase 3 手順書参照）
 5. `vendor/bin/pint --test` が違反 0
 6. `vendor/bin/phpstan analyse` でエラー 0
 7. `composer audit` で既知の脆弱性 0
@@ -144,17 +181,23 @@ vendor/bin/pint database/seeders tests
    - 管理者でログインしてダッシュボード
    - メンバーでログインして借用申請
 
+   > ヘッドレス実行ではこの目視確認ができない。**確認できていない旨を報告に明記し、
+   > 「完了」と断定しないこと**（Dusk が主要動線を押さえているので機能面の担保はあるが、
+   > レイアウト崩れ・配色などは Dusk では検出できない）。
+
 ## このフェーズの完了基準（= プロジェクト全体の完成）
 
 - [ ] `composer run setup` 一発でセットアップ完了
 - [ ] `composer run dev` で起動して全機能が動作
-- [ ] Seeder で各画面に表示すべきデータが入る
+- [ ] Seeder で各画面に表示すべきデータが入る（`db:seed` 2 回でも件数が増えない）
 - [ ] `php artisan test` および `php artisan dusk` が all green
 - [ ] 「2-1. テストシナリオの実装」に列挙した Dusk シナリオが**すべてテストとして存在する**
       （本フェーズで追加する 3 件を含め 7 件以上。green であることと網羅していることは別）
 - [ ] カバレッジが 80% 以上（`coverage/index.html` で確認）
 - [ ] `vendor/bin/pint --test` 違反 0、`vendor/bin/phpstan analyse` エラー 0
 - [ ] README にテストアカウント・起動方法が記載
+- [ ] `git status --short` に `.gitignore` 漏れの生成物が出ていない
+      （`coverage/`・`.env.dusk.local` は Phase 4 で新たに生成される。どちらも除外済みのはず）
 
 ## 完了後
 
