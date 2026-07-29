@@ -78,3 +78,27 @@ Faker でランダム生成ではなく、明示的な書籍を入れる（画�
   - ふつうのデザイン: `available_copies = 1`（Rejected は消費しない）
   - 未公開書籍サンプル: `available_copies = 1`
 - 冪等性: 各レコードは `firstOrCreate()`（ユニークなキーを第一引数に指定）を使う。
+
+## 冪等キー（`firstOrCreate()` の第一引数）
+
+**リソースごとに次のキーを使う。** 何をキーにするかで冪等性が壊れるため固定する。
+
+| Seeder | 第一引数 |
+|---|---|
+| `UserSeeder` | `['email' => ...]` |
+| `CategorySeeder` / `TagSeeder` | `['name' => ...]` |
+| `BookSeeder` | `['title' => ...]` |
+| `LendingSeeder` | `['user_id' => ..., 'book_id' => ...]` |
+| `NotificationSeeder` | `['user_id' => ..., 'title' => ...]` |
+| `AuditLogSeeder` | `['target_type' => ..., 'target_id' => ..., 'action' => ...]` |
+
+> **`BookSeeder` のキーに `isbn` を使わないこと。** 上の書籍表で「未公開書籍サンプル」の
+> ISBN は `(なし)` = `null` であり、`firstOrCreate(['isbn' => null], [...])` は
+> **`isbn IS NULL` の任意の行にマッチする**。今は null 行が 1 件だけなので偶然
+> 冪等に見えるが、null ISBN の書籍を足した時点で別の本を「既存」と誤認して
+> 投入をスキップする。書籍表のタイトルは全 8 件で一意なので `title` を使う。
+
+> **`LendingSeeder` のキーが `user_id` 単独でも `book_id` 単独でも足りない。**
+> 上の貸出表では一般花子が 3 件・一般次郎が 2 件あり、`user_id` 単独では 1 件目しか
+> 作られない。書籍側も同様なので、**必ず 2 カラムの組**で指定する
+> （表の 5 行はこの組で一意）。
