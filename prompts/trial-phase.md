@@ -94,7 +94,14 @@
      等の前置パターンに一致せず、後者は「移動先のフックを実行しうる形」として
      ツール自身に拒否される）。git はセッションのカレントディレクトリから
      そのまま実行し、対象は相対パスの pathspec で絞る（例: `my-laravel-app/`
-     から `git status --short -- docs ../prompts`）
+     から `git status --short -- docs ../prompts`）。
+
+     > **pathspec を間違えても `git status` は黙って空を返す。** カレントが
+     > `my-laravel-app/` のときに `git status --short -- my-laravel-app` と書くと
+     > `my-laravel-app/my-laravel-app` を指すことになり、エラーではなく**出力 0 行**に
+     > なる。「差分なし＝正常」と見分けが付かないため、生成物が並ぶはずの場面で空が
+     > 返ったら pathspec を疑うこと（Phase 1 のトライアルで踏んだ）。カレント配下を
+     > 丸ごと見るなら `git status --short -- .` と書く。
    - **`git -c <key>=<value> ...`**（サブコマンドの前に設定オプションを挟む形）。
      `git status` / `git log` / `git diff` が承認なしで通るのは許可リストではなく
      **Claude Code が読み取り専用コマンドとして自動承認しているため**で、`-c` を
