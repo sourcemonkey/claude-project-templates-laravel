@@ -385,6 +385,26 @@ DB_PASSWORD=app_password
 3. **Pint による自動修正**: `vendor/bin/pint` を実行する。`laravel new` / `breeze:install` / `lang:add` が生成するファイル（`bootstrap/providers.php`, `lang/ja/*.php` 等）はデフォルトで Pint の規約に違反しているため自動修正が入る。その後 `vendor/bin/pint --test` が 0 件になることを確認する。
    - Step 6 の指示どおり `tests/Pest.php` を先に並べ替えてあれば、Pint はこのファイルを書き換えない。書き換えられた場合は並べ替えが漏れているので Step 6 に戻ること
 4. `php artisan test` が green であることを確認する。
+
+   > **既知事象: 全件パスでも終了コードは 1 になる（`laravel/pao` 上流のバグ）。**
+   > **合否は終了コードではなく、出力 JSON の `"result":"passed"` と件数で判定すること。**
+   > ```
+   > {"tool":"pest","result":"passed","tests":26,"passed":26,"assertions":76,...}
+   > ```
+   > 原因は `--no-output` の二重付与。`php artisan test` の実体である Collision が
+   > 無条件に付与し（`TestCommand.php`）、`laravel/pao` の Pest プラグインが重複チェック
+   > なしで再付与するため、PHPUnit が `Option --no-output cannot be used more than once`
+   > の Warning を出す。PHPUnit は Warning があると `wasSuccessful()` が false になり
+   > 終了コード 1 を返す。**テスト自体は本当に green である**（`--log-junit` の
+   > `errors="0" failures="0"` で確認できる）。
+   >
+   > Pest 自身の同等プラグインには重複ガードがあり、**pao 側にだけ無い**。
+   > `laravel/pao` は `laravel new` の既定生成物で、v1.1.2（Packagist の最新版）で未修正。
+   > 上げて回避することはできない。
+   >
+   > **pao はエージェント実行時のみ有効になる**ため、人間がターミナルから叩くと再現しない
+   > （`Autoload.php` が `isAgent` を見ている）。「手元では通るのに Claude Code だと失敗する」
+   > という形で現れるので、同じ切り分けを繰り返さないよう注意すること。
 5. **起動確認**: `composer run dev` をバックグラウンドで立ち上げ、`curl -sS --retry 15 --retry-all-errors --retry-delay 1 -o /dev/null -w "%{http_code}" http://localhost:8000` が 200 を返すことを確認する。`/login` `/register` も 200 になること。確認後サーバを停止する（`pkill -f "php artisan serve"`、`pkill -f "artisan pail"`、`pkill -f vite`。concurrently に `--kill-others` が付いている場合は最初の 1 つで残りも終了するが、3 つとも実行して確実に止める）。
    - `--retry` を付けるのは、`composer run dev` の起動直後は `php artisan serve` がまだ listen していないため。Bash ツールでは `sleep` を伴う待機ループが書けないので `curl` 側のリトライで吸収する
 6. **既定 `DatabaseSeeder` の空化**: `laravel new` が生成する `database/seeders/DatabaseSeeder.php` は、固定メール（`test@example.com`）の Test User を `User::factory()->create([...])` で 1 件作る内容になっている。これは `firstOrCreate` ではないため、**`composer run setup`（内部で `migrate --seed --force`）を 2 回目に実行すると `users.email` の UNIQUE 制約違反で落ちる**（「クローンして 1 コマンドで動く」が崩れる）。`run()` の本体をコメント化して空にすること（Seeder 本体は Phase 4 で `docs/seeds.md` に沿って実装する）:
@@ -425,7 +445,7 @@ DB_PASSWORD=app_password
 - [ ] `my-laravel-app/.env` が存在し、`.gitignore` で除外されている
 - [ ] `my-laravel-app/.env.example` が存在し、コミット対象に含まれている。`diff .env .env.example` の差分が `APP_KEY` の 1 行だけ（`DB_*` / `APP_LOCALE` / `APP_FAKER_LOCALE` / `MAIL_FROM_ADDRESS` / `APP_URL` が同期されている）
 - [ ] `composer.json` の `dev` スクリプトに Queue ワーカー（`php artisan queue:work` / `queue:listen`）が**含まれていない**
-- [ ] `php artisan test` が green
+- [ ] `php artisan test` が green（**終了コードでは判定しない**。JSON の `"result":"passed"` と件数で見る。Step 9-4 の既知事象を参照）
 - [ ] `vendor/bin/pint --test` が違反 0
 - [ ] `vendor/bin/phpstan analyse --memory-limit=512M` がエラー 0
 - [ ] `git status --short` に `.gitignore` 漏れの生成物が出ていない

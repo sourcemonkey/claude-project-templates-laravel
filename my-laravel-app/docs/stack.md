@@ -105,6 +105,8 @@ Laravel 12 以降、`laravel new` は公式スターターキット（Livewire /
 | `laravel/dusk` | システムテスト（Capybara + Selenium 相当） | ✅ | `require-dev` |
 | `laravel/boost` | AI エージェント向けの MCP サーバー（DB スキーマ・ログ・ドキュメント検索）と AI ガイドライン生成 | ✅ | `require-dev` |
 
+> **`laravel/pao` の既知の不具合（v1.1.2 時点）**: エージェントが `php artisan test` を実行すると、**全件パスでも終了コードが 1 になる**。`--no-output` を Collision が無条件付与し、pao が重複チェックなしで再付与するため、PHPUnit が `Option --no-output cannot be used more than once` の Warning を出し、Warning があると `wasSuccessful()` が false になるのが原因（Pest 自身の同等プラグインにはガードがあり、pao 側にだけ無い）。**テストの合否は終了コードではなく JSON の `"result":"passed"` と件数で判定すること。** 人間がターミナルから実行した場合は pao が自身を無効化するため再現しない。カバレッジの `--min` 失敗も同様に握りつぶされる（後述の「テストカバレッジ設定」参照）。
+
 カバレッジ計測ドライバの **PCOV は composer パッケージではなく PHP 拡張**のため、この表ではなく「ランタイム」表に記載している（マシン側の前提条件であり、`composer install` では導入されない）。
 
 > **`laravel/boost` の導入範囲**: Phase 1 の `boost:install --mcp --guidelines` により、MCP サーバー設定（`.mcp.json`）と AI ガイドライン（`docs/boost-guidelines.md`）だけを生成する。**Agent Skills（`--skills`）は導入しない** — 出力先の `.claude/` はヘッドレス実行で書き込めず、かつテンプレートへコミットすると `boost:update` の同期責任が人手に残るため。
