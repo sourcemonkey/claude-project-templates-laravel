@@ -57,6 +57,7 @@ description: フェーズ4 - Seeder、テスト、README、起動確認で完成
 テスト実装上の注意:
 - **Dusk の `select()` には `<option>` の `value` 属性を渡す**（表示テキストではない）。表示テキストで選択したい場合は `$browser->script(...)` を使わず、`selectByText()`（Dusk 3 系以降で利用可能な場合）の有無を確認して使う
 - **承認済み貸出を使う返却テストでは、`Lending::factory()->approved()->create(...)` の前に `$book->update(['available_copies' => 1])` で在庫を確保すること**。Factory のトレイトは state のみ設定し `available_copies` は操作しないため、返却後に `available_copies > total_copies` になるケースでエラーになる。
+- **Feature テストのクエリ文字列に日本語を直接埋めないこと。** `$this->get('/admin/users?filter[name]=検索対象')` はマルチバイトがそのまま URL に入って壊れ、絞り込みが一致しない。`urlencode('検索対象')` を通す。失敗時の症状は「該当 0 件」なので**原因が絞り込みロジック側にあるように見え**、切り分けに時間がかかる（Phase 4 のトライアルで踏んだ）。
 
 `docs/screens.md` の主要動線を Dusk で網羅する。Phase 3 で 4 件（蔵書一覧の表示 /
 借用申請 / 申請の承認 / 非 admin の `/admin` リダイレクト）を実装済みなので、
@@ -74,6 +75,25 @@ description: フェーズ4 - Seeder、テスト、README、起動確認で完成
 > **「Phase 3 で似たテストがあるから網羅済み」と判断しないこと。** 上記 3 件は
 > Phase 3 のシナリオに含まれておらず、書かなくても `php artisan dusk` は green に
 > なる（＝完了基準をすり抜ける）。**最終的に Dusk のテストは 7 件以上**になる。
+
+> **カバレッジ 80% に届かせるには Feature テストの拡充が別途必要になる。**
+> **Dusk は `php artisan test` のカバレッジに寄与しない**（ブラウザが別プロセスで動くため
+> PCOV が実行行を拾わない）。上の Dusk 3 件を足しても数値は動かず、Phase 3 までの
+> テストのままだと 80% に届かない（トライアルでは **71.64%**）。
+>
+> 不足分は `coverage/` のディレクトリ別インデックスで低い箇所を特定して埋める。
+> ```sh
+> grep -oE '[0-9]+\.[0-9]+%' coverage/Http/Controllers/Admin/index.html | head -40
+> grep -oE '[0-9]+\.[0-9]+%' coverage/Policies/index.html | head -30
+> ```
+> トライアルで効いたのは次の 4 領域（追加後 **93.27%**）。いずれも Dusk では
+> カバーされないが Feature テストなら安く書ける:
+> - 管理画面の CRUD（カテゴリ・タグ・書籍の `store` / `update` / `destroy` と
+>   Form Request のバリデーション。異常系も含める）
+> - Livewire コンポーネント（`Livewire::test(BookSearch::class)->set('title', ...)` の形で
+>   絞り込みの挙動を検証する。ブラウザ不要で速い）
+> - Enum の `label()`（`->with([...])` のデータセットで全ケースを 1 テストに収められる）
+> - 通知の未読/既読フィルタ・監査ログの絞り込み（Controller の分岐）
 
 ### 3. composer run setup の確認
 
@@ -113,6 +133,10 @@ Phase 4 では Seeder が実装済みのため、`docs/seeds.md` のサンプル
 ```sh
 vendor/bin/pint database/seeders tests
 ```
+
+> **Pint を掛けたあとに `php artisan test` と `php artisan dusk` を回し直すこと。**
+> `lambda_not_used_import`（クロージャの `use` から未使用変数を削る）などテストの
+> 挙動に触れる fixer があるため、Pint 前に green だったことは Pint 後の保証にならない。
 
 ### 6. 最終チェック
 
@@ -194,7 +218,8 @@ vendor/bin/pint database/seeders tests
 - [ ] `php artisan test` および `php artisan dusk` が all green
 - [ ] 「2-1. テストシナリオの実装」に列挙した Dusk シナリオが**すべてテストとして存在する**
       （本フェーズで追加する 3 件を含め 7 件以上。green であることと網羅していることは別）
-- [ ] カバレッジが 80% 以上（`coverage/index.html` で確認）
+- [ ] カバレッジが 80% 以上（`coverage/index.html` で確認）。**Dusk は寄与しない**ため、
+      届かない場合は Feature テストを足す（手順 2-1 の注記参照）
 - [ ] `vendor/bin/pint --test` 違反 0、`vendor/bin/phpstan analyse` エラー 0
 - [ ] README にテストアカウント・起動方法が記載
 - [ ] `git status --short` に `.gitignore` 漏れの生成物が出ていない
