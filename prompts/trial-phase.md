@@ -107,10 +107,10 @@
      > `git clean -fdxq tmp-skeleton` を `my-laravel-app/tmp-skeleton` と書き換えると
      > `warning: could not open directory 'my-laravel-app/my-laravel-app/'` が返って
      > 何も削除されない（`git status` と違って気付ける）。
-   - **`git status` にオプションを付けた形の一部**。`git status --short --cached` は
-     `This command requires approval` で拒否される（`git status` が承認なしで通るのは
-     許可リストではなく読み取り専用コマンドとしての自動承認によるため）。staged の
-     内容だけを見たいときは `git diff --cached --name-only` を使う
+   - **`git status --cached` というオプションは存在しない**（`error: unknown option 'cached'`）。
+     承認を求められるのは、存在しないオプションを含む形が読み取り専用コマンドとしての
+     自動承認から外れるため。**許可リストに足しても解決しない**（コマンド自体がエラーになる）。
+     staged の内容だけを見たいときは `git diff --cached --name-only` を使う
    - **`git -c <key>=<value> ...`**（サブコマンドの前に設定オプションを挟む形）。
      `git status` / `git log` / `git diff` が承認なしで通るのは許可リストではなく
      **Claude Code が読み取り専用コマンドとして自動承認しているため**で、`-c` を
