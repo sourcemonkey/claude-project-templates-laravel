@@ -105,7 +105,9 @@ Laravel 12 以降、`laravel new` は公式スターターキット（Livewire /
 | `laravel/dusk` | システムテスト（Capybara + Selenium 相当） | ✅ | `require-dev` |
 | `laravel/boost` | AI エージェント向けの MCP サーバー（DB スキーマ・ログ・ドキュメント検索）と AI ガイドライン生成 | ✅ | `require-dev` |
 
-> **`laravel/pao` の既知の不具合（v1.1.2 時点）**: エージェントが `php artisan test` を実行すると、**全件パスでも終了コードが 1 になる**。`--no-output` を Collision が無条件付与し、pao が重複チェックなしで再付与するため、PHPUnit が `Option --no-output cannot be used more than once` の Warning を出し、Warning があると `wasSuccessful()` が false になるのが原因（Pest 自身の同等プラグインにはガードがあり、pao 側にだけ無い）。**テストの合否は終了コードではなく JSON の `"result":"passed"` と件数で判定すること。** 人間がターミナルから実行した場合は pao が自身を無効化するため再現しない。カバレッジの `--min` 失敗も同様に握りつぶされる（後述の「テストカバレッジ設定」参照）。
+> **`laravel/pao` の既知の不具合（v1.1.2 以前。v1.1.3 で解消済み）**: エージェントが `php artisan test` を実行すると、**全件パスでも終了コードが 1 になった**。`--no-output` を Collision が無条件付与し、pao が重複チェックなしで再付与するため、PHPUnit が `Option --no-output cannot be used more than once` の Warning を出し、Warning があると `wasSuccessful()` が false になるのが原因。v1.1.3（2026-07-29）で pao 側に重複ガードが入り、**終了コードで合否を判定してよくなった**。`laravel new` が書く制約は `^1.0.6` と下限が低いため、終了コード 1 が返ったらまず `composer show laravel/pao` で版を確認すること（v1.1.3 以降なら本物の失敗）。人間がターミナルから実行した場合は pao が自身を無効化するため、この事象は再現しない。
+>
+> **カバレッジの `--min` 失敗が握りつぶされる件は別問題で、こちらは解消していない**（後述の「テストカバレッジ設定」参照）。
 
 カバレッジ計測ドライバの **PCOV は composer パッケージではなく PHP 拡張**のため、この表ではなく「ランタイム」表に記載している（マシン側の前提条件であり、`composer install` では導入されない）。
 

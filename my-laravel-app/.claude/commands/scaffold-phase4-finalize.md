@@ -168,8 +168,8 @@ vendor/bin/pint database/seeders tests
    > （Seeder で戻せるのは `docs/seeds.md` のデータのみで、画面から手で入れたデータは戻らない）。
    > なお `bookkeeper_test` は `docker/mysql/initdb/` の init スクリプトが再作成するため、
    > `down -v` してもテスト DB は失われない。
-2. `php artisan test` が all green（**終了コードでは判定しない**。全件パスでも `laravel/pao` の
-   上流バグで 1 が返る。JSON の `"result":"passed"` と件数で見る。Phase 1 手順書 Step 9-4 参照）
+2. `php artisan test` が all green（`laravel/pao` v1.1.3 以降は終了コードで判定してよい。
+   1 が返った場合は版を確認する。Phase 1 手順書 Step 9-4 の既知事象を参照）
 3. **カバレッジが 80% 以上**であることを `coverage/index.html` の数値で確認する。
    `php artisan test --coverage-html coverage` で HTML を生成したうえで、次で数値を読む:
    ```sh

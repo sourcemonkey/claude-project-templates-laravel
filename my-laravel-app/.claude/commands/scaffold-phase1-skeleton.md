@@ -386,21 +386,21 @@ DB_PASSWORD=app_password
    - Step 6 の指示どおり `tests/Pest.php` を先に並べ替えてあれば、Pint はこのファイルを書き換えない。書き換えられた場合は並べ替えが漏れているので Step 6 に戻ること
 4. `php artisan test` が green であることを確認する。
 
-   > **既知事象: 全件パスでも終了コードは 1 になる（`laravel/pao` 上流のバグ）。**
-   > **合否は終了コードではなく、出力 JSON の `"result":"passed"` と件数で判定すること。**
-   > ```
-   > {"tool":"pest","result":"passed","tests":26,"passed":26,"assertions":76,...}
-   > ```
-   > 原因は `--no-output` の二重付与。`php artisan test` の実体である Collision が
-   > 無条件に付与し（`TestCommand.php`）、`laravel/pao` の Pest プラグインが重複チェック
-   > なしで再付与するため、PHPUnit が `Option --no-output cannot be used more than once`
-   > の Warning を出す。PHPUnit は Warning があると `wasSuccessful()` が false になり
-   > 終了コード 1 を返す。**テスト自体は本当に green である**（`--log-junit` の
-   > `errors="0" failures="0"` で確認できる）。
+   > **解消済み（`laravel/pao` v1.1.3 以降）: 終了コードで合否を判定してよい。**
+   > 以下は **v1.1.2 以前**の既知事象なので、古い版が入った場合の切り分け用に残す。
    >
-   > Pest 自身の同等プラグインには重複ガードがあり、**pao 側にだけ無い**。
-   > `laravel/pao` は `laravel new` の既定生成物で、v1.1.2（Packagist の最新版）で未修正。
-   > 上げて回避することはできない。
+   > v1.1.2 以前では、全件パスでも終了コードが 1 になった。原因は `--no-output` の二重付与。
+   > `php artisan test` の実体である Collision が無条件に付与し（`TestCommand.php`）、
+   > `laravel/pao` の Pest プラグインが重複チェックなしで再付与するため、PHPUnit が
+   > `Option --no-output cannot be used more than once` の Warning を出す。PHPUnit は
+   > Warning があると `wasSuccessful()` が false になり終了コード 1 を返す（テスト自体は green）。
+   > v1.1.3（2026-07-29）で `Plugin.php` / `Starter.php` の両方に重複ガードが入り解消した。
+   >
+   > **終了コードが 1 で返ったら、まず `composer show laravel/pao` で版を確認すること。**
+   > v1.1.2 以前ならこの既知事象で、`--log-junit` の `errors="0" failures="0"` と
+   > 出力 JSON の `"result":"passed"` で合否を判断してよい。**v1.1.3 以降なら本物の失敗**
+   > なので握り潰さずに原因を追うこと。`laravel new` が書く制約は `^1.0.6` と下限が低いため、
+   > `composer.lock` を持たない環境では古い版が入る余地がある。
    >
    > **pao はエージェント実行時のみ有効になる**ため、人間がターミナルから叩くと再現しない
    > （`Autoload.php` が `isAgent` を見ている）。「手元では通るのに Claude Code だと失敗する」
@@ -445,7 +445,7 @@ DB_PASSWORD=app_password
 - [ ] `my-laravel-app/.env` が存在し、`.gitignore` で除外されている
 - [ ] `my-laravel-app/.env.example` が存在し、コミット対象に含まれている。`diff .env .env.example` の差分が `APP_KEY` の 1 行だけ（`DB_*` / `APP_LOCALE` / `APP_FAKER_LOCALE` / `MAIL_FROM_ADDRESS` / `APP_URL` が同期されている）
 - [ ] `composer.json` の `dev` スクリプトに Queue ワーカー（`php artisan queue:work` / `queue:listen`）が**含まれていない**
-- [ ] `php artisan test` が green（**終了コードでは判定しない**。JSON の `"result":"passed"` と件数で見る。Step 9-4 の既知事象を参照）
+- [ ] `php artisan test` が green（`laravel/pao` v1.1.3 以降は終了コードで判定してよい。1 が返った場合は Step 9-4 の既知事象を参照して版を確認する）
 - [ ] `vendor/bin/pint --test` が違反 0
 - [ ] `vendor/bin/phpstan analyse --memory-limit=512M` がエラー 0
 - [ ] `git status --short` に `.gitignore` 漏れの生成物が出ていない
