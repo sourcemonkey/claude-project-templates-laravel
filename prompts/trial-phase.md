@@ -102,6 +102,15 @@
      > なる。「差分なし＝正常」と見分けが付かないため、生成物が並ぶはずの場面で空が
      > 返ったら pathspec を疑うこと（Phase 1 のトライアルで踏んだ）。カレント配下を
      > 丸ごと見るなら `git status --short -- .` と書く。
+     >
+     > **`git clean` も同じ pathspec を取るが、こちらは警告が出る。** 手順書の
+     > `git clean -fdxq tmp-skeleton` を `my-laravel-app/tmp-skeleton` と書き換えると
+     > `warning: could not open directory 'my-laravel-app/my-laravel-app/'` が返って
+     > 何も削除されない（`git status` と違って気付ける）。
+   - **`git status` にオプションを付けた形の一部**。`git status --short --cached` は
+     `This command requires approval` で拒否される（`git status` が承認なしで通るのは
+     許可リストではなく読み取り専用コマンドとしての自動承認によるため）。staged の
+     内容だけを見たいときは `git diff --cached --name-only` を使う
    - **`git -c <key>=<value> ...`**（サブコマンドの前に設定オプションを挟む形）。
      `git status` / `git log` / `git diff` が承認なしで通るのは許可リストではなく
      **Claude Code が読み取り専用コマンドとして自動承認しているため**で、`-c` を
