@@ -335,10 +335,11 @@ DB_PASSWORD=app_password
 ]
 ```
 
-本プロジェクトは DB を Docker で動かし、かつ Seeder 込みで「最初から動く状態」にするため、次の 2 点を変更する:
+本プロジェクトは DB を Docker で動かし、かつ Seeder 込みで「最初から動く状態」にするため、次の 3 点を変更する:
 
 1. **先頭に `docker compose up -d --wait db` を足す** — 後続の `migrate` は DB が healthy でないと失敗するため。`--wait` を使う理由は Step 2 と同じ（判定条件を `compose.yaml` の healthcheck に一本化する）
 2. **`@php artisan migrate --force` を `@php artisan migrate --seed --force` にする** — `docs/seeds.md` のサンプルデータ投入まで含めて一発で完了させるため
+3. **`@php artisan boost:install --mcp --guidelines --no-interaction` を足す** — `.mcp.json` と `docs/boost-guidelines.md` は `.gitignore` 済みで**リポジトリをクローンしても存在しない**ため。setup に含めないと、新規クローンした利用者は MCP サーバーが未設定のまま作業を始めることになり、`CLAUDE.md` の `@docs/boost-guidelines.md` も解決できない。Step 6 でも同じコマンドを実行するが、あちらは Phase 1 の生成時、こちらは**クローン後の再現性**のためで役割が異なる（コマンドは冪等なので二重実行しても問題ない）。
 
 変更後:
 
@@ -356,8 +357,6 @@ DB_PASSWORD=app_password
 ```
 
 `npm install --ignore-scripts` は既定のまま残す（`.npmrc` の `ignore-scripts=true` と方針が一致するため）。
-
-3. **`@php artisan boost:install --mcp --guidelines --no-interaction` を足す** — `.mcp.json` と `docs/boost-guidelines.md` は `.gitignore` 済みで**リポジトリをクローンしても存在しない**ため。setup に含めないと、新規クローンした利用者は MCP サーバーが未設定のまま作業を始めることになり、`CLAUDE.md` の `@docs/boost-guidelines.md` も解決できない。Step 6 でも同じコマンドを実行するが、あちらは Phase 1 の生成時、こちらは**クローン後の再現性**のためで役割が異なる（コマンドは冪等なので二重実行しても問題ない）。
 
 ### 9. DB の作成と起動確認
 
