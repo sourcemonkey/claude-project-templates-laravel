@@ -56,7 +56,12 @@ description: フェーズ4 - Seeder、テスト、README、起動確認で完成
 
 テスト実装上の注意:
 - **Dusk の `select()` には `<option>` の `value` 属性を渡す**（表示テキストではない）。表示テキストで選択したい場合は `$browser->script(...)` を使わず、`selectByText()`（Dusk 3 系以降で利用可能な場合）の有無を確認して使う
-- **承認済み貸出を使う返却テストでは、`Lending::factory()->approved()->create(...)` の前に `$book->update(['available_copies' => 1])` で在庫を確保すること**。Factory のトレイトは state のみ設定し `available_copies` は操作しないため、返却後に `available_copies > total_copies` になるケースでエラーになる。
+- **返却テストでは「1 冊消費済み」の書籍を用意すること**（Phase 3 手順書の同名の注意と同じ罠。書き方も揃えてある）。
+  ```php
+  $book = Book::factory()->create(['total_copies' => 2, 'available_copies' => 1]);
+  $lending = Lending::factory()->approved()->create(['book_id' => $book->id]);
+  ```
+  `approved()` / `overdue()` は state を設定するだけで `available_copies` を減らさず、ファクトリの既定は在庫満杯のため、そのまま返却させると `increment` が `total_copies` を超えて CHECK 制約に違反する。
 - **Feature テストのクエリ文字列に日本語を直接埋めないこと。** `$this->get('/admin/users?filter[name]=検索対象')` はマルチバイトがそのまま URL に入って壊れ、絞り込みが一致しない。`urlencode('検索対象')` を通す。失敗時の症状は「該当 0 件」なので**原因が絞り込みロジック側にあるように見え**、切り分けに時間がかかる（Phase 4 のトライアルで踏んだ）。
 
 `docs/screens.md` の主要動線を Dusk で網羅する。Phase 3 で 4 件（蔵書一覧の表示 /

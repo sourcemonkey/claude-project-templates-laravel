@@ -77,6 +77,12 @@ Feature テストが壊れる**。次を必ず行うこと。
 
    > 削除は `git clean -fdxq <path>` で行う（いずれも `laravel new` / `breeze:install` が
    > 生成した git 未追跡ファイルであり、追跡ファイルを巻き込む事故が起きない）。
+   >
+   > **パスはセッションのカレントディレクトリ基準で書くこと。** `my-laravel-app/` に
+   > いる状態で `git clean -fdxq my-laravel-app/resources/views/...` と書くと
+   > `my-laravel-app/my-laravel-app/...` を指し、
+   > `warning: could not open directory 'my-laravel-app/my-laravel-app/'` が返って
+   > **何も削除されない**（`prompts/trial-phase.md` の pathspec の注意も参照）。
 5. `resources/views/livewire/layout/navigation.blade.php` のナビ項目を `docs/screens.md` の
    レイアウト（蔵書 / 自分の貸出 / 通知、管理者には管理）に差し替える
 
@@ -219,6 +225,13 @@ class BookPolicy
 CRUD に対応しないアビリティ（`approve` / `reject`）は Policy にメソッドを足し、
 Controller から `$this->authorize('approve', $lending)` で呼ぶ。返却（`returnBook`）も
 同様に Policy のアビリティとして定義する（本人のみ許可）。
+
+> **未公開書籍（`published = false`）の非表示は Policy で表現しないこと。** `docs/screens.md`
+> はメンバーに **404 を返す**と定めており、Policy の `view` を false にすると認可エラーの
+> ハンドリング（`home` へリダイレクト + `error` フラッシュ）に流れて **404 にならない**。
+> `BookPolicy::view()` は `true` のままにし、`BookController::show()` で
+> `if (! $book->published && ! $request->user()->isAdmin()) { throw new NotFoundHttpException; }`
+> のように存在判定として扱う。
 
 Controller では各アクションで `$this->authorize('update', $book);` を呼ぶ。`index` アクションでは Laravel の Policy に Pundit の `Scope` 相当の仕組みがないため、絞り込みが必要なリソース（例: Lending は自分の貸出のみ）は Controller 内で明示的に分岐する:
 
@@ -406,8 +419,24 @@ $browser->waitUntil('window.Alpine') // Alpine のロードを待ってから押
 > `Lending::factory()` が連鎖生成した書籍はそのまま承認できる。逆に在庫切れ（承認失敗）を
 > 検証するテストでは `Book::factory()->outOfStock()` を明示すること。
 
+> **返却を検証するテストは、Dusk でも Feature でも「1 冊消費済み」の書籍を用意すること。**
+> `Lending::factory()->approved()` / `->overdue()` は **state を設定するだけで
+> `available_copies` を減らさない**。ファクトリの既定は在庫満杯なので、そのまま返却させると
+> `ReturnLendingAction` の `increment('available_copies')` が `total_copies` を超え、
+> CHECK 制約 `books_available_lte_total` に違反する。
+>
+> ```php
+> $book = Book::factory()->create(['total_copies' => 2, 'available_copies' => 1]);
+> $lending = Lending::factory()->approved()->create(['book_id' => $book->id]);
+> ```
+>
+> **`QueryException` は Action の `catch (DomainException)` に掛からず 500 になるため、
+> テストからは「state が Approved のまま変わらない」という形でしか見えない**
+> （`Failed asserting that two variables reference the same object.` で、在庫制約が原因だと
+> 分かりにくい）。Phase 4 の Dusk だけでなく、本フェーズの Feature テストでも同じ罠を踏む。
+
 `php artisan dusk` で確認。あわせて Feature テスト（`php artisan test`）でも
-主要フロー（借用申請の業務ルール、認可、ロール変更、通知の既読化）を押さえること。
+主要フロー（借用申請の業務ルール、認可、ロール変更、通知の既読化、返却）を押さえること。
 **各画面がデータなしでも 200 を返すことを確認する Feature テスト**（完了基準の
 「各画面が（データなしでも）500 にならずに表示できる」に対応）も書いておくと、
 Blade 側の null 参照を Dusk より早く・安く検出できる。
