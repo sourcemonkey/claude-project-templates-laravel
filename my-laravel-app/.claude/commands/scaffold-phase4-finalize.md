@@ -136,6 +136,23 @@ Phase 4 では Seeder が実装済みのため、`docs/seeds.md` のサンプル
 - **別マシン・別ディレクトリへの持ち込み手順**: `node_modules/` と `vendor/` は**コピーせず、持ち込み先で `composer run setup`（`composer install` + `npm install` を含む）により生成する**こと。`cp -r`（macOS）でこれらを含めて丸ごとコピーすると、`node_modules/.bin/` 配下のシンボリックリンクが実ファイルに化けて `npm run build` が `ERR_MODULE_NOT_FOUND`（例: `Cannot find module '.../node_modules/dist/node/cli.js'`）で失敗する。git 管理外（`.gitignore` 済み）なので `git clone` すればそもそも含まれない。どうしてもコピーするなら `rsync -a --exclude=node_modules --exclude=vendor` で生成物を除外する
 - 起動手順（`composer run dev`）
 - テストアカウント表（`docs/seeds.md` の「アカウント」表をコピー）
+- **DB 接続情報**（DBeaver / TablePlus などの GUI クライアントから繋ぐために必要な項目を網羅する。値は `compose.yaml` と `docs/stack.md` の「MySQL 設定の規約」が一次情報）:
+
+  | 項目 | 値 |
+  |---|---|
+  | ホスト | `127.0.0.1`（`localhost` でも可） |
+  | ポート | `3306` |
+  | データベース | `bookkeeper`（開発用） / `bookkeeper_test`（テスト用） |
+  | ユーザー名 | `app` |
+  | パスワード | `app_password` |
+  | JDBC URL（参考） | `jdbc:mysql://127.0.0.1:3306/bookkeeper` |
+
+  あわせて次の 3 点を書くこと。**いずれも書かないと接続できない・データが見えない原因になる**:
+  - **`docker compose up -d db` で DB コンテナが起動していること**が前提（停止中は接続できない）
+  - `bookkeeper_test` は**テスト実行のたびに中身が破棄される**（`RefreshDatabase`）。GUI で中身を見るなら `bookkeeper` を選ぶ
+  - root ユーザー（`root` / `root_password`）も存在するが、**通常は `app` を使う**。root が要るのは DB 自体の作成・権限操作のときだけ
+
+  > **`compose.yaml` の `ports` は `127.0.0.1:3306:3306`** とループバックに限定して公開している。同じ PC の GUI クライアントからは繋がるが、LAN 内の別マシンからは繋がらない（意図した設定）。
 - 主要 URL（`/`, `/admin`）
 - テスト実行コマンド。**`php artisan dusk` は別ターミナルで
   `php artisan serve --env=dusk.local` を先に起動する必要がある**旨も書く
