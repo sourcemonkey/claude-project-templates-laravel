@@ -42,6 +42,7 @@
       "Bash(php artisan *)",
       "Bash(php -v)",
       "Bash(php -m)",
+      "Bash(vendor/bin/pest*)",
       "Bash(vendor/bin/pint*)",
       "Bash(vendor/bin/phpstan*)",
       "Bash(composer run dev)",

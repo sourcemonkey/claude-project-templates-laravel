@@ -22,6 +22,7 @@
       "Bash(npm install --ignore-scripts)",
       "Bash(npm run *)",
       "Bash(php artisan *)",
+      "Bash(vendor/bin/pest*)",
       "Bash(vendor/bin/pint*)",
       "Bash(vendor/bin/phpstan*)",
       "Bash(composer run dev)",
