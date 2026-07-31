@@ -102,6 +102,7 @@ Laravel 12 以降、`laravel new` は公式スターターキット（Livewire /
 | `larastan/larastan` | 静的解析（PHPStan の Laravel 版） | ✅ | `require-dev` |
 | `pestphp/pest` | テストフレームワーク | ✅（`--pest` オプションで導入） | `require-dev` |
 | `pestphp/pest-plugin-laravel` | Pest の Laravel 統合 | ✅（`--pest` に同梱） | `require-dev` |
+| `pestphp/pest-plugin-drift` | PHPUnit 記法から Pest 記法への変換 | ✅（`--pest` に同梱。Installer が変換に使う） | `require-dev` |
 | `laravel/dusk` | システムテスト（Capybara + Selenium 相当） | ✅ | `require-dev` |
 | `laravel/boost` | AI エージェント向けの MCP サーバー（DB スキーマ・ログ・ドキュメント検索）と AI ガイドライン生成 | ✅ | `require-dev` |
 
