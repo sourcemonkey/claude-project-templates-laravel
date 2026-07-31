@@ -185,7 +185,7 @@ vendor/bin/pint database/seeders tests
    > ```sh
    > docker compose exec -T db mysql -uapp -papp_password bookkeeper -e "SELECT 'users' t, COUNT(*) n FROM users UNION ALL SELECT 'categories', COUNT(*) FROM categories UNION ALL SELECT 'tags', COUNT(*) FROM tags UNION ALL SELECT 'books', COUNT(*) FROM books UNION ALL SELECT 'lendings', COUNT(*) FROM lendings UNION ALL SELECT 'notifications', COUNT(*) FROM notifications UNION ALL SELECT 'audit_logs', COUNT(*) FROM audit_logs;"
    > ```
-   > 期待値は users 3 / categories 4 / tags 7 / books 8 / lendings 5 / notifications 3 /
+   > 期待値は users 3 / categories 4 / tags 13 / books 30 / lendings 5 / notifications 3 /
    > audit_logs 3（`docs/seeds.md`）。**日本語のカラム値は端末の文字コードによって
    > `???` と表示されることがあるが、DB の中身は壊れていない**（アプリ側の表示・テストで確認できる）。
 
