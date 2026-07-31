@@ -142,6 +142,17 @@ $exceptions->render(function (AccessDeniedHttpException $e, Request $request) {
   - Livewire から使う場合、Spatie Query Builder はリクエストのクエリ文字列を読むため、
     コンポーネントの状態を `request()->merge(['filter' => [...]])` で渡してから `for()` を呼ぶ
 - **ページネーション**: Laravel 標準の `->paginate(25)`。件数は `docs/screens.md` の通り 25 件/ページ
+
+  > **一覧を Livewire コンポーネントに持たせた画面では、Controller 側に `paginate()` を
+  > 置かないこと。** Livewire の `WithPagination` は `Paginator::currentPageResolver` を
+  > 「コンポーネントの `$paginators` を読む」形へ差し替え、それが**同一テストプロセスの
+  > 後続リクエストにも残る**。そのため Controller 側にも同じ一覧の `paginate()` があると、
+  > 2 回目以降のリクエストで `?page=2` を渡しても**常に 1 ページ目が返る**
+  > （画面は正常に見えるので、テストを書いて初めて気付く）。
+  >
+  > `docs/screens.md` がメンバーの蔵書一覧・貸出一覧を Livewire コンポーネントと
+  > 定めているため、これらの Controller は `view('books.index')` を返すだけにする。
+  > 検証方法は後述の「テストシナリオ」参照。
 - **enum の画面表示**: `LendingState` / `NotificationKind` / `UserRole` の日本語表記は `docs/screens.md` の「enum の表示ラベル」表が一次情報。**各 Enum クラスに `label(): string` を実装し、ビューからは `{{ $lending->state->label() }}` で参照する**。Blade 側に `@if` の連鎖や配列マッピングを書かない（`team-rules/coding-standards.md` の「Blade に複雑な `@if` の連鎖を書かない」に従う）
 - **借用申請フォーム**: 通常の Blade `<form>` + `@csrf` で `route('lendings.store')` に POST する。`Route::post` 側は `StoreLendingRequest` で `book_id` / `note` をバリデーションする
 - **Livewire**: サーバー往復を伴う動的処理（検索結果の絞り込み、状態フィルタ）に使う。`wire:model.live` で入力と同時に結果を更新する
@@ -152,6 +163,9 @@ $exceptions->render(function (AccessDeniedHttpException $e, Request $request) {
     （Breeze 生成のログインフォームは `name` を持つので `type('email', ...)` が通る。この違いが
     紛らわしい）。検索欄を `<input id="title" wire:model.live="title">` とし、テスト側は
     `->type('#title', 'Ruby')` と書く
+  - **選択肢（カテゴリ・タグの一覧など）は `render()` から view へ渡すこと。** Blade 内で
+    `\App\Models\Category::orderBy(...)->get()` と書かない（`team-rules/coding-standards.md` の
+    「ビジネスロジックは Model か Action / Service クラスに置く」に反する）
 - **削除確認**: Livewire コンポーネント内は `wire:confirm="削除しますか？"`。非 Livewire のフォームは Alpine.js で `<form x-data x-on:submit="confirm('削除しますか？') || $event.preventDefault()">`。**`x-data`（空でよい）を必ず付けること**。Alpine v3 は `x-data` スコープ内の要素しか `x-on:` ディレクティブを処理しないため、`x-data` の無い素の `<form x-on:submit>` は**エラーも出さず無視され、確認なしで削除・却下・返却が実行される**。これは `livewire.js` が読み込まれ Alpine が起動していても起きる（Alpine 読み込みの有無とは別問題。詳細は `docs/stack.md` の Alpine の項参照）。ナビの `x-data="{ open: false }"` は nav にスコープされるため外側のフォームには効かない
 - **削除失敗（`restrictOnDelete`）の扱い**: 貸出履歴のある書籍・ユーザー、書籍が紐づくカテゴリの `destroy` は、削除前に `exists()` で関連の有無を事前チェックし、あれば `back()->with('error', ...)` で戻す。**`try/catch (QueryException)` で書くと larastan が Dead catch で落とす**。実装パターンと固定のフラッシュ文言は `docs/db-schema.md` の「削除不可の画面挙動」参照
 - **フラッシュ**: `layouts/app.blade.php` の上部で `session('status')` / `session('error')` を Tailwind の色で表示
@@ -440,23 +454,50 @@ $browser->waitUntil('window.Alpine') // Alpine のロードを待ってから押
 
 > **ページネーションは件数を assert して検証すること。** `paginate(25)` を書き忘れて全件表示に
 > なっていても、1 ページ目に 25 件以上並ぶだけで**画面は正常に見え、テストも通ってしまう**。
-> 26 件以上の書籍を作り、次を検証する:
+> 26 件以上の書籍を作って検証する。
+>
+> **検証の書き方は「その一覧を誰が解決しているか」で変わる。**
+>
+> **(a) 一覧が Livewire コンポーネントの画面**（メンバーの蔵書一覧・貸出一覧）。
+> Controller は `view(...)` を返すだけで `books` を渡さないため、`assertViewHas` を
+> `$this->get('/books')` に対して書いても**取れない**。コンポーネントを直接テストする:
+>
 > ```php
 > Book::factory()->count(30)->create(['published' => true]);
+> $this->actingAs($member);
 >
-> $this->actingAs($member)->get('/books')
+> Livewire::test(BookSearch::class)
+>     ->assertViewHas('books', fn ($books) => $books->count() === 25 && $books->total() === 30)
+>     ->call('gotoPage', 2)
+>     ->assertViewHas('books', fn ($books) => $books->count() === 5);
+> ```
+>
+> **(b) Controller が一覧を解決する画面**（管理画面の蔵書一覧など、Livewire を持たないもの）:
+>
+> ```php
+> Book::factory()->count(30)->create();
+>
+> $this->actingAs($admin)->get('/admin/books')
 >     ->assertOk()
 >     ->assertViewHas('books', fn ($books) => $books->count() === 25);
 >
-> $this->actingAs($member)->get('/books?page=2')
+> $this->actingAs($admin)->get('/admin/books?page=2')
 >     ->assertOk()
 >     ->assertViewHas('books', fn ($books) => $books->count() === 5);
 > ```
+>
+> **(a) の画面で「Controller にも paginate を置いて `assertViewHas` で書く」ことはできない。**
+> Livewire の `WithPagination` が差し替えた `Paginator::currentPageResolver` が同一
+> テストプロセスの後続リクエストへ残り、Controller 側の `paginate()` が `?page=2` でも
+> **1 ページ目を返す**ため、`currentPage()` が 1 のまま `count() === 5` が落ちる
+> （「画面実装の注意」のページネーションの項も参照）。
+>
 > **Livewire コンポーネントには `WithPagination` トレイトを付けること。** 付け忘れると、
 > 2 ページ目を開いた状態で検索条件を変えたときに**ページ番号がリセットされず「該当なし」に
 > なる**。この不具合は 1 ページ目しか見ないテストでは検出できないため、
 > `Livewire::test(BookSearch::class)->call('gotoPage', 2)->set('title', ...)` のように
 > ページ送り後の絞り込みも 1 件検証しておく。
+
 **各画面がデータなしでも 200 を返すことを確認する Feature テスト**（完了基準の
 「各画面が（データなしでも）500 にならずに表示できる」に対応）も書いておくと、
 Blade 側の null 参照を Dusk より早く・安く検出できる。
@@ -477,7 +518,7 @@ Blade 側の null 参照を Dusk より早く・安く検出できる。
 | フラッシュ文言の固定値（同上の表） | `assertSessionHas('error', 'この操作を行う権限がありません。')` |
 | 削除不可時の文言（`docs/db-schema.md`） | `assertSessionHas('error', '貸出履歴があるため削除できません。')` |
 | ボタン・ラベルの固定値（`docs/screens.md`） | `assertSee('借用を申請')` / Dusk の `press('承認')` |
-| 一覧は **25 件/ページ**（`docs/screens.md`） | 26 件以上を作り `assertViewHas` で 1 ページ目の件数を検証 |
+| 一覧は **25 件/ページ**（`docs/screens.md`） | 26 件以上を作り、上記 (a) / (b) の形で 1 ページ目・2 ページ目の件数を検証 |
 
 **「メンバーには見えない」「削除できない」といった結果の粒度で満足しないこと。** ステータス
 コードや文言まで一致させて初めて、仕様どおりの実装だと言える。
@@ -493,6 +534,8 @@ Blade 側の null 参照を Dusk より早く・安く検出できる。
 - [ ] `docs/architecture.md` の「Action 一覧」の 4 クラスが `app/Actions/` に存在
 - [ ] Breeze 生成物の `dashboard` / `profile` 参照が仕様に追従済み（`route('dashboard')` が残っていない）
 - [ ] **`docs/` が定める観測可能な振る舞いに、対応する assert が存在する**（下記）
+- [ ] メンバー蔵書一覧のページネーションが `Livewire::test()` で検証済み（`assertViewHas` を
+      `$this->get('/books')` に対して書いていない）
 - [ ] `php artisan test` が all green（Phase 1 の Breeze 認証テストを含む）
 - [ ] `php artisan dusk` が all green（`tests/Browser/ExampleTest.php` の書き換えを含む）
 - [ ] `vendor/bin/pint --test` が違反 0

@@ -39,6 +39,11 @@ description: フェーズ4 - Seeder、テスト、README、起動確認で完成
 > 既存行を返したときは減算しないようにする（2 回目の `db:seed` で在庫だけ減り、
 > 冪等でなくなるため）。
 
+> **`BookSeeder` のタグ付けは `sync()` ではなく `syncWithoutDetaching()` を使うこと。**
+> `book_tags` は `(book_id, tag_id)` の UNIQUE 制約を持つ。`attach()` を素で呼ぶと
+> 2 回目の `db:seed` で `Integrity constraint violation: 1062 Duplicate entry` になり、
+> 冪等性が崩れる。
+
 ### 2. 主要動線のシステムテスト
 
 #### 2-0. カバレッジ計測の確認（テストを書く前に必ず実施）
@@ -75,12 +80,26 @@ description: フェーズ4 - Seeder、テスト、README、起動確認で完成
 
 > **ページネーションは Seeder のデータで検証できる。** `docs/seeds.md` は書籍を 30 件
 > 投入し、うち 1 件が未公開なのでメンバーには 29 件見える。一覧は 25 件/ページなので
-> **1 ページ目 25 件・2 ページ目 4 件**になる。ブラウザで「次へ」を押して 2 ページ目に
-> 遷移し、1 ページ目に無かった書籍が表示されることを確認する。
+> **1 ページ目 25 件・2 ページ目 4 件**になる。ブラウザで 2 ページ目に遷移し、
+> 1 ページ目に無かった書籍が表示されることを確認する。
 >
-> Livewire のページ送りは**サーバー往復を伴う**ため、リンククリック後は
+> **Livewire のページャは `<a>` ではなく `<button wire:click="gotoPage(...)">` である。**
+> そのため Dusk の `clickLink('2')` / `clickLink('次へ »')` は要素を掴めず、
+> ```
+> javascript error: Cannot read properties of undefined (reading 'click')
+> ```
+> で落ちる（「リンクが無い」ではなく JS エラーとして出るので、原因が分かりにくい）。
+> **`press('2')` を使うこと。**
+>
+> Livewire のページ送りは**サーバー往復を伴う**ため、押した後は
 > `waitForText()` などで描画完了を待つこと（`press()` 直後に assert すると
 > 前ページの内容を見てしまう）。
+>
+> **一覧クエリに既定の並び順を入れておくこと。** `QueryBuilder::for()` に渡す
+> クエリへ `->orderBy('id')` のような安定した順序を付けないと、MySQL の返す順が
+> 保証されず「どの書籍が 2 ページ目に来るか」が実行ごとに変わりうる。
+> `allowedSorts` は `docs/db-schema.md` の定義（`created_at` / `title`）のままでよく、
+> 既定順は `for()` に渡す側のクエリで指定する。
 
 あわせて Phase 3 で書いた既存 2 件を、動線として通しで確認する形へ広げる:
 
@@ -94,14 +113,14 @@ description: フェーズ4 - Seeder、テスト、README、起動確認で完成
 > **カバレッジ 80% に届かせるには Feature テストの拡充が別途必要になる。**
 > **Dusk は `php artisan test` のカバレッジに寄与しない**（ブラウザが別プロセスで動くため
 > PCOV が実行行を拾わない）。上の Dusk 3 件を足しても数値は動かず、Phase 3 までの
-> テストのままだと 80% に届かない（トライアルでは **71.64%**）。
+> テストのままだと 80% に届かない（トライアルでは **72.02%**）。
 >
 > 不足分は `coverage/` のディレクトリ別インデックスで低い箇所を特定して埋める。
 > ```sh
 > grep -oE '[0-9]+\.[0-9]+%' coverage/Http/Controllers/Admin/index.html | head -40
 > grep -oE '[0-9]+\.[0-9]+%' coverage/Policies/index.html | head -30
 > ```
-> トライアルで効いたのは次の 4 領域（追加後 **93.27%**）。いずれも Dusk では
+> トライアルで効いたのは次の 4 領域（追加後 **94.64%**）。いずれも Dusk では
 > カバーされないが Feature テストなら安く書ける:
 > - 管理画面の CRUD（カテゴリ・タグ・書籍の `store` / `update` / `destroy` と
 >   Form Request のバリデーション。異常系も含める）
@@ -235,7 +254,8 @@ vendor/bin/pint database/seeders tests
    >
    > `vendor/bin/pest --coverage --min=80` なら pao を経由せず数値と判定を直接得られるが、
    > ルートの `.claude/settings.json` の許可リストに無くヘッドレスでは実行できない
-   > （許可を足すかは方針判断。現状は HTML を一次情報とする）。
+   > （許可を足すかは方針判断。現状は HTML を一次情報とする。
+   > `patches/issue-phase3-permission-denied.md` も参照）。
 4. `php artisan dusk` が all green。**別ターミナルで
    `php artisan serve --env=dusk.local` を起動してから実行する**（Phase 3 手順書参照）
 5. `vendor/bin/pint --test` が違反 0
