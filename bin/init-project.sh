@@ -13,6 +13,9 @@
 #   <コピー先>/           ← git init されるルート。composer.json はここ
 #   ├── CLAUDE.md         ← アプリ固有 + ルート CLAUDE.md の carry-over 範囲
 #   ├── team-rules/       ← チーム共通ルール（CLAUDE.md が @ 参照）
+#   ├── .claude/
+#   │   ├── settings.json
+#   │   └── commands/verify.md  ← scaffold-phase* は持ち込まない（雛形生成用のため）
 #   ├── docs/  app/  config/  ...
 #   └── composer.json
 #
@@ -168,14 +171,18 @@ run_copy() {
   #
   # 除外するもの:
   #   .claude/settings.local.json        — ユーザー個別の承認履歴
+  #   .claude/commands/scaffold-phase*   — 雛形を作る手順書。完成済みアプリには不要
+  #                                        （/verify は完了基準のセルフチェックなので残す）
   #   CLAUDE.local.md                    — 個人ローカルメモ
   #   node_modules / vendor / storage/logs — 再生成可能（コピー時間短縮。setup で復元される）
   #
   # 除外しないもの（重要）:
   #   .env                               — Laravel の起動に必須（APP_KEY 含む）。git では .gitignore で除外される
+  #   .env.example                       — setup が .env を作る元。.gitignore の !/.env.example で追跡している
   if command -v rsync >/dev/null 2>&1; then
     rsync -a \
       --exclude='.claude/settings.local.json' \
+      --exclude='.claude/commands/scaffold-phase*' \
       --exclude='CLAUDE.local.md' \
       --exclude='node_modules/' \
       --exclude='vendor/' \
@@ -185,6 +192,7 @@ run_copy() {
     warn "rsync が無いため tar でコピーします"
     ( cd "$REPO_ROOT/my-laravel-app" && tar -cf - \
         --exclude='./.claude/settings.local.json' \
+        --exclude='./.claude/commands/scaffold-phase*' \
         --exclude='./CLAUDE.local.md' \
         --exclude='./node_modules' \
         --exclude='./vendor' \

@@ -37,20 +37,19 @@ PHP 8.4.23 / Laravel 13 向けに移植したものです。フェーズ分割�
 │   ├── review-policy.md
 │   └── security.md
 └── my-laravel-app/              ← 個別プロジェクトのルート（ここで claude を起動）
-                                 　 開発用リポジトリではこの中身が直下に展開される（後述）
+    ├── .ai/
+    │   └── guidelines/          ← Boost の AI ガイドラインの上書き（本プロジェクトの方針を優先）
     ├── .gitignore               ← Laravel アプリ用の除外設定（.env / coverage/ 等を含む）
     ├── .npmrc                   ← npm の方針（ignore-scripts / audit）。生成物ではなくテンプレート同梱
     ├── .tool-versions           ← my-laravel-app 配下での PHP / Node.js バージョン
     ├── CLAUDE.md                ← プロジェクト固有のエントリポイント
-    ├── compose.yaml              ← 開発用 MySQL コンテナ定義
+    ├── compose.yaml             ← 開発用 MySQL コンテナ定義
+    ├── config/
+    │   └── boost.php            ← Laravel Boost の出力先設定（生成物は Phase 1 で作られる）
     ├── docker/                  ← Docker 関連の追加設定
     │   └── mysql/
     │       ├── conf.d/
     │       └── initdb/          ← 初回起動時に bookkeeper / bookkeeper_test を作成
-    ├── config/
-    │   └── boost.php            ← Laravel Boost の出力先設定（生成物は Phase 1 で作られる）
-    ├── .ai/
-    │   └── guidelines/          ← Boost の AI ガイドラインの上書き（本プロジェクトの方針を優先）
     ├── docs/                    ← 仕様ドキュメント
     │   ├── stack.md             ← 技術スタック
     │   ├── architecture.md      ← レイヤ設計
@@ -60,13 +59,28 @@ PHP 8.4.23 / Laravel 13 向けに移植したものです。フェーズ分割�
     │   └── seeds.md             ← 初期データ
     └── .claude/
         ├── settings.json        ← Claude Code の権限設定（共有用）
-        └── commands/             ← フェーズ別スラッシュコマンド
+        └── commands/            ← フェーズ別スラッシュコマンド
             ├── scaffold-phase1-skeleton.md
             ├── scaffold-phase2-models.md
             ├── scaffold-phase3-ui.md
             ├── scaffold-phase4-finalize.md
             └── verify.md
 ```
+
+**上図はテンプレートリポジトリの構成です。** Phase 1〜4 を実行すると `my-laravel-app/` 配下に
+Laravel の生成物（`app/`・`composer.json`・`.env.example` など）が加わります。それらは
+`.gitignore` で除外されるものを除きコミット対象になりますが、テンプレート同梱ファイルと
+区別するため上図には含めていません（例外的に `.env.example` だけは、`.gitignore` の
+`!/.env.example` で意図的に追跡しており、欠けると clone 後の `composer run setup` が
+成立しないため下に挙げます）。
+
+```
+    my-laravel-app/
+    └── .env.example             ← Phase 1 の生成物。setup が .env を作る元（追跡対象）
+```
+
+**開発用リポジトリの構成はこれとは異なります**（`my-laravel-app/` の中身が直下に展開されます）。
+「6. 独立リポジトリへの移行」を参照してください。
 
 ## ローカル環境の前提
 
@@ -219,6 +233,10 @@ Laravel アプリそのものなので、次のように再配置されます。
 <コピー先>/              ← git init されるルート。composer.json はここ
 ├── CLAUDE.md            ← my-laravel-app/CLAUDE.md ＋ ルート CLAUDE.md の引き継ぎ範囲
 ├── team-rules/          ← チーム共通ルール（CLAUDE.md が @ 参照するため持ち込む）
+├── .claude/
+│   ├── settings.json
+│   └── commands/
+│       └── verify.md    ← scaffold-phase* は持ち込まない（雛形を作る手順書のため）
 ├── docs/                ← 仕様ドキュメント
 ├── app/  config/  ...   ← Laravel アプリ本体
 └── composer.json
