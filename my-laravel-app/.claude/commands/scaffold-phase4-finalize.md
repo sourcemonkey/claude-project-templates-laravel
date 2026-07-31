@@ -221,6 +221,9 @@ vendor/bin/pint database/seeders tests
 - [ ] `composer run dev` で起動して全機能が動作
 - [ ] Seeder で各画面に表示すべきデータが入る（`db:seed` 2 回でも件数が増えない）
 - [ ] `php artisan test` および `php artisan dusk` が all green
+- [ ] **`docs/` が定める観測可能な振る舞い（ステータスコード・フラッシュ文言・ラベル）に、対応する
+      assert が存在する**（Phase 3 手順書の「観測可能な振る舞いは assert で固定する」参照。本フェーズで
+      足す Feature テストにも同じ基準を適用する）
 - [ ] 「2-1. テストシナリオの実装」に列挙した Dusk シナリオが**すべてテストとして存在する**
       （本フェーズで追加する 3 件を含め 7 件以上。green であることと網羅していることは別）
 - [ ] カバレッジが 80% 以上（`coverage/index.html` で確認）。**Dusk は寄与しない**ため、

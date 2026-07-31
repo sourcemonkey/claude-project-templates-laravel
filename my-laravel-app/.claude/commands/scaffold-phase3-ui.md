@@ -441,6 +441,26 @@ $browser->waitUntil('window.Alpine') // Alpine のロードを待ってから押
 「各画面が（データなしでも）500 にならずに表示できる」に対応）も書いておくと、
 Blade 側の null 参照を Dusk より早く・安く検出できる。
 
+## 観測可能な振る舞いは assert で固定する
+
+`docs/` が**外から見える具体値**を定めている箇所は、**その値を直接検証する assert** をテストに
+含めること。実装が仕様と違っていても、**実装に合わせて書いたテストは green になる**ため、
+これが無いと仕様違反を検出する手段が無くなる（`php artisan test` も `dusk` も pint も phpstan も
+通ってしまう）。
+
+対象と assert の例:
+
+| `docs/` の定め | 書くべき assert |
+|---|---|
+| 未公開書籍の詳細は **404**（`docs/screens.md`） | `$this->get(...)->assertNotFound()` |
+| 認可エラーは `home` へリダイレクト（`docs/architecture.md`） | `assertRedirect(route('home'))` |
+| フラッシュ文言の固定値（同上の表） | `assertSessionHas('error', 'この操作を行う権限がありません。')` |
+| 削除不可時の文言（`docs/db-schema.md`） | `assertSessionHas('error', '貸出履歴があるため削除できません。')` |
+| ボタン・ラベルの固定値（`docs/screens.md`） | `assertSee('借用を申請')` / Dusk の `press('承認')` |
+
+**「メンバーには見えない」「削除できない」といった結果の粒度で満足しないこと。** ステータス
+コードや文言まで一致させて初めて、仕様どおりの実装だと言える。
+
 ## このフェーズの完了基準
 
 - [ ] `php artisan route:list` で `docs/api-spec.md` の全ルートが存在
@@ -451,6 +471,7 @@ Blade 側の null 参照を Dusk より早く・安く検出できる。
 - [ ] `layouts/admin.blade.php` に `@livewireScripts` があり、管理画面の削除確認ダイアログが実際に出る
 - [ ] `docs/architecture.md` の「Action 一覧」の 4 クラスが `app/Actions/` に存在
 - [ ] Breeze 生成物の `dashboard` / `profile` 参照が仕様に追従済み（`route('dashboard')` が残っていない）
+- [ ] **`docs/` が定める観測可能な振る舞いに、対応する assert が存在する**（下記）
 - [ ] `php artisan test` が all green（Phase 1 の Breeze 認証テストを含む）
 - [ ] `php artisan dusk` が all green（`tests/Browser/ExampleTest.php` の書き換えを含む）
 - [ ] `vendor/bin/pint --test` が違反 0
