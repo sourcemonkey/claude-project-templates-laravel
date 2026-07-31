@@ -37,6 +37,7 @@ PHP 8.4.23 / Laravel 13 向けに移植したものです。フェーズ分割�
 │   ├── review-policy.md
 │   └── security.md
 └── my-laravel-app/              ← 個別プロジェクトのルート（ここで claude を起動）
+                                 　 開発用リポジトリではこの中身が直下に展開される（後述）
     ├── .gitignore               ← Laravel アプリ用の除外設定（.env / coverage/ 等を含む）
     ├── .npmrc                   ← npm の方針（ignore-scripts / audit）。生成物ではなくテンプレート同梱
     ├── .tool-versions           ← my-laravel-app 配下での PHP / Node.js バージョン
@@ -207,12 +208,30 @@ git 履歴を切り離し、独立した開発用リポジトリとして初期�
 bash bin/init-project.sh
 ```
 
-スクリプトはモードを選べます。
+コピー先のディレクトリを聞かれるので、新しいリポジトリを置きたい場所を指定します
+（**テンプレートリポジトリ自身は指定できません**。コピー元を無傷で残すためです）。
+初回コミットまで対話形式で行います。
 
-- **モード 1**: このリポジトリ自体を開発用リポジトリとして使う（テンプレートの `.git` を作り直す）
-- **モード 2**: 別のディレクトリにコピーしてから、そこを新規リポジトリ化する
+**開発用リポジトリでは `my-laravel-app/` がルートになります。** 本番で運用するのは
+Laravel アプリそのものなので、次のように再配置されます。
 
-どちらのモードでも初回コミットを対話形式で行います。（`.gitignore` はテンプレートに同梱済みのため生成不要）
+```
+<コピー先>/              ← git init されるルート。composer.json はここ
+├── CLAUDE.md            ← my-laravel-app/CLAUDE.md ＋ ルート CLAUDE.md の引き継ぎ範囲
+├── team-rules/          ← チーム共通ルール（CLAUDE.md が @ 参照するため持ち込む）
+├── docs/                ← 仕様ドキュメント
+├── app/  config/  ...   ← Laravel アプリ本体
+└── composer.json
+```
+
+`prompts/`・`patches/`・`bin/`・ルートの `README.md` / `env.example` /
+`.claude/settings.json` は**テンプレート開発専用のため持ち込みません**
+（とくに `bin/reset-phase.sh` はアプリを破棄するスクリプトなので、本番リポジトリに
+あってはならない）。
+
+ルート `CLAUDE.md` のうち引き継がれるのは `<!-- carry-over -->` マーカーで囲まれた範囲
+（`@team-rules` 参照・厳守事項・コミュニケーション）だけです。「このリポジトリの位置づけ」
+「`patches/` の扱い」「このリポジトリ自身の git 運用」はテンプレート開発の話なので除外されます。
 
 ## 主な技術選定（Rails 版からの対応）
 

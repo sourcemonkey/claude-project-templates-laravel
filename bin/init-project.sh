@@ -5,10 +5,16 @@
 # Phase 4 まで完了した状態のテンプレートリポジトリから、
 # 「開発用リポジトリ」として独立した git リポジトリを初期化する。
 #
-# モード:
-#   1) このテンプレートリポジトリ自身を、そのまま開発用リポジトリに転用する
-#      （既存の .git を捨てて、新規 git init する）
-#   2) 別のディレクトリにコピーした上で、そこを新規 git リポジトリ化する
+# **開発用リポジトリでは my-laravel-app/ がルートになる**。本番で運用するのは
+# Laravel アプリそのものであり、prompts/ や patches/、bin/reset-phase.sh（アプリを
+# 破棄するスクリプト）はテンプレート開発の道具でしかないため持ち込まない。
+#
+# 出来上がる構造:
+#   <コピー先>/           ← git init されるルート。composer.json はここ
+#   ├── CLAUDE.md         ← アプリ固有 + ルート CLAUDE.md の carry-over 範囲
+#   ├── team-rules/       ← チーム共通ルール（CLAUDE.md が @ 参照）
+#   ├── docs/  app/  config/  ...
+#   └── composer.json
 #
 # 使い方:
 #   bash bin/init-project.sh
@@ -16,7 +22,8 @@
 # 設計上の前提:
 #   - このスクリプトはテンプレートリポジトリの直下（bin/ 配下）に置かれ、
 #     リポジトリのルートからの相対パスで自分の位置を解決する
-#   - モード2 のコピー元は、スクリプトが属するリポジトリのルート
+#   - **必ず別ディレクトリへコピーする**。同一ディレクトリ内で階層を持ち上げる方式は
+#     途中で失敗すると復旧できないため採らない（コピー元は無傷で残す）
 #   - コピー先に既にファイルが存在する場合は中止する（上書きしない）
 
 set -Eeuo pipefail
@@ -77,30 +84,7 @@ check_repo_root() {
   fi
 }
 
-# ---- モード選択 -----------------------------------------------------------
-
-prompt_mode() {
-  cat <<'EOF'
-
-開発用リポジトリの初期化先を選んでください。
-
-  1) このテンプレートリポジトリ自身を、開発用リポジトリとして使う
-     （ここで .git を作り直します）
-  2) 別のディレクトリにコピーした上で、そこを開発用リポジトリにする
-
-EOF
-  local choice
-  while true; do
-    read -r -p "番号を入力 [1-2]: " choice
-    case "$choice" in
-      1) MODE=1; return ;;
-      2) MODE=2; return ;;
-      *) warn "1 または 2 を入力してください" ;;
-    esac
-  done
-}
-
-# ---- コピー先パスの入力（モード2）----------------------------------------
+# ---- コピー先パスの入力 --------------------------------------------------
 
 prompt_destination() {
   local input
@@ -137,9 +121,9 @@ EOF
       fi
     fi
 
-    # コピー元と同一パスは禁止
+    # コピー元と同一パスは禁止（テンプレートリポジトリ自身を上書きしてしまうため）
     if [ "$input" = "$REPO_ROOT" ]; then
-      warn "コピー元と同じパスです。モード1 を選択してください。"
+      warn "テンプレートリポジトリ自身は指定できません。別のディレクトリを指定してください。"
       continue
     fi
 
@@ -160,66 +144,75 @@ confirm_or_abort() {
   esac
 }
 
-# ---- モード1: テンプレ自身を開発用リポジトリ化 ----------------------------
+# ---- コピーして初期化 ----------------------------------------------------
+#
+# 開発用リポジトリでは **my-laravel-app/ がリポジトリのルートになる**（本番で運用
+# するのは Laravel アプリそのものであり、prompts/ や patches/、bin/reset-phase.sh は
+# テンプレート開発の道具でしかないため）。したがって単純な全体コピーではなく、
+#
+#   my-laravel-app/*  → コピー先の直下
+#   team-rules/       → そのまま（CLAUDE.md が @ 参照している）
+#   CLAUDE.md         → アプリの CLAUDE.md + ルート CLAUDE.md の carry-over 範囲
+#
+# という再配置を行う。テンプレート専用のもの（prompts/ patches/ bin/ ルート README・
+# ルート .claude/settings.json・env.example）は持ち込まない。
 
-run_mode1() {
-  info "モード1: $REPO_ROOT を開発用リポジトリとして初期化します"
-
-  if [ -d "$REPO_ROOT/.git" ]; then
-    warn "既存の .git ディレクトリ（テンプレートリポジトリの履歴）を削除します"
-    warn "対象: $REPO_ROOT/.git"
-    confirm_or_abort "実行してよいですか?"
-    rm -rf "$REPO_ROOT/.git"
-    ok ".git を削除しました"
-  else
-    info "既存の .git はありません"
-  fi
-
-  init_git_repo "$REPO_ROOT"
-}
-
-# ---- モード2: 別ディレクトリにコピーして初期化 ----------------------------
-
-run_mode2() {
-  info "モード2: 別ディレクトリにコピーして初期化します"
-  info "コピー元: $REPO_ROOT"
-  info "コピー先: $DEST"
+run_copy() {
+  info "コピー元: $REPO_ROOT/my-laravel-app（＋ team-rules / CLAUDE.md）"
+  info "コピー先: $DEST（ここが新しいリポジトリのルートになります）"
   confirm_or_abort "実行してよいですか?"
 
   mkdir -p "$DEST"
 
-  # rsync があれば優先（除外指定が楽）。なければ tar でフォールバック。
+  # 1) my-laravel-app/ の中身をコピー先の直下へ
   #
   # 除外するもの:
-  #   .git/                              — コピー元の履歴は持ち込まない
   #   .claude/settings.local.json        — ユーザー個別の承認履歴
   #   CLAUDE.local.md                    — 個人ローカルメモ
-  #   node_modules / vendor / tmp / log  — 再生成可能なビルド成果物（コピー時間短縮）
+  #   node_modules / vendor / storage/logs — 再生成可能（コピー時間短縮。setup で復元される）
   #
   # 除外しないもの（重要）:
-  #   my-laravel-app/.env                — Laravel の起動に必須（APP_KEY 含む）。git では .gitignore で除外される
+  #   .env                               — Laravel の起動に必須（APP_KEY 含む）。git では .gitignore で除外される
   if command -v rsync >/dev/null 2>&1; then
     rsync -a \
-      --exclude='.git/' \
-      --exclude='**/.claude/settings.local.json' \
-      --exclude='**/CLAUDE.local.md' \
-      --exclude='my-laravel-app/node_modules/' \
-      --exclude='my-laravel-app/vendor/' \
-      --exclude='my-laravel-app/storage/logs/' \
-      "$REPO_ROOT"/ "$DEST"/
+      --exclude='.claude/settings.local.json' \
+      --exclude='CLAUDE.local.md' \
+      --exclude='node_modules/' \
+      --exclude='vendor/' \
+      --exclude='storage/logs/' \
+      "$REPO_ROOT"/my-laravel-app/ "$DEST"/
   else
     warn "rsync が無いため tar でコピーします"
-    ( cd "$REPO_ROOT" && tar -cf - \
-        --exclude='./.git' \
-        --exclude='*/.claude/settings.local.json' \
-        --exclude='*/CLAUDE.local.md' \
-        --exclude='./my-laravel-app/node_modules' \
-        --exclude='./my-laravel-app/vendor' \
-        --exclude='./my-laravel-app/storage/logs' \
+    ( cd "$REPO_ROOT/my-laravel-app" && tar -cf - \
+        --exclude='./.claude/settings.local.json' \
+        --exclude='./CLAUDE.local.md' \
+        --exclude='./node_modules' \
+        --exclude='./vendor' \
+        --exclude='./storage/logs' \
         . ) | ( cd "$DEST" && tar -xf - )
   fi
 
+  # 2) team-rules/ をそのまま持ち込む（CLAUDE.md が @ 参照している）
+  if command -v rsync >/dev/null 2>&1; then
+    rsync -a "$REPO_ROOT"/team-rules/ "$DEST"/team-rules/
+  else
+    mkdir -p "$DEST/team-rules"
+    ( cd "$REPO_ROOT/team-rules" && tar -cf - . ) | ( cd "$DEST/team-rules" && tar -xf - )
+  fi
+
+  # 3) CLAUDE.md を合成する
+  #    アプリの CLAUDE.md（プロジェクト固有）＋ ルート CLAUDE.md の carry-over 範囲
+  #    （@team-rules 参照・厳守事項・コミュニケーション）。マーカー外はテンプレート
+  #    開発専用なので持ち込まない。
+  {
+    cat "$REPO_ROOT/my-laravel-app/CLAUDE.md"
+    printf '\n'
+    sed -n '/<!-- carry-over:start -->/,/<!-- carry-over:end -->/p' "$REPO_ROOT/CLAUDE.md" \
+      | grep -v '<!-- carry-over:'
+  } > "$DEST/CLAUDE.md"
+
   ok "コピー完了: $DEST"
+  info "配置: my-laravel-app/ の中身が直下に展開され、team-rules/ と統合済み CLAUDE.md が置かれました"
 
   init_git_repo "$DEST"
 }
@@ -282,12 +275,8 @@ EOF
 main() {
   require_cmd git
   check_repo_root
-  prompt_mode
-
-  case "$MODE" in
-    1) run_mode1 ;;
-    2) prompt_destination; run_mode2 ;;
-  esac
+  prompt_destination
+  run_copy
 }
 
 main "$@"
