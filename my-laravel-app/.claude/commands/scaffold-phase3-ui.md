@@ -436,7 +436,27 @@ $browser->waitUntil('window.Alpine') // Alpine のロードを待ってから押
 > 分かりにくい）。Phase 4 の Dusk だけでなく、本フェーズの Feature テストでも同じ罠を踏む。
 
 `php artisan dusk` で確認。あわせて Feature テスト（`php artisan test`）でも
-主要フロー（借用申請の業務ルール、認可、ロール変更、通知の既読化、返却）を押さえること。
+主要フロー（借用申請の業務ルール、認可、ロール変更、通知の既読化、返却、**ページネーション**）を押さえること。
+
+> **ページネーションは件数を assert して検証すること。** `paginate(25)` を書き忘れて全件表示に
+> なっていても、1 ページ目に 25 件以上並ぶだけで**画面は正常に見え、テストも通ってしまう**。
+> 26 件以上の書籍を作り、次を検証する:
+> ```php
+> Book::factory()->count(30)->create(['published' => true]);
+>
+> $this->actingAs($member)->get('/books')
+>     ->assertOk()
+>     ->assertViewHas('books', fn ($books) => $books->count() === 25);
+>
+> $this->actingAs($member)->get('/books?page=2')
+>     ->assertOk()
+>     ->assertViewHas('books', fn ($books) => $books->count() === 5);
+> ```
+> **Livewire コンポーネントには `WithPagination` トレイトを付けること。** 付け忘れると、
+> 2 ページ目を開いた状態で検索条件を変えたときに**ページ番号がリセットされず「該当なし」に
+> なる**。この不具合は 1 ページ目しか見ないテストでは検出できないため、
+> `Livewire::test(BookSearch::class)->call('gotoPage', 2)->set('title', ...)` のように
+> ページ送り後の絞り込みも 1 件検証しておく。
 **各画面がデータなしでも 200 を返すことを確認する Feature テスト**（完了基準の
 「各画面が（データなしでも）500 にならずに表示できる」に対応）も書いておくと、
 Blade 側の null 参照を Dusk より早く・安く検出できる。
@@ -457,6 +477,7 @@ Blade 側の null 参照を Dusk より早く・安く検出できる。
 | フラッシュ文言の固定値（同上の表） | `assertSessionHas('error', 'この操作を行う権限がありません。')` |
 | 削除不可時の文言（`docs/db-schema.md`） | `assertSessionHas('error', '貸出履歴があるため削除できません。')` |
 | ボタン・ラベルの固定値（`docs/screens.md`） | `assertSee('借用を申請')` / Dusk の `press('承認')` |
+| 一覧は **25 件/ページ**（`docs/screens.md`） | 26 件以上を作り `assertViewHas` で 1 ページ目の件数を検証 |
 
 **「メンバーには見えない」「削除できない」といった結果の粒度で満足しないこと。** ステータス
 コードや文言まで一致させて初めて、仕様どおりの実装だと言える。
