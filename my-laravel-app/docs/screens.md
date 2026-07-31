@@ -28,6 +28,14 @@
 > **404 を返す**（借用申請の導線ごと塞ぐ）。これは利用者が指定するフィルタではなく、
 > メンバー画面側で常に効く条件である。
 >
+> **404 は Policy ではなく Controller の存在判定で表現すること。** `BookPolicy::view()` を
+> false にすると `docs/architecture.md` の「認可エラーの挙動」に従って `home` への
+> リダイレクト + `error` フラッシュになり、**404 にならない**。`view()` は `true` のままにし、
+> `BookController::show()` で「未公開かつ管理者でなければ存在しないものとして扱う」形で
+> `NotFoundHttpException` を投げる。**この違いはテストで `assertNotFound()` を書いて初めて
+> 検出できる**（リダイレクト実装でも「メンバーには見えない」という結果自体は満たせてしまい、
+> 実装に合わせて書いたテストは green になるため）。
+>
 > `docs/db-schema.md` の Spatie Query Builder 対応表にある `published` フィルタは
 > **管理画面専用**（管理者は公開・未公開を切り替えて絞り込める）。メンバー画面では
 > 強制スコープが優先するため、利用者が `filter[published]=false` を指定しても結果は変わらない。

@@ -14,6 +14,18 @@
 
 README にこのテストアカウント表を記載すること。
 
+> **`role` は `firstOrCreate()` の第 2 引数で渡さないこと。** `team-rules/security.md` の方針により
+> `role` は Mass assignment の対象外（`$fillable` に含めない）なので、
+> `firstOrCreate([...], ['role' => ...])` と書いても**例外を出さずに黙って捨てられ、全員が
+> `Member` で作られる**。取得してから明示代入する:
+> ```php
+> $user = User::firstOrCreate(['email' => $attributes['email']], [...]);
+> $user->role = $attributes['role'];
+> $user->save();
+> ```
+> 管理者が `Member` で作られると、症状は「管理画面へ行くと `home` へリダイレクトされる」と
+> なって認可の実装ミスに見えるため、原因にたどり着きにくい。
+
 ## カテゴリ（4 件）
 
 - 技術書
