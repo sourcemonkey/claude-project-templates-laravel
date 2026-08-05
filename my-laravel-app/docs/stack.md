@@ -140,7 +140,7 @@ Laravel 公式は AI コーディングエージェント向けの手順書を
 
 > **`laravel/pao` の既知の不具合（v1.1.2 以前。v1.1.3 で解消済み）**: エージェントが `php artisan test` を実行すると、**全件パスでも終了コードが 1 になった**。`--no-output` を Collision が無条件付与し、pao が重複チェックなしで再付与するため、PHPUnit が `Option --no-output cannot be used more than once` の Warning を出し、Warning があると `wasSuccessful()` が false になるのが原因。v1.1.3（2026-07-29）で pao 側に重複ガードが入り、**終了コードで合否を判定してよくなった**。`laravel new` が書く制約は `^1.0.6` と下限が低いため、終了コード 1 が返ったらまず `composer show laravel/pao` で版を確認すること（v1.1.3 以降なら本物の失敗）。人間がターミナルから実行した場合は pao が自身を無効化するため、この事象は再現しない。
 >
-> **カバレッジの `--min` 失敗が握りつぶされる件は別問題で、こちらは解消していない**（後述の「テストカバレッジ設定」参照）。
+> **カバレッジの `--min` については、pao の JSON の `result` フィールドだけが嘘をつく**（別問題で、こちらは解消していない）。終了コードと `raw` は正しいので、**終了コードで判定すれば `--min` は使える**。詳細は後述の「テストカバレッジ設定（正規形）」参照。
 
 カバレッジ計測ドライバの **PCOV は composer パッケージではなく PHP 拡張**のため、この表ではなく「ランタイム」表に記載している（マシン側の前提条件であり、`composer install` では導入されない）。
 
@@ -358,6 +358,25 @@ php artisan test --coverage-html coverage
 ```
 
 PCOV 拡張がローカル環境にインストールされている前提。`php -m | grep pcov` で確認できる。
+
+### 80% 判定の規約
+
+**判定は `vendor/bin/pest --coverage --min=80` の終了コードで行う**（未達なら 1、達していれば 0）。
+
+```sh
+vendor/bin/pest --coverage --min=80
+```
+
+> **`laravel/pao` が整形する JSON の `result` フィールドは信用してはならない。**
+> `--min` 未達でも `{"tool":"pest","result":"passed",...}` を返す。一方で**終了コードは 1 になり、
+> `raw` 配列の末尾に `Total: NN.N %` と `FAIL Code coverage below expected 80.0 %...` が入る**ので、
+> そちらを見れば正しく判定できる（実カバレッジ 91.9% に対し `--min=95` を指定して確認済み）。
+> `result` を見て合否を決めると、**未達を「達成」と誤認する**。
+
+HTML レポート（`coverage/index.html`）は数値の内訳を見るために使う。どのディレクトリが低いかを
+特定して埋める用途で、合否判定の一次情報ではない。
+
+具体的な実行手順と出力例は `.claude/commands/scaffold-phase4-finalize.md` の手順 6-3 参照。
 
 未導入の場合の導入手順（**PHP ランタイム全体に影響する変更のため、必ず事前にユーザーへ確認する**）:
 
