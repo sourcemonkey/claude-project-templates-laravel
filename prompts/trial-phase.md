@@ -25,6 +25,22 @@
 2. **Docker daemon が起動していること**: `docker info` で接続確認できること。
    未起動の場合、ユーザー実行の `bin/reset-phase.sh` がエラー終了している
    （Docker Desktop を起動してから再度リセット・再起動してもらう）。
+
+   **あわせて DB ボリュームが残っていないことを確認する。**
+
+   ```sh
+   docker volume ls --filter name=my-laravel-app_db-data --quiet
+   ```
+
+   **1 行でも出力があれば、作業を進めず報告して終了する。** 正しくリセットされていれば
+   このボリュームは存在しない（`bin/reset-phase.sh` の DB 破棄確認で `y` を選ぶと
+   `docker compose down -v` が消し、Phase 1 の `composer run setup` が作り直す）。
+   残っている場合は破棄を選ばなかったということで、**旧スキーマの上にフェーズを積む
+   ことになる**: `migrations` テーブルが残るため Phase 1 の `migrate` は
+   「Nothing to migrate」で素通りし、旧 `books` / `lendings` が残ったまま Phase 2 の
+   新しいマイグレーションが走って `CREATE TABLE` が「既に存在する」で落ちる。
+   ユーザーには `bin/reset-phase.sh <最初のフェーズ番号>` を **DB 破棄あり（`y`）** で
+   実行し直してもらうこと。
 3. **実行セッションに許可リストが効いていること**: 本プロンプトはリポジトリ
    ルートで `claude -p` 起動されるため、適用されるのは**ルートの**
    `.claude/settings.json` のみ。`my-laravel-app/.claude/settings.json` は

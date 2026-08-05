@@ -52,6 +52,7 @@
       "Bash(docker compose *)",
       "Bash(docker version*)",
       "Bash(docker info*)",
+      "Bash(docker volume ls*)",
       "Bash(laravel new *)",
       "Bash(laravel --version)",
       "Bash(mkdir *)",
