@@ -27,7 +27,7 @@ Laravel 本体はホスト側で動かす。
 
 1. **PHP バージョン確認**: `my-laravel-app/` 内で `php -v` を実行し 8.4.23 系が出るか確認。出ない場合は asdf 等でインストールを促し中断。
 2. **PHP 拡張の確認**: `php -m | grep -i zip` で `zip` 拡張が有効か確認する（`laravel/dusk` v8.x 系が `ext-zip` を要求するため）。無効な場合、`pecl install zip` でビルドし、`php --ini` で表示される `conf.d` 配下の ini ファイルに `extension=zip.so` を追記する（このホストの PHP 全体に適用される変更のため、事前にユーザーへ確認する）。`libzip` が未インストールの場合は `brew install libzip` を促す。
-3. **Composer の確認**: `composer -V` を実行し **2 系**であることを確認する。`laravel new` は内部で `composer create-project` を呼ぶため必須。1 系または未インストールの場合はインストール・更新を促し中断する（要件は `docs/stack.md` のランタイム表が一次情報。`.tool-versions` では固定していない）。
+3. **Composer の確認**: `composer --version` を実行し **2 系**であることを確認する（`-V` の短縮形は許可リストに含めていないため使わない）。`laravel new` は内部で `composer create-project` を呼ぶため必須。1 系または未インストールの場合はインストール・更新を促し中断する（要件は `docs/stack.md` のランタイム表が一次情報。`.tool-versions` では固定していない）。
 4. **Node.js バージョン確認**: `node -v` を実行し、`.tool-versions` の `nodejs` 行と一致するか確認する（バージョンは `.tool-versions` が一次情報。この手順書に数値を書かない）。バージョン不一致のまま進めると `npm run build` で Vite 系パッケージのネイティブバインディングが解決できず失敗することがある。
 
    一致しない場合は `which -a node` で**どのバージョンマネージャが解決しているか**を確認する。`.tool-versions` は asdf / mise の形式なので、**nodenv や nvm が併存して PATH で先に解決されると、この指定が無視される**。対処は 2 通り:
