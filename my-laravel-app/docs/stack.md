@@ -146,7 +146,16 @@ Laravel 公式は AI コーディングエージェント向けの手順書を
 
 > **`laravel/boost` の導入範囲**: Phase 1 の `boost:install --mcp --guidelines` により、MCP サーバー設定（`.mcp.json`）と AI ガイドライン（`docs/boost-guidelines.md`）だけを生成する。**Agent Skills（`--skills`）は導入しない** — 出力先の `.claude/` はヘッドレス実行で書き込めず、かつテンプレートへコミットすると `boost:update` の同期責任が人手に残るため。
 >
-> ガイドラインの出力先は `config/boost.php` で `CLAUDE.md` から `docs/` へ退避させている（`CLAUDE.md` はテンプレートの成果物であり Boost に再生成させない）。Boost の Volt ガイドラインは本プロジェクトの方針と衝突するため `.ai/guidelines/volt/core.blade.php` で上書きしている。**`team-rules/` と `docs/*.md` が優先、Boost は補完**という関係を保つこと。
+> ガイドラインの出力先は `config/boost.php` で `CLAUDE.md` から `docs/` へ退避させている（`CLAUDE.md` はテンプレートの成果物であり Boost に再生成させない）。Boost のガイドラインのうち本プロジェクトの方針と衝突する 2 つは `.ai/guidelines/` で上書きしている。
+
+> | 上書きファイル | 対象 | 理由 |
+> |---|---|---|
+> | `.ai/guidelines/volt/core.blade.php` | `volt/core rules` | 新規コンポーネントに Volt を使わない方針 |
+> | `.ai/guidelines/boost/core.blade.php` | `boost rules` | v2.5.0 の `## Project Rules` が、**存在しない `.ai/rules/index.md` を開くことを MUST として要求する**ため。ルールの置き場を増やさず `team-rules/` と `docs/` に一本化する |
+>
+> 上書きファイルのパスは Boost 内部のガイドラインキーに対応する（`boost` 節は `boost/core.blade.php`）。**節見出しの名前（`=== boost rules ===`）とは一致しない**ので、パスは `vendor/laravel/boost/src/Install/GuidelineComposer.php` の対応表で確認すること。上書き時は Boost 側の有用な記述（MCP ツールの説明等）を書き写して維持する。
+>
+> **`team-rules/` と `docs/*.md` が優先、Boost は補完**という関係を保つこと。
 
 `factory_bot` 相当は Laravel 標準の Model Factory（`database/factories/`）、`faker` 相当は `fakerphp/faker`（Laravel の依存関係に標準で含まれる）を使う。追加インストール不要。
 

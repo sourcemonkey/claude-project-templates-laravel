@@ -258,9 +258,15 @@ composer require --dev larastan/larastan laravel/dusk laravel-lang/lang laravel/
   > **ガイドラインの出力先は `CLAUDE.md` ではなく `docs/boost-guidelines.md`。** Boost の既定は
   > `CLAUDE.md` への書き込みだが、テンプレート同梱の `config/boost.php`（`agents.claude_code.guidelines_path`）
   > で退避させている。`CLAUDE.md` は本テンプレートの成果物であり、Boost に再生成させない。
-  > あわせて `.ai/guidelines/volt/core.blade.php` が Boost の Volt ガイドラインを本プロジェクトの
-  > 方針（新規コンポーネントはクラスベース）へ上書きする。**どちらもテンプレート同梱の
-  > 追跡ファイルなので、リセット後もそのまま残る。**
+  > あわせて `.ai/guidelines/` の 2 ファイルが Boost のガイドラインを上書きする。
+  > `volt/core.blade.php` は Volt の方針（新規コンポーネントはクラスベース）へ、
+  > `boost/core.blade.php` は `## Project Rules`（**存在しない `.ai/rules/index.md` を
+  > 開くことを MUST として要求する**）を `team-rules/` と `docs/` への誘導へ差し替える。
+  > **いずれもテンプレート同梱の追跡ファイルなので、リセット後もそのまま残る。**
+  >
+  > 生成後、`grep -n "\.ai/rules" docs/boost-guidelines.md` で Boost 側の
+  > `## Project Rules` が残っていないことを確認する（上書きファイルのパスが
+  > Boost 側のガイドラインキーとずれると、エラーにならず素通りする）。
 
 ### 7. .env の準備
 
