@@ -130,6 +130,11 @@ git status --short -- .gitignore .npmrc .claude compose.yaml docker .tool-versio
 
 `charset` の既定値は `'utf8mb4'` で既に正しいため変更不要。`url` / `unix_socket` / `prefix_indexes` / `options` の各行は**生成されたまま残す**（削除しない）。
 
+> **注意（`mariadb` 接続をつられて書き換えないこと）**: `config/database.php` の `mariadb` ブロックは
+> `mysql` ブロックと**行の内容が完全に一致する**。Edit ツールで置換する場合、`'database' => env('DB_DATABASE', 'laravel'),`
+> のような 1 行だけを対象にすると一意に定まらず失敗する。`'driver' => 'mysql',` の行を含む
+> ブロック全体を対象にして、`mysql` 側だけを書き換えること。
+
 > **注意**: `'url' => env('DB_URL')` の行は残すが、`.env` に `DB_URL` の値は設定しない（Step 7 の注意参照）。行の存在と値の設定は別問題であり、行を消す必要はない。
 
 ### 5. Composer パッケージの追加
@@ -264,15 +269,23 @@ composer require --dev larastan/larastan laravel/dusk laravel-lang/lang laravel/
   > 開くことを MUST として要求する**）を `team-rules/` と `docs/` への誘導へ差し替える。
   > **いずれもテンプレート同梱の追跡ファイルなので、リセット後もそのまま残る。**
   >
-  > 生成後、`grep -n "\.ai/rules" docs/boost-guidelines.md` で Boost 側の
-  > `## Project Rules` が残っていないことを確認する（上書きファイルのパスが
-  > Boost 側のガイドラインキーとずれると、エラーにならず素通りする）。
+  > 生成後、`grep -n "^## Project Rules" docs/boost-guidelines.md` が**何も出力しない**ことを
+  > 確認する（上書きファイルのパスが Boost 側のガイドラインキーとずれると、エラーにならず
+  > 素通りする）。`## Project Rules` は Boost v2.5.0 の `.ai/boost/core.blade.php` が出す
+  > 節見出しで、上書きが効いていれば `## プロジェクトのルール` に置き換わっている。
+  >
+  > **`grep "\.ai/rules"` で判定しないこと。** 上書きファイル自身が「`.ai/rules/` は使わない」と
+  > 説明のために言及しているため、**上書きが成功していても必ずヒットする**（ヒットの有無で
+  > 判定すると、常に「上書き失敗」と誤読する）。
+  >
+  > `boost:install` の出力に並ぶガイドライン名のうち、上書きが効いたものには
+  > `boost*` `volt/core*` のように `*` が付く。こちらも併せて確認材料になる。
 
 ### 7. .env の準備
 
 `laravel new` が生成した `.env` / `.env.example` に、ルート同梱の `env.example` の内容（`DB_USERNAME`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `MAIL_FROM_ADDRESS`）をマージする。あわせて `DB_CONNECTION` を `sqlite` から `mysql` に変更する。`APP_KEY` は上書きしない（Laravel が生成した値をそのまま使う。未設定なら次のコマンドで生成する）:
 
-また、`APP_LOCALE=en` / `APP_FAKER_LOCALE=en_US` を `APP_LOCALE=ja` / `APP_FAKER_LOCALE=ja_JP` に変更する（Step 6 の注意参照。`config/app.php` の変更だけでは反映されない）。
+また、`APP_LOCALE=en` / `APP_FAKER_LOCALE=en_US` を `APP_LOCALE=ja` / `APP_FAKER_LOCALE=ja_JP` に変更する（Step 6 の注意参照。`config/app.php` の変更だけでは反映されない）。`APP_FALLBACK_LOCALE` は `en` のまま残す。
 
 ```sh
 php artisan key:generate
@@ -365,6 +378,12 @@ DB_PASSWORD=app_password
 
 `npm install --ignore-scripts` は既定のまま残す（`.npmrc` の `ignore-scripts=true` と方針が一致するため）。
 
+> **`setup` の `key:generate` は既存の `APP_KEY` を毎回作り直す。** `copy('.env.example', '.env')` は
+> `.env` があれば skip されるが、`key:generate` に `--force` 以外のガードは無いため、Step 9-7 で
+> `composer run setup` を 2 回流すと `.env` の `APP_KEY` は 2 回とも別の値に変わる。**これは異常では
+> ない**（ローカル開発 DB にセッション・暗号化データを溜めていないため実害がない）。`diff .env .env.example`
+> の差分が `APP_KEY` の 1 行だけ、という判定には影響しない。
+
 ### 9. DB の作成と起動確認
 
 1. **データベースの確認**（`bookkeeper` は `compose.yaml` の `MYSQL_DATABASE` が、`bookkeeper_test` は `docker/mysql/initdb/01-create-test-database.sql` がそれぞれ自動作成する。手動作成は不要）:
@@ -399,6 +418,7 @@ DB_PASSWORD=app_password
    > `laravel/pao` の注記が一次情報。
 5. **起動確認**: `composer run dev` をバックグラウンドで立ち上げ、`curl -sS --retry 15 --retry-all-errors --retry-delay 1 -o /dev/null -w "%{http_code}" http://localhost:8000` が 200 を返すことを確認する。`/login` `/register` も 200 になること。確認後サーバを停止する（`pkill -f "php artisan serve"`、`pkill -f "artisan pail"`、`pkill -f vite`。concurrently に `--kill-others` が付いている場合は最初の 1 つで残りも終了するが、3 つとも実行して確実に止める）。
    - `--retry` を付けるのは、`composer run dev` の起動直後は `php artisan serve` がまだ listen していないため。Bash ツールでは `sleep` を伴う待機ループが書けないので `curl` 側のリトライで吸収する
+   - `--kill-others` により 1 つ目の `pkill` で全プロセスが落ちるため、2 つ目以降の `pkill` は**終了コード 1（該当プロセス無し）で返るのが正常**。失敗として扱わないこと
 6. **既定 `DatabaseSeeder` の空化**: `laravel new` が生成する `database/seeders/DatabaseSeeder.php` は、固定メール（`test@example.com`）の Test User を `User::factory()->create([...])` で 1 件作る内容になっている。これは `firstOrCreate` ではないため、**`composer run setup`（内部で `migrate --seed --force`）を 2 回目に実行すると `users.email` の UNIQUE 制約違反で落ちる**（「クローンして 1 コマンドで動く」が崩れる）。`run()` の本体をコメント化して空にすること（Seeder 本体は Phase 4 で `docs/seeds.md` に沿って実装する）:
    ```php
    public function run(): void
@@ -409,7 +429,8 @@ DB_PASSWORD=app_password
    }
    ```
    `run()` を空にすると `use App\Models\User;` が未使用になる。**この import も併せて削除する**
-   （残すと Pint の `no_unused_imports` が Step 9-3 で外しにくる）。
+   （残すと Pint の `no_unused_imports` が Step 9-3 で外しにくる）。この編集は 9-3 の Pint 実行より
+   後なので、**編集後に `vendor/bin/pint --test` を掛け直して 0 件を確認する**こと。
 7. **`composer run setup` の一気通貫確認**: `composer run setup` を実行し、DB 起動 → `composer install` → `.env` 用意 → `key:generate` → `migrate --seed` → `npm install` → `npm run build` が最後まで通ることを確認する（上記で空化したため Seeder は何も投入せず `Seeding database.` のみ出る）。**続けてもう一度 `composer run setup` を実行し、2 回目も同じく通る（非冪等で落ちない）ことを確認する。**
    - `.env` と `APP_KEY` は Step 7 で用意済みのため、`copy('.env.example', '.env')` は skip され `key:generate` は既存のキーを上書きする。**この確認の前に `.env` の内容（DB 接続情報）が `.env.example` と一致していることを確かめる**。一致していないと、既存の `.env` が残る挙動に助けられて「新規クローンでは通らない設定」を見逃す
    - 確認は `diff .env .env.example` で行う。**差分が `APP_KEY` の 1 行だけ**になっていれば正しい（`APP_URL` が差分に出た場合は Step 7 の注意を参照）
@@ -428,6 +449,8 @@ DB_PASSWORD=app_password
 - [ ] `.mcp.json` と `docs/boost-guidelines.md` が生成されている（`boost:install` が通っている）
 - [ ] `docs/boost-guidelines.md` の Volt の節が、`.ai/guidelines/` による上書き後の内容
       （「新規コンポーネントはクラスベース」）になっている
+- [ ] `docs/boost-guidelines.md` に `## Project Rules`（Boost 既定の節）が残っていない
+      （`grep -n "^## Project Rules" docs/boost-guidelines.md` が無出力）
 - [ ] `CLAUDE.md` が `boost:install` に書き換えられていない（`git status` に現れないこと）
 - [ ] `composer.json` の `laravel/framework` が `^13.`（Step 3 の検証を通過している）
 - [ ] `composer.lock` がコミット対象に入っている

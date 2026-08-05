@@ -53,6 +53,11 @@ Feature テストが壊れる**。次を必ず行うこと。
    > （作業ディレクトリ内のファイルであっても `sed in '<path>' was blocked.` になる）。
    > `Edit` ツールでファイルごとに置換すること。同一ファイル内の複数箇所は
    > `replace_all` で一度に処理できる。
+
+   > **補足**: `resources/views/livewire/profile/update-profile-information-form.blade.php` と
+   > `resources/views/livewire/welcome/navigation.blade.php` も `dashboard` を参照するが、
+   > どちらも手順 4 で削除するため置換は不要。置換対象を `grep -rn "dashboard" resources app`
+   > で洗い出すと、この 2 つが「漏れ」に見えるので注意する。
 2. Breeze の Feature テストの assert も同様に更新する:
    - `tests/Feature/Auth/AuthenticationTest.php`（`route('dashboard')` → `route('home')`、
      ナビ描画確認の `$this->get('/dashboard')` → 認証必須の任意の画面。例: `/books`）
@@ -154,6 +159,12 @@ $exceptions->render(function (AccessDeniedHttpException $e, Request $request) {
   > 定めているため、これらの Controller は `view('books.index')` を返すだけにする。
   > 検証方法は後述の「テストシナリオ」参照。
 - **enum の画面表示**: `LendingState` / `NotificationKind` / `UserRole` の日本語表記は `docs/screens.md` の「enum の表示ラベル」表が一次情報。**各 Enum クラスに `label(): string` を実装し、ビューからは `{{ $lending->state->label() }}` で参照する**。Blade 側に `@if` の連鎖や配列マッピングを書かない（`team-rules/coding-standards.md` の「Blade に複雑な `@if` の連鎖を書かない」に従う）
+
+  > **enum の値そのものを Blade で比較しないこと。** 「返却ボタンを出すか」「承認・却下を
+  > 出すか」の判定を `@if (in_array($lending->state, [App\Enums\LendingState::Approved, ...]))`
+  > と書くと、Blade に enum クラスの完全修飾名が散る。`Lending` に `isReturnable()` /
+  > `isRequested()` のような述語メソッドを置き、ビューからは `@if ($lending->isReturnable())`
+  > で参照する（`team-rules/coding-standards.md` の「真偽値を返すメソッドは is / has / can」）。
 - **借用申請フォーム**: 通常の Blade `<form>` + `@csrf` で `route('lendings.store')` に POST する。`Route::post` 側は `StoreLendingRequest` で `book_id` / `note` をバリデーションする
 - **Livewire**: サーバー往復を伴う動的処理（検索結果の絞り込み、状態フィルタ）に使う。`wire:model.live` で入力と同時に結果を更新する
   - **`wire:model` の入力欄には `id` を付け、Dusk からは `#id` セレクタで指定すること。** Dusk の
@@ -270,7 +281,7 @@ $lendings = QueryBuilder::for($lendings)->allowedFilters(...)->paginate(25);
 Action・Policy・Controller・Livewire コンポーネントの実装が完了したら自動修正可能な違反を解消する:
 
 ```sh
-vendor/bin/pint app/Http app/Livewire app/Policies app/Actions app/Enums app/View tests routes bootstrap/app.php
+vendor/bin/pint app/Http app/Livewire app/Policies app/Actions app/Enums app/View app/Models tests routes bootstrap/app.php
 ```
 
 `bootstrap` をディレクトリごと渡さないこと（`bootstrap/cache/*.php` は Laravel が生成する
@@ -388,6 +399,31 @@ function makeUser(bool $admin = false): User
 > **Phase 4 で Dusk が増えると実行ごとに別のテストが落ちるフレーキーな症状**として
 > 顕在化するため、最初から入れておくこと。
 
+### Livewire で一覧が絞り込まれるのを待つ
+
+**絞り込みの結果「件数が減る」ことを検証するときは、`waitUntilMissingText()` で
+消える側を待つこと。** 残る側を `waitForText()` してから `assertDontSee()` を書くと落ちる:
+
+```php
+// NG: 「プロを目指す人のためのRuby入門」は入力前から表示されているため
+//     waitForText が即座に通り、Livewire の再描画を待たずに assertDontSee へ進む
+$browser->waitForText('こころ')
+    ->type('#title', 'Ruby')
+    ->waitForText('プロを目指す人のためのRuby入門')
+    ->assertDontSee('こころ');   // Saw unexpected text [こころ] within element [body].
+
+// OK: 消える側を待てば再描画の完了が保証される
+$browser->waitForText('こころ')
+    ->type('#title', 'Ruby')
+    ->waitUntilMissingText('こころ')
+    ->assertSee('プロを目指す人のためのRuby入門');
+```
+
+`wire:model.live` は入力のたびにサーバーへ往復するため、`type()` の直後は**まだ絞り込み前の
+一覧が描画されている**。「絞り込み後も残る要素」を待機条件にすると、待機が成立した時点が
+絞り込み前なのか後なのか区別できない。**待機条件は必ず「操作によって状態が変わる側」に置く**
+（これは削除確認の `waitForText('書籍を削除しました')` が効く理由と同じ原則）。
+
 ### confirm ダイアログを伴う操作
 
 削除ボタンのように `confirm()` を挟む操作は、`acceptDialog()` の**前に
@@ -449,7 +485,11 @@ $browser->waitUntil('window.Alpine') // Alpine のロードを待ってから押
 > （`Failed asserting that two variables reference the same object.` で、在庫制約が原因だと
 > 分かりにくい）。Phase 4 の Dusk だけでなく、本フェーズの Feature テストでも同じ罠を踏む。
 
-`php artisan dusk` で確認。あわせて Feature テスト（`php artisan test`）でも
+`php artisan dusk` で確認。**通ったら続けてもう 1〜2 回実行し、毎回 green になることを
+確かめること**（ハイドレーション待ちの漏れは 1 回目にたまたま通ることがあり、
+実行ごとに落ちるテストが変わる形で後から顕在化する）。
+
+あわせて Feature テスト（`php artisan test`）でも
 主要フロー（借用申請の業務ルール、認可、ロール変更、通知の既読化、返却、**ページネーション**）を押さえること。
 
 > **ページネーションは件数を assert して検証すること。** `paginate(25)` を書き忘れて全件表示に
@@ -502,6 +542,11 @@ $browser->waitUntil('window.Alpine') // Alpine のロードを待ってから押
 「各画面が（データなしでも）500 にならずに表示できる」に対応）も書いておくと、
 Blade 側の null 参照を Dusk より早く・安く検出できる。
 
+> **「データありの詳細画面」も併せて 1 件ずつ叩くこと。** データなしの一覧は Blade の
+> `@if ($items->isEmpty())` 側しか通らず、**行を描画する分岐が一度も実行されない**。
+> `$log->created_at?->format(...)` のような null 参照は、レコードが 1 件ある状態で
+> 初めて踏む。
+
 ## 観測可能な振る舞いは assert で固定する
 
 `docs/` が**外から見える具体値**を定めている箇所は、**その値を直接検証する assert** をテストに
@@ -537,7 +582,8 @@ Blade 側の null 参照を Dusk より早く・安く検出できる。
 - [ ] メンバー蔵書一覧のページネーションが `Livewire::test()` で検証済み（`assertViewHas` を
       `$this->get('/books')` に対して書いていない）
 - [ ] `php artisan test` が all green（Phase 1 の Breeze 認証テストを含む）
-- [ ] `php artisan dusk` が all green（`tests/Browser/ExampleTest.php` の書き換えを含む）
+- [ ] `php artisan dusk` が all green（`tests/Browser/ExampleTest.php` の書き換えを含む）。
+      **連続 2 回以上 green になること**
 - [ ] `vendor/bin/pint --test` が違反 0
 - [ ] `vendor/bin/phpstan analyse --memory-limit=512M` がエラー 0
 

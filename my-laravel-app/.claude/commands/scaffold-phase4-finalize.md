@@ -60,7 +60,10 @@ description: フェーズ4 - Seeder、テスト、README、起動確認で完成
 テストを書く前に、ボタン名・フィールド label の実際の文字列を対象の Blade / Livewire ファイルを Read して確認すること（`docs/screens.md` の「ボタン・ラベルの標準」とその注記参照）。
 
 テスト実装上の注意:
-- **Dusk の `select()` には `<option>` の `value` 属性を渡す**（表示テキストではない）。表示テキストで選択したい場合は `$browser->script(...)` を使わず、`selectByText()`（Dusk 3 系以降で利用可能な場合）の有無を確認して使う
+- **Dusk の `select()` には `<option>` の `value` 属性を渡す**（表示テキストではない）。
+  例: `->select('category_id', (string) $category->id)`。**表示テキストで選択できると
+  思い込まないこと**（`select('category_id', '技術書')` は一致せず、選択されないまま
+  submit されてバリデーションエラーになる）
 - **返却テストでは「1 冊消費済み」の書籍を用意すること**（Phase 3 手順書の同名の注意と同じ罠。書き方も揃えてある）。
   ```php
   $book = Book::factory()->create(['total_copies' => 2, 'available_copies' => 1]);
@@ -71,12 +74,17 @@ description: フェーズ4 - Seeder、テスト、README、起動確認で完成
 
 `docs/screens.md` の主要動線を Dusk で網羅する。Phase 3 で 4 件（蔵書一覧の表示 /
 借用申請 / 申請の承認 / 非 admin の `/admin` リダイレクト）を実装済みなので、
-**本フェーズではそれに加えて次の 3 件を新規に追加する**:
+**本フェーズではそれに加えて次の 4 件を新規に追加する**:
 
 - メンバー: 自分の貸出を返却する
 - 管理者: 書籍 CRUD（作成 → 編集 → 削除）
 - 認可: 他人の貸出詳細にアクセスすると `home` へリダイレクトされる（Policy）
 - メンバー: 蔵書一覧で**2 ページ目へページ送り**できる（下記）
+
+> **Phase 3 で先に書いてあるものがあれば、その分だけ本フェーズの新規追加は減る。**
+> 上 4 件は Phase 3 の最低要件には含まれないが、Phase 3 を厚めに書いた回では
+> 「返却」「書籍削除」が既に存在した。**重複して書き足すのではなく、不足分を埋めること**
+> （最終的に Dusk が下記の完了基準の件数に達していればよい）。
 
 > **ページネーションは Seeder のデータで検証できる。** `docs/seeds.md` は書籍を 30 件
 > 投入し、うち 1 件が未公開なのでメンバーには 29 件見える。一覧は 25 件/ページなので
@@ -104,24 +112,29 @@ description: フェーズ4 - Seeder、テスト、README、起動確認で完成
 > 保証されず「どの書籍が 2 ページ目に来るか」が実行ごとに変わりうる。
 > `allowedSorts` は `docs/db-schema.md` の定義（`created_at` / `title`）のままでよく、
 > 既定順は `for()` に渡す側のクエリで指定する。
+>
+> **期待する書籍名をテスト中にハードコードしないこと。** どの書籍が 2 ページ目に来るかは
+> ファクトリの生成順に依存するため、テスト内で
+> `Book::where('published', true)->orderBy('id')->offset(25)->limit(25)->pluck('title')`
+> のように**DB から引いた値で assert する**と、順序の実装を変えても壊れない。
 
 あわせて Phase 3 で書いた既存 2 件を、動線として通しで確認する形へ広げる:
 
 - メンバー: ログイン → 蔵書検索 → 詳細 → 借用申請 → 自分の貸出一覧で確認
 - 管理者: ログイン → 申請一覧 → 承認 → 通知が作られ在庫が減ること
 
-> **「Phase 3 で似たテストがあるから網羅済み」と判断しないこと。** 上記 3 件は
-> Phase 3 のシナリオに含まれておらず、書かなくても `php artisan dusk` は green に
-> なる（＝完了基準をすり抜ける）。**最終的に Dusk のテストは 8 件以上**になる。
+> **「Phase 3 で似たテストがあるから網羅済み」と判断しないこと。** 上記のうち Phase 3 の
+> シナリオに含まれないものは、書かなくても `php artisan dusk` は green になる
+> （＝完了基準をすり抜ける）。**最終的に Dusk のテストは 8 件以上**になる。
 
 > **カバレッジ 80% に届くかは Phase 3 の Feature テストの厚さ次第。**
 > **Dusk は `php artisan test` のカバレッジに寄与しない**（ブラウザが別プロセスで動くため
-> PCOV が実行行を拾わない）。上の Dusk 3 件を足しても数値は動かない。
+> PCOV が実行行を拾わない）。上の Dusk 4 件を足しても数値は動かない。
 >
 > 過去のトライアルでは Phase 3 までで **72.02%** にとどまり、下記 4 領域の Feature テストを
 > 足して **94.64%** まで引き上げた。一方、Phase 3 手順書の「観測可能な振る舞いは assert で
 > 固定する」に沿って認可・業務ルール・ページネーションの Feature テストを厚めに書いた回では、
-> **Phase 4 に入った時点で 91.94%** に達しており追加は不要だった。**まず数値を測ってから
+> **Phase 4 に入った時点で 88〜92%** に達しており追加は不要だった。**まず数値を測ってから
 > 判断すること**（足りている場合に機械的に足す必要はない）。
 >
 > 不足する場合は `coverage/` のディレクトリ別インデックスで低い箇所を特定して埋める。
@@ -129,6 +142,8 @@ description: フェーズ4 - Seeder、テスト、README、起動確認で完成
 > grep -oE '[0-9]+\.[0-9]+%' coverage/Http/Controllers/Admin/index.html | head -40
 > grep -oE '[0-9]+\.[0-9]+%' coverage/Policies/index.html | head -30
 > ```
+> **`vendor/bin/pest --coverage` の出力（pao の JSON の `raw` 配列）にはファイル単位の
+> 百分率と未到達行番号が並ぶ**ため、HTML を開かずにここから低い箇所を特定してもよい。
 > トライアルで効いたのは次の 4 領域。いずれも Dusk では
 > カバーされないが Feature テストなら安く書ける:
 > - 管理画面の CRUD（カテゴリ・タグ・書籍の `store` / `update` / `destroy` と
@@ -228,6 +243,12 @@ vendor/bin/pint database/seeders tests
    > `???` と表示されることがあるが、DB の中身は壊れていない**（アプリ側の表示・テストで確認できる）。
    > 日本語を含む `WHERE` 句も同じ理由で空振りすることがあるため、書籍の在庫を個別に
    > 確かめるときは `title` ではなく `isbn` で絞ると確実。
+   >
+   > **貸出の 5 状態が 1 件ずつ揃っていることも確認する**（`docs/seeds.md` の貸出表）。
+   > これが崩れていると admin ダッシュボードの「申請待ち」「延滞」が 0 件になる:
+   > ```sh
+   > docker compose exec -T db mysql -uapp -papp_password bookkeeper -e "SELECT state, COUNT(*) n FROM lendings GROUP BY state ORDER BY state;"
+   > ```
 
    > **`php artisan migrate:fresh --seed` は使わない。** 破壊的コマンドとして
    > `.claude/settings.json` の deny リスト（ルート CLAUDE.md 厳守事項 #2 に対応）で
@@ -276,8 +297,10 @@ vendor/bin/pint database/seeders tests
    > できないまま「達成」と誤認しかねない）。上記のとおり百分率だけを拾って先頭を取る。
 
    完了基準の記録としては (b) の HTML を残しておくとレビューしやすい。
+   (a) と (b) は同じ数値になる（小数第 2 位まで見たい場合は (b)）。
 4. `php artisan dusk` が all green。**別ターミナルで
-   `php artisan serve --env=dusk.local` を起動してから実行する**（Phase 3 手順書参照）
+   `php artisan serve --env=dusk.local` を起動してから実行する**（Phase 3 手順書参照）。
+   Phase 3 と同じく**連続 2 回以上 green になること**を確かめる
 5. `vendor/bin/pint --test` が違反 0
 6. `vendor/bin/phpstan analyse` でエラー 0
 7. `composer audit` で既知の脆弱性 0
@@ -297,6 +320,7 @@ vendor/bin/pint database/seeders tests
 - [ ] `composer run setup` 一発でセットアップ完了
 - [ ] `composer run dev` で起動して全機能が動作
 - [ ] Seeder で各画面に表示すべきデータが入る（`db:seed` 2 回でも件数が増えない）
+- [ ] 貸出の 5 状態が 1 件ずつ揃っている（admin ダッシュボードの申請待ち・延滞が 0 にならない）
 - [ ] `php artisan test` および `php artisan dusk` が all green
 - [ ] **`docs/` が定める観測可能な振る舞い（ステータスコード・フラッシュ文言・ラベル）に、対応する
       assert が存在する**（Phase 3 手順書の「観測可能な振る舞いは assert で固定する」参照。本フェーズで
