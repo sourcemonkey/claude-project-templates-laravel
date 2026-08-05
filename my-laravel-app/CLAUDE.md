@@ -42,7 +42,7 @@ Laravel エコシステムの一般的な規約は Laravel Boost が生成する
 - [ ] `composer run dev` で起動し、ログインから主要画面遷移まで動作
 - [ ] `php artisan test` が all green
 - [ ] Laravel Dusk のシステムテストが all green
-- [ ] カバレッジ 80% 以上（`coverage/index.html` で確認）
+- [ ] カバレッジ 80% 以上（`vendor/bin/pest --coverage --min=80` の**終了コード**で判定。`laravel/pao` の JSON の `result` は未達でも `passed` を返すため使わない）
 - [ ] `vendor/bin/pint --test` が違反 0
 - [ ] `vendor/bin/phpstan analyse` でエラーなし（larastan/larastan による静的解析）
 - [ ] README に「起動方法」「テストアカウント」が記載されている

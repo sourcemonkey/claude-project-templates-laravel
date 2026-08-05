@@ -14,7 +14,7 @@ PR を出す前（あるいは「実装完了」と報告する前）に、Claud
 
 - [ ] 仕様（docs/）と差分の対応が取れている
 - [ ] `php artisan test` が green
-- [ ] カバレッジが 80% 以上（`coverage/index.html` で確認）
+- [ ] カバレッジが 80% 以上（`vendor/bin/pest --coverage --min=80` の**終了コード**で判定。`laravel/pao` が整形する JSON の `result` は未達でも `passed` を返すため使わない）
 - [ ] `vendor/bin/pint --test` で違反がない
 - [ ] `vendor/bin/phpstan analyse` でエラーがない（larastan/larastan によるチーム標準の静的解析）
 - [ ] 新規追加した routes が `php artisan route:list` で確認できる
