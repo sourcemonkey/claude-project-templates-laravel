@@ -1,7 +1,6 @@
 {
   "permissions": {
     "allow": [
-      "Bash(break)",
       "Bash(cat:*)",
       "Bash(echo:*)",
       "Bash(find:*)",
@@ -29,14 +28,10 @@
       "Bash(composer run setup)",
       "Bash(docker compose *)",
       "Bash(docker version*)",
-      "Bash(laravel new *)",
       "Bash(mkdir *)",
       "Bash(touch *)",
       "Bash(cp *)",
       "Bash(mv *)",
-      "Bash(ls *)",
-      "Bash(cat *)",
-      "Bash(curl *)",
       "Bash(lsof *)",
       "Bash(nc *)",
       "Bash(php -v)",
@@ -50,7 +45,8 @@
       "Bash(git push*)",
       "Bash(git reset --hard*)",
       "Bash(php artisan migrate:fresh*)",
-      "Bash(php artisan db:wipe*)"
+      "Bash(php artisan db:wipe*)",
+      "Bash(docker compose down -v*)"
     ]
   }
 }
