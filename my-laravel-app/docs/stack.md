@@ -4,10 +4,10 @@
 
 | 項目 | バージョン | 備考 |
 |---|---|---|
-| PHP | 8.4.23 | `.tool-versions`（asdf）で固定 |
+| PHP | 8.4.23 | `.tool-versions`（asdf / mise）で固定 |
 | Composer | 2.x 以上 | `laravel new` が内部で `composer create-project` を呼ぶため必須。バージョン差で成果物が変わらないため `.tool-versions` では固定しない |
 | Laravel | 13.x | フルスタック構成 |
-| Node.js | 24.x (Active LTS) | `.tool-versions`（mise）で固定。Vite ビルド用 |
+| Node.js | 24.x (Active LTS) | `.tool-versions`（asdf / mise）で固定。Vite ビルド用 |
 | MySQL | 8.x | 開発は Docker (`compose.yaml`)、本番はマネージド |
 | Docker | 24.x 以上 | 開発時の DB 起動に必須 |
 | Docker Compose | v2 以上（`docker compose` サブコマンド形式） | `docker-compose` (旧 v1) は使わない。Docker Desktop 同梱版はすでに v5 系に達しているため、上限は設けない |
@@ -212,7 +212,7 @@ Laravel 標準の Queue（database ドライバ）・Cache（database/file ド�
 
 ## 採用しなかった開発環境ツール（Herd / Sail / Valet）
 
-ローカル開発環境として以下の公式・準公式ツールを検討した上で、「ホスト側 PHP（asdf）+ DB のみ Docker」の構成を採っている。知らずに外したのではなく、選ばなかった理由は次のとおり。
+ローカル開発環境として以下の公式・準公式ツールを検討した上で、「ホスト側 PHP（asdf / mise）+ DB のみ Docker」の構成を採っている。知らずに外したのではなく、選ばなかった理由は次のとおり。
 
 - **Laravel Herd**: GUI アプリのためバージョンや設定をリポジトリ内で固定・共有できず、CI やヘッドレスの自動検証に組み込めない。MySQL 等の DB サービスは有料の Pro 機能であり、チーム標準の前提に置けない。
 - **Laravel Sail**: PHP ごとコンテナ化するため全コマンドが `sail` ラッパー経由になり、IDE 統合や実行速度（macOS のバインドマウント）で不利。`php` / `composer` をホストで直接実行できる現構成を優先する。

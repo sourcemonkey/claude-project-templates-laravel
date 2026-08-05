@@ -18,7 +18,7 @@ PHP 8.4.23 / Laravel 13 向けに移植したものです。フェーズ分割�
 ├── .claude/
 │   └── settings.json            ← Claude Code 共通設定（コマンドの許可リスト）
 ├── .gitignore                   ← テンプレートリポジトリ用の除外設定
-├── .tool-versions               ← リポジトリ全体での PHP / Node.js バージョン（asdf）
+├── .tool-versions               ← リポジトリ全体での PHP / Node.js バージョン（asdf / mise）
 ├── bin/
 │   ├── init-project.sh          ← 新規リポジトリの初期化スクリプト
 │   ├── reset-phase.sh           ← my-laravel-app/ をテンプレート状態に戻す
@@ -88,7 +88,7 @@ Laravel の生成物（`app/`・`composer.json`・`.env.example` など）が加
 
 | ツール | バージョン | 用途 |
 |---|---|---|
-| PHP | 8.4.23 | `.tool-versions`（asdf）で固定 |
+| PHP | 8.4.23 | `.tool-versions`（asdf / mise）で固定 |
 | Composer | 2.x | PHP パッケージ管理 |
 | Laravel Installer | 5.x | `laravel new` コマンド用（後述の「Laravel のバージョン方針」参照） |
 | Node.js | 24.x (Active LTS) | Vite ビルド用 |
@@ -134,7 +134,7 @@ Laravel はメジャーリリースを**毎年 ~Q1** に出します（公式の
 リポジトリ直下と `my-laravel-app/` 配下の両方に `.tool-versions` を置いています。
 Claude Code が `laravel new` や `composer require` などのコマンドを実行する際、
 カレントディレクトリが `my-laravel-app/` の外側になるケースがあるためです。両方に
-同じバージョンを書いておけば、どちらのディレクトリで `asdf` が動いても
+同じバージョンを書いておけば、どちらのディレクトリで asdf / mise が動いても
 同じ PHP / Node.js が選ばれます。
 
 PHP バージョンを上げる場合は **両方を同時に更新**してください。
