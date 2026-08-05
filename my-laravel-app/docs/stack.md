@@ -93,6 +93,37 @@ Laravel 12 以降、`laravel new` は公式スターターキット（Livewire /
 
 > **`laravel/breeze` は非推奨でもアーカイブでもない。** 2026-07-19 時点の最新 v2.4.2（2026-05-14 リリース）が `illuminate/* ^11.0|^12.0|^13.0` として Laravel 13 を明示サポートしており、`breeze:install livewire` も現行の 2.x に存在する。`composer.json` に Breeze があるのを「メンテナンスが止まったパッケージ」と判断して公式スターターキットへ差し替えないこと。
 
+### 公式のエージェント向けプレイブックとの差分
+
+Laravel 公式は AI コーディングエージェント向けの手順書を
+[laravel.com/for/agents](https://laravel.com/for/agents) で配布しており、インストールガイドは
+「このページを取得して source of truth として扱え」というプロンプトをエージェントに
+貼ることを勧めている。
+
+**本プロジェクトではこのプロンプトを使わない。** 前提が複数の点で食い違っており、
+そのまま従うと下表の決定がすべて上書きされる。2026-08-05 時点の記述との対比。
+
+| 項目 | 公式プレイブック | 本プロジェクト | 理由 |
+| --- | --- | --- | --- |
+| 生成コマンド | `laravel new example-app --database=sqlite --react --npm --boost --no-interaction` | `laravel new tmp-skeleton --no-interaction --pest` | 差分の内訳は以下の各行 |
+| スターターキット | **React が既定**（Vue / Livewire / Svelte は要求時） | 採用しない。素の Laravel + Breeze を後入れ | 前節参照。`CLAUDE.md` の「JS フレームワークを導入しない」とも衝突する |
+| データベース | `--database=sqlite` | MySQL（Docker） | MySQL 固有の DDL（`docs/db-schema.md` の CHECK 制約）を使う。`phpunit.xml` の SQLite 既定も書き換える |
+| PHP の導入 | `php.new` で 8.5 を入れる | `.tool-versions` で 8.4.23 を固定 | 開発者間でバージョンを揃えるため |
+| Laravel Boost | `laravel new --boost` | `composer require --dev` → `boost:install --mcp --guidelines` | ガイドラインの出力先を `config/boost.php` で `docs/boost-guidelines.md` へ退避する必要がある（`CLAUDE.md` を Boost に再生成させない） |
+| デプロイ | `composer global require laravel/cloud-cli` + `cloud skills:install` | 行わない | グローバル環境を変更する。デプロイ先を定めていない |
+| テスト | 言及なし | Pest（`--pest`） | — |
+
+一方、次の考え方は妥当なので手順に反映してよい。
+
+- 作業前に `php` / `composer` / `laravel` / `npm` のバージョンを確認する
+- 既に Laravel アプリがあるならインストールを飛ばす
+- ガイドラインはセッション内で読み込み、再起動を求めない
+  （`CLAUDE.md` の `@docs/boost-guidelines.md` で達成済み）
+
+> **このページはいつでも更新されうる。** 上表は取得時点のもので、追随の義務は負わない。
+> 公式の記述が変わったからといって本プロジェクトの決定を自動的に変えないこと。
+> 変更が必要と判断した場合は、この表を更新したうえでユーザーに提示する。
+
 ### 開発・テスト用
 
 | パッケージ | 用途 | 手動追加 | 種別 |
