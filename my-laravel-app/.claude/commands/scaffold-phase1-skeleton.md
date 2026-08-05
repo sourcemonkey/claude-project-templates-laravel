@@ -392,25 +392,11 @@ DB_PASSWORD=app_password
    - Step 6 の指示どおり `tests/Pest.php` を先に並べ替えてあれば、Pint はこのファイルを書き換えない。書き換えられた場合は並べ替えが漏れているので Step 6 に戻ること
 4. `php artisan test` が green であることを確認する。
 
-   > **解消済み（`laravel/pao` v1.1.3 以降）: 終了コードで合否を判定してよい。**
-   > 以下は **v1.1.2 以前**の既知事象なので、古い版が入った場合の切り分け用に残す。
-   >
-   > v1.1.2 以前では、全件パスでも終了コードが 1 になった。原因は `--no-output` の二重付与。
-   > `php artisan test` の実体である Collision が無条件に付与し（`TestCommand.php`）、
-   > `laravel/pao` の Pest プラグインが重複チェックなしで再付与するため、PHPUnit が
-   > `Option --no-output cannot be used more than once` の Warning を出す。PHPUnit は
-   > Warning があると `wasSuccessful()` が false になり終了コード 1 を返す（テスト自体は green）。
-   > v1.1.3（2026-07-29）で `Plugin.php` / `Starter.php` の両方に重複ガードが入り解消した。
-   >
-   > **終了コードが 1 で返ったら、まず `composer show laravel/pao` で版を確認すること。**
-   > v1.1.2 以前ならこの既知事象で、`--log-junit` の `errors="0" failures="0"` と
-   > 出力 JSON の `"result":"passed"` で合否を判断してよい。**v1.1.3 以降なら本物の失敗**
-   > なので握り潰さずに原因を追うこと。`laravel new` が書く制約は `^1.0.6` と下限が低いため、
-   > `composer.lock` を持たない環境では古い版が入る余地がある。
-   >
-   > **pao はエージェント実行時のみ有効になる**ため、人間がターミナルから叩くと再現しない
-   > （`Autoload.php` が `isAgent` を見ている）。「手元では通るのに Claude Code だと失敗する」
-   > という形で現れるので、同じ切り分けを繰り返さないよう注意すること。
+   > **終了コードが 1 で返ったら、まず `composer show laravel/pao` で版を確認する。**
+   > v1.1.2 以前なら `--no-output` の二重付与による既知事象で、テスト自体は green
+   > （`--log-junit` の `errors="0" failures="0"` で確認できる）。**v1.1.3 以降なら本物の
+   > 失敗**なので握り潰さずに原因を追うこと。原因・解消版・再現条件は `docs/stack.md` の
+   > `laravel/pao` の注記が一次情報。
 5. **起動確認**: `composer run dev` をバックグラウンドで立ち上げ、`curl -sS --retry 15 --retry-all-errors --retry-delay 1 -o /dev/null -w "%{http_code}" http://localhost:8000` が 200 を返すことを確認する。`/login` `/register` も 200 になること。確認後サーバを停止する（`pkill -f "php artisan serve"`、`pkill -f "artisan pail"`、`pkill -f vite`。concurrently に `--kill-others` が付いている場合は最初の 1 つで残りも終了するが、3 つとも実行して確実に止める）。
    - `--retry` を付けるのは、`composer run dev` の起動直後は `php artisan serve` がまだ listen していないため。Bash ツールでは `sleep` を伴う待機ループが書けないので `curl` 側のリトライで吸収する
 6. **既定 `DatabaseSeeder` の空化**: `laravel new` が生成する `database/seeders/DatabaseSeeder.php` は、固定メール（`test@example.com`）の Test User を `User::factory()->create([...])` で 1 件作る内容になっている。これは `firstOrCreate` ではないため、**`composer run setup`（内部で `migrate --seed --force`）を 2 回目に実行すると `users.email` の UNIQUE 制約違反で落ちる**（「クローンして 1 コマンドで動く」が崩れる）。`run()` の本体をコメント化して空にすること（Seeder 本体は Phase 4 で `docs/seeds.md` に沿って実装する）:
