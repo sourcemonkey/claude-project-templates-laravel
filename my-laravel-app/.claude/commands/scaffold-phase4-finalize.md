@@ -83,6 +83,10 @@ description: フェーズ4 - Seeder、テスト、README、起動確認で完成
 > **1 ページ目 25 件・2 ページ目 4 件**になる。ブラウザで 2 ページ目に遷移し、
 > 1 ページ目に無かった書籍が表示されることを確認する。
 >
+> **ただし Dusk のテスト DB（`bookkeeper_test`）は `DatabaseTruncation` で毎回空にされる**ため、
+> Seeder のデータはそのままでは使えない。テスト内でファクトリを使って 30 件（うち 1 件は
+> `unpublished()`）を作ること。
+>
 > **Livewire のページャは `<a>` ではなく `<button wire:click="gotoPage(...)">` である。**
 > そのため Dusk の `clickLink('2')` / `clickLink('次へ »')` は要素を掴めず、
 > ```
@@ -110,17 +114,22 @@ description: フェーズ4 - Seeder、テスト、README、起動確認で完成
 > Phase 3 のシナリオに含まれておらず、書かなくても `php artisan dusk` は green に
 > なる（＝完了基準をすり抜ける）。**最終的に Dusk のテストは 8 件以上**になる。
 
-> **カバレッジ 80% に届かせるには Feature テストの拡充が別途必要になる。**
+> **カバレッジ 80% に届くかは Phase 3 の Feature テストの厚さ次第。**
 > **Dusk は `php artisan test` のカバレッジに寄与しない**（ブラウザが別プロセスで動くため
-> PCOV が実行行を拾わない）。上の Dusk 3 件を足しても数値は動かず、Phase 3 までの
-> テストのままだと 80% に届かない（トライアルでは **72.02%**）。
+> PCOV が実行行を拾わない）。上の Dusk 3 件を足しても数値は動かない。
 >
-> 不足分は `coverage/` のディレクトリ別インデックスで低い箇所を特定して埋める。
+> 過去のトライアルでは Phase 3 までで **72.02%** にとどまり、下記 4 領域の Feature テストを
+> 足して **94.64%** まで引き上げた。一方、Phase 3 手順書の「観測可能な振る舞いは assert で
+> 固定する」に沿って認可・業務ルール・ページネーションの Feature テストを厚めに書いた回では、
+> **Phase 4 に入った時点で 91.94%** に達しており追加は不要だった。**まず数値を測ってから
+> 判断すること**（足りている場合に機械的に足す必要はない）。
+>
+> 不足する場合は `coverage/` のディレクトリ別インデックスで低い箇所を特定して埋める。
 > ```sh
 > grep -oE '[0-9]+\.[0-9]+%' coverage/Http/Controllers/Admin/index.html | head -40
 > grep -oE '[0-9]+\.[0-9]+%' coverage/Policies/index.html | head -30
 > ```
-> トライアルで効いたのは次の 4 領域（追加後 **94.64%**）。いずれも Dusk では
+> トライアルで効いたのは次の 4 領域。いずれも Dusk では
 > カバーされないが Feature テストなら安く書ける:
 > - 管理画面の CRUD（カテゴリ・タグ・書籍の `store` / `update` / `destroy` と
 >   Form Request のバリデーション。異常系も含める）
@@ -217,6 +226,8 @@ vendor/bin/pint database/seeders tests
    > 期待値は users 3 / categories 4 / tags 13 / books 30 / lendings 5 / notifications 3 /
    > audit_logs 3（`docs/seeds.md`）。**日本語のカラム値は端末の文字コードによって
    > `???` と表示されることがあるが、DB の中身は壊れていない**（アプリ側の表示・テストで確認できる）。
+   > 日本語を含む `WHERE` 句も同じ理由で空振りすることがあるため、書籍の在庫を個別に
+   > 確かめるときは `title` ではなく `isbn` で絞ると確実。
 
    > **`php artisan migrate:fresh --seed` は使わない。** 破壊的コマンドとして
    > `.claude/settings.json` の deny リスト（ルート CLAUDE.md 厳守事項 #2 に対応）で
@@ -231,14 +242,32 @@ vendor/bin/pint database/seeders tests
    > `down -v` してもテスト DB は失われない。
 2. `php artisan test` が all green（`laravel/pao` v1.1.3 以降は終了コードで判定してよい。
    1 が返った場合は版を確認する。Phase 1 手順書 Step 9-4 の既知事象を参照）
-3. **カバレッジが 80% 以上**であることを `coverage/index.html` の数値で確認する。
-   `php artisan test --coverage-html coverage` で HTML を生成したうえで、次で数値を読む:
+3. **カバレッジが 80% 以上**であることを確認する。方法は 2 つある。**どちらを使う場合も
+   `laravel/pao` が整形する JSON の `result` フィールドだけは信用してはならない**（後述）。
+
+   **(a) `vendor/bin/pest` で直接判定する**:
    ```sh
+   vendor/bin/pest --coverage --min=80
+   ```
+   ルートの `.claude/settings.json` に `Bash(vendor/bin/pest*)` があるため**ヘッドレスでも
+   実行できる**。**合否は終了コードで判定する**（未達なら 1、達していれば 0）。
+   数値と失敗理由は pao の JSON の `raw` 配列末尾に
+   `"Total: NN.N %"` および
+   `"FAIL Code coverage below expected 80.0 %, currently NN.N %."` として入る。
+
+   > **`result` フィールドは未達でも `"passed"` のまま**である。トライアルで実カバレッジ
+   > 91.9% に対して `--min=95` を指定したところ、終了コードは 1 になり `raw` にも FAIL 行が
+   > 入ったが、JSON は `{"tool":"pest","result":"passed",...}` を返した。
+   > **`result` を見て合否を判断すると未達を「達成」と誤認する。**
+
+   **(b) HTML レポートの数値を読む**:
+   ```sh
+   php artisan test --coverage-html coverage
    grep -oE '[0-9]+\.[0-9]+%' coverage/index.html | head -1
    ```
    PHPUnit の HTML レポートは先頭に「Total」行（プロジェクト全体の集計）を出力し、
    **ファイル内で最初に現れる `NN.NN%` がその Total 行の行カバレッジ**にあたる。
-   これが 80% 以上であることを確認する。
+   `php artisan test` 側には `--min` が無いため、数値を読んで自分で判定する。
 
    > **`grep -o 'Total[^%]*%'` のように 1 行で `Total` から `%` までを拾う書き方は使えない。**
    > レポートでは `<td class="success">Total</td>` のセルと百分率（`<td ...>93.41%</td>` や
@@ -246,16 +275,7 @@ vendor/bin/pint database/seeders tests
    > `Total` と `%` を 1 行内で連結できず、**何もマッチせず空を返す**（80% 判定が
    > できないまま「達成」と誤認しかねない）。上記のとおり百分率だけを拾って先頭を取る。
 
-   > **`--min=80` の結果を信用しないこと。** `laravel/pao`（`laravel new` の既定に含まれる。
-   > `docs/stack.md` 参照）がテストツールの出力を JSON 1 行へ整形する際、**カバレッジの数値も
-   > `--min` の失敗も握りつぶす**。実際には 78.87%（未達）でも
-   > `{"tool":"pest","result":"passed",...}` と返るため、**コマンドの成否では 80% 判定が
-   > できない**。数値は必ず上記の HTML から取ること。
-   >
-   > `vendor/bin/pest --coverage --min=80` なら pao を経由せず数値と判定を直接得られるが、
-   > ルートの `.claude/settings.json` の許可リストに無くヘッドレスでは実行できない
-   > （許可を足すかは方針判断。現状は HTML を一次情報とする。
-   > `patches/issue-phase3-permission-denied.md` も参照）。
+   完了基準の記録としては (b) の HTML を残しておくとレビューしやすい。
 4. `php artisan dusk` が all green。**別ターミナルで
    `php artisan serve --env=dusk.local` を起動してから実行する**（Phase 3 手順書参照）
 5. `vendor/bin/pint --test` が違反 0
@@ -283,8 +303,8 @@ vendor/bin/pint database/seeders tests
       足す Feature テストにも同じ基準を適用する）
 - [ ] 「2-1. テストシナリオの実装」に列挙した Dusk シナリオが**すべてテストとして存在する**
       （本フェーズで追加する 4 件を含め 8 件以上。green であることと網羅していることは別）
-- [ ] カバレッジが 80% 以上（`coverage/index.html` で確認）。**Dusk は寄与しない**ため、
-      届かない場合は Feature テストを足す（手順 2-1 の注記参照）
+- [ ] カバレッジが 80% 以上（手順 6-3 の (a) の終了コード、または (b) の HTML の数値で確認）。
+      **Dusk は寄与しない**ため、届かない場合は Feature テストを足す（手順 2-1 の注記参照）
 - [ ] `vendor/bin/pint --test` 違反 0、`vendor/bin/phpstan analyse` エラー 0
 - [ ] README にテストアカウント・起動方法が記載
 - [ ] `git status --short` に `.gitignore` 漏れの生成物が出ていない
