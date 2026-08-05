@@ -27,21 +27,22 @@ Laravel 本体はホスト側で動かす。
 
 1. **PHP バージョン確認**: `my-laravel-app/` 内で `php -v` を実行し 8.4.23 系が出るか確認。出ない場合は asdf 等でインストールを促し中断。
 2. **PHP 拡張の確認**: `php -m | grep -i zip` で `zip` 拡張が有効か確認する（`laravel/dusk` v8.x 系が `ext-zip` を要求するため）。無効な場合、`pecl install zip` でビルドし、`php --ini` で表示される `conf.d` 配下の ini ファイルに `extension=zip.so` を追記する（このホストの PHP 全体に適用される変更のため、事前にユーザーへ確認する）。`libzip` が未インストールの場合は `brew install libzip` を促す。
-3. **Node.js バージョン確認**: `node -v` を実行し、`.tool-versions` の `nodejs` 行と一致するか確認する（バージョンは `.tool-versions` が一次情報。この手順書に数値を書かない）。バージョン不一致のまま進めると `npm run build` で Vite 系パッケージのネイティブバインディングが解決できず失敗することがある。
+3. **Composer の確認**: `composer -V` を実行し **2 系**であることを確認する。`laravel new` は内部で `composer create-project` を呼ぶため必須。1 系または未インストールの場合はインストール・更新を促し中断する（要件は `docs/stack.md` のランタイム表が一次情報。`.tool-versions` では固定していない）。
+4. **Node.js バージョン確認**: `node -v` を実行し、`.tool-versions` の `nodejs` 行と一致するか確認する（バージョンは `.tool-versions` が一次情報。この手順書に数値を書かない）。バージョン不一致のまま進めると `npm run build` で Vite 系パッケージのネイティブバインディングが解決できず失敗することがある。
 
    一致しない場合は `which -a node` で**どのバージョンマネージャが解決しているか**を確認する。`.tool-versions` は asdf / mise の形式なので、**nodenv や nvm が併存して PATH で先に解決されると、この指定が無視される**。対処は 2 通り:
    - **推奨**: 併存しているマネージャを PATH から外し、`.tool-versions` を読むマネージャ（asdf / mise）に一本化する（例: nodenv なら `~/.zprofile` の `eval "$(nodenv init -)"` を無効化）
    - 一本化できない事情がある場合は、優先されているマネージャ側で該当バージョンを入れ、プロジェクトディレクトリにローカルピン留めする（例: `nodenv local <version>`）。ただしフェーズを回すたびに再設定が要る
-4. **Laravel Installer の確認**: `laravel --version` を実行。存在しない場合は `composer global require laravel/installer` を提案し、`~/.composer/vendor/bin`（または `~/.config/composer/vendor/bin`）に PATH が通っているか確認。
-5. **Docker の確認**:
+5. **Laravel Installer の確認**: `laravel --version` を実行。存在しない場合は `composer global require laravel/installer` を提案し、`~/.composer/vendor/bin`（または `~/.config/composer/vendor/bin`）に PATH が通っているか確認。
+6. **Docker の確認**:
    - `docker version` で Docker Engine が利用可能か確認
      - `Cannot connect to the Docker daemon` 等のエラーが出た場合は「インストール済みだが Docker Desktop アプリが起動していない」ケース。ユーザーに Docker Desktop の起動を促し、起動後に再実行する
      - `command not found` の場合は「未インストール」のケース。「Docker Desktop か Docker Engine + Compose v2 をインストールしてください」と案内し中断
    - `docker compose version` で Compose v2 が利用可能か確認
-6. **ポート 3306 の空き確認**:
+7. **ポート 3306 の空き確認**:
    - `lsof -i :3306` または `nc -z 127.0.0.1 3306` で確認
    - 既に使用中ならユーザーに案内し、停止または別ポート利用を判断してもらう
-7. **カバレッジ計測ドライバの確認（警告のみ・中断しない）**: `php -m | grep pcov` を実行する。出力が空の場合、「PCOV が未導入のため Phase 4 のカバレッジ 80% 判定が実行できない。Phase 1〜3 は影響を受けないので続行するが、Phase 4 に入る前に `docs/stack.md` の「テストカバレッジ設定（正規形）」の手順で導入が必要」と**報告してから続行する**。ここで中断しないのは、カバレッジが Phase 1 の完了基準に含まれず、Phase 1〜3 だけを試す利用者の足止めになるため。必須チェックは Phase 4 の Step 2-0 に置いてある（そこでは未導入なら中断する）。
+8. **カバレッジ計測ドライバの確認（警告のみ・中断しない）**: `php -m | grep pcov` を実行する。出力が空の場合、「PCOV が未導入のため Phase 4 のカバレッジ 80% 判定が実行できない。Phase 1〜3 は影響を受けないので続行するが、Phase 4 に入る前に `docs/stack.md` の「テストカバレッジ設定（正規形）」の手順で導入が必要」と**報告してから続行する**。ここで中断しないのは、カバレッジが Phase 1 の完了基準に含まれず、Phase 1〜3 だけを試す利用者の足止めになるため。必須チェックは Phase 4 の Step 2-0 に置いてある（そこでは未導入なら中断する）。
 
 ### 2. DB コンテナの起動
 

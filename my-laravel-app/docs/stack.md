@@ -5,6 +5,7 @@
 | 項目 | バージョン | 備考 |
 |---|---|---|
 | PHP | 8.4.23 | `.tool-versions`（asdf）で固定 |
+| Composer | 2.x 以上 | `laravel new` が内部で `composer create-project` を呼ぶため必須。バージョン差で成果物が変わらないため `.tool-versions` では固定しない |
 | Laravel | 13.x | フルスタック構成 |
 | Node.js | 24.x (Active LTS) | `.tool-versions`（mise）で固定。Vite ビルド用 |
 | MySQL | 8.x | 開発は Docker (`compose.yaml`)、本番はマネージド |
