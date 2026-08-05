@@ -86,6 +86,11 @@ Laravel の生成物（`app/`・`composer.json`・`.env.example` など）が加
 
 `my-laravel-app/docs/stack.md` の前提に従い、ローカル PC に以下が必要です。
 
+> この表は `my-laravel-app/docs/stack.md` の「ランタイム」節と**意図的に重複させている**。
+> README はテンプレートを使う側がクローン直後に読むもの、`docs/stack.md` は生成された
+> アプリに配布されて単独で参照されるもので、どちらか一方に寄せると片方が不完全になる。
+> **どちらかに統合しないこと。** 更新時は両方を直す。
+
 | ツール | バージョン | 用途 |
 |---|---|---|
 | PHP | 8.4.23 | `.tool-versions`（asdf / mise）で固定 |
