@@ -16,9 +16,21 @@ TRANSCRIPT_DIR="$HOME/.claude/projects/$SLUG"
 # trial-phase.md の見出しがそのまま入っている（対話セッションには現れない）
 MARKER="# フェーズトライアル自動化プロンプト"
 
+# `head -5 "$f" | grep -q "$MARKER"` と書いてはいけない。マーカーは 1 行目にあるため
+# grep -q が即座に終了し、head が残りの行（プロンプト全文を含み 1 行 40KB を超える）を
+# 書こうとした時点で SIGPIPE で死ぬ。set -o pipefail によりパイプライン全体が非 0 になり、
+# **マッチしているのに不一致と判定してスキップする**。先頭行がパイプバッファ（64KB）に
+# 収まるうちは偶然通るため、プロンプトが育った時点で顕在化する。
+is_trial() {
+    case "$(head -5 "$1")" in
+        *"$MARKER"*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 session_file=""
 for f in $(ls -t "$TRANSCRIPT_DIR"/*.jsonl 2>/dev/null); do
-    if head -5 "$f" | grep -q "$MARKER"; then
+    if is_trial "$f"; then
         session_file="$f"
         break
     fi
