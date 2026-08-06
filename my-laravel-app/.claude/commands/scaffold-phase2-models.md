@@ -265,7 +265,17 @@ vendor/bin/pint
 - [ ] enum キャストを持つモデルに `@property` 注釈があり、`vendor/bin/phpstan analyse --memory-limit=512M` がエラー 0
 - [ ] `role` が `User` の Mass assignment 対象（fillable）に**含まれていない**
 - [ ] `BookFactory` の `available_copies` がクロージャで `$attributes['total_copies']` から導出されている（`Book::factory()->create(['total_copies' => 2])` が CHECK 制約に違反しない）
-- [ ] `books` テーブルに CHECK 制約が 2 つ存在する（`information_schema.CHECK_CONSTRAINTS` で確認）
+- [ ] `books` テーブルに CHECK 制約が 2 つ存在する。次で確認する（2 行出れば OK）:
+
+  ```sh
+  docker compose exec -T db mysql -uapp -papp_password bookkeeper -e "SHOW CREATE TABLE books"
+  ```
+
+  > **`information_schema.CHECK_CONSTRAINTS` を `TABLE_NAME` で絞らないこと。**
+  > このビューは `CONSTRAINT_SCHEMA` / `CONSTRAINT_NAME` / `CHECK_CLAUSE` しか持たず、
+  > `TABLE_NAME` 列は**存在しない**（`ERROR 1054 (42S22): Unknown column 'TABLE_NAME'
+  > in 'where clause'` になる）。テーブルで絞るには `TABLE_CONSTRAINTS` との結合が要るため、
+  > 上の `SHOW CREATE TABLE` のほうが短く確実。
 - [ ] `vendor/bin/pint --test` が違反 0
 
 ## やらないこと
