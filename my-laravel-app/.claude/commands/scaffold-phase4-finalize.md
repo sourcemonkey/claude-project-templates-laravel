@@ -216,7 +216,7 @@ Phase 4 では Seeder が実装済みのため、`docs/seeds.md` のサンプル
 ### 5. Pint 自動修正
 
 ```sh
-vendor/bin/pint database/seeders tests
+vendor/bin/pint
 ```
 
 > **Pint を掛けたあとに `php artisan test` と `php artisan dusk` を回し直すこと。**

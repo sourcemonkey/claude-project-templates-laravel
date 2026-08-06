@@ -281,11 +281,12 @@ $lendings = QueryBuilder::for($lendings)->allowedFilters(...)->paginate(25);
 Action・Policy・Controller・Livewire コンポーネントの実装が完了したら自動修正可能な違反を解消する:
 
 ```sh
-vendor/bin/pint app/Http app/Livewire app/Policies app/Actions app/Enums app/View app/Models tests routes bootstrap/app.php
+vendor/bin/pint
 ```
 
-`bootstrap` をディレクトリごと渡さないこと（`bootstrap/cache/*.php` は Laravel が生成する
-キャッシュで、整形対象にする意味がない）。
+**パスを列挙して渡さないこと。** 触ったディレクトリを書き漏らす（Phase 3 のトライアルで
+`app/Models` が漏れた）うえ、`bootstrap` を明示指定すると、**引数なしなら除外される
+`bootstrap/cache/*.php`**（Laravel が生成するキャッシュ）まで整形対象に入る。
 
 ## テスト
 

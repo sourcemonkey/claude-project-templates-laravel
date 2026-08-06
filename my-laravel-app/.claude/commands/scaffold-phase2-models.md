@@ -241,10 +241,10 @@ php artisan test tests/Unit/Models
 
 ### Pint 自動修正
 
-モデルテストを書き終えてから実行する（`tests/Unit/Models` が存在しないとエラーになる）:
+モデルテストを書き終えてから実行する:
 
 ```sh
-vendor/bin/pint app/Models app/Enums database/migrations database/factories tests/Unit/Models
+vendor/bin/pint
 ```
 
 その後 `vendor/bin/pint --test` が違反 0 であることを確認する。
