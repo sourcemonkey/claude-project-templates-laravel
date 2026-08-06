@@ -12,6 +12,8 @@
       "Bash(git status:*)",
       "Bash(git clean:*)",
       "Bash(bash -n bin/reset-phase.sh)",
+      "Bash(bin/phase-tokens.sh*)",
+      "Bash(../bin/phase-tokens.sh*)",
       "Bash(cat:*)",
       "Bash(echo:*)",
       "Bash(find:*)",
