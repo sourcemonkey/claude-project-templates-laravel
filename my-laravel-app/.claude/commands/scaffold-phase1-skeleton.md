@@ -387,6 +387,18 @@ DB_PASSWORD=app_password
 > ない**（ローカル開発 DB にセッション・暗号化データを溜めていないため実害がない）。`diff .env .env.example`
 > の差分が `APP_KEY` の 1 行だけ、という判定には影響しない。
 
+**`require-dev` の `laravel/pao` の制約を `^1.1.3` へ引き上げる。**
+
+```sh
+composer require --dev "laravel/pao:^1.1.3" --no-interaction
+```
+
+`laravel new` の既定は `^1.0.6` だが、**v1.1.2 以前は全件パスでも `php artisan test` の
+終了コードが 1 になる**（`--no-output` の二重付与による。詳細は `docs/stack.md`）。
+本プロジェクトは完了基準をすべて終了コードで判定するため、その下限を保証しておく。
+引き上げないと、将来 `composer install` が 1.1.2 以前を解決したときに **green のテストを
+失敗と誤認する**。
+
 ### 9. DB の作成と起動確認
 
 1. **データベースの確認**（`bookkeeper` は `compose.yaml` の `MYSQL_DATABASE` が、`bookkeeper_test` は `docker/mysql/initdb/01-create-test-database.sql` がそれぞれ自動作成する。手動作成は不要）:
@@ -414,11 +426,9 @@ DB_PASSWORD=app_password
    - Step 6 の指示どおり `tests/Pest.php` を先に並べ替えてあれば、Pint はこのファイルを書き換えない。書き換えられた場合は並べ替えが漏れているので Step 6 に戻ること
 4. `php artisan test` が green であることを確認する。
 
-   > **終了コードが 1 で返ったら、まず `composer show laravel/pao` で版を確認する。**
-   > v1.1.2 以前なら `--no-output` の二重付与による既知事象で、テスト自体は green
-   > （`--log-junit` の `errors="0" failures="0"` で確認できる）。**v1.1.3 以降なら本物の
-   > 失敗**なので握り潰さずに原因を追うこと。原因・解消版・再現条件は `docs/stack.md` の
-   > `laravel/pao` の注記が一次情報。
+   > **終了コード 1 は本物の失敗として扱う。**握り潰さずに原因を追うこと。Step 8 で
+   > `laravel/pao` を `^1.1.3` 以上に固定してあるため、v1.1.2 以前の既知事象
+   > （全件パスでも 1 が返る）はもう起きない。
 5. **起動確認**: `composer run dev` をバックグラウンドで立ち上げ、`curl -sS --retry 15 --retry-all-errors --retry-delay 1 -o /dev/null -w "%{http_code}" http://localhost:8000` が 200 を返すことを確認する。`/login` `/register` も 200 になること。確認後サーバを停止する（`pkill -f "php artisan serve"`、`pkill -f "artisan pail"`、`pkill -f vite`。concurrently に `--kill-others` が付いている場合は最初の 1 つで残りも終了するが、3 つとも実行して確実に止める）。
    - `--retry` を付けるのは、`composer run dev` の起動直後は `php artisan serve` がまだ listen していないため。Bash ツールでは `sleep` を伴う待機ループが書けないので `curl` 側のリトライで吸収する
    - `--kill-others` により 1 つ目の `pkill` で全プロセスが落ちるため、2 つ目以降の `pkill` は**終了コード 1（該当プロセス無し）で返るのが正常**。失敗として扱わないこと
@@ -468,7 +478,8 @@ DB_PASSWORD=app_password
 - [ ] `my-laravel-app/.env` が存在し、`.gitignore` で除外されている
 - [ ] `my-laravel-app/.env.example` が存在し、コミット対象に含まれている。`diff .env .env.example` の差分が `APP_KEY` の 1 行だけ（`DB_*` / `APP_LOCALE` / `APP_FAKER_LOCALE` / `MAIL_FROM_ADDRESS` / `APP_URL` が同期されている）
 - [ ] `composer.json` の `dev` スクリプトに Queue ワーカー（`php artisan queue:work` / `queue:listen`）が**含まれていない**
-- [ ] `php artisan test` が green（`laravel/pao` v1.1.3 以降は終了コードで判定してよい。1 が返った場合は Step 9-4 の既知事象を参照して版を確認する）
+- [ ] `php artisan test` が green（終了コードで判定する）
+- [ ] `composer.json` の `require-dev` の `laravel/pao` が `^1.1.3` 以上になっている
 - [ ] `vendor/bin/pint --test` が違反 0
 - [ ] `vendor/bin/phpstan analyse --memory-limit=512M` がエラー 0
 - [ ] `git status --short` に `.gitignore` 漏れの生成物が出ていない
