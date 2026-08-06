@@ -251,6 +251,11 @@ vendor/bin/pint
 
 ## このフェーズの完了基準
 
+まず `bin/check-repo.sh` を実行する（`.env` と `.env.example` の整合・生成物の
+`.gitignore` 除外・テンプレート同梱ファイルの変更有無を 1 回で検査する。読み取りのみ）。
+終了コード 0 を確認してから、以下の残りの項目を確認する。
+
+
 - [ ] `php artisan migrate:status` で全マイグレーションが `Ran`
 - [ ] `php artisan migrate:rollback` → `php artisan migrate` が両方成功する（可逆性）
 - [ ] `php artisan test tests/Unit/Models` が all green

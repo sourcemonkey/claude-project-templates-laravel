@@ -2,6 +2,7 @@
   "permissions": {
     "allow": [
       "Bash(bin/doctor.sh*)",
+      "Bash(bin/check-repo.sh*)",
       "Bash(cat:*)",
       "Bash(echo:*)",
       "Bash(find:*)",

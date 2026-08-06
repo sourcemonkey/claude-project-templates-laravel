@@ -15,6 +15,8 @@
       "Bash(bin/phase-tokens.sh*)",
       "Bash(../bin/phase-tokens.sh*)",
       "Bash(bin/doctor.sh*)",
+      "Bash(my-laravel-app/bin/check-repo.sh*)",
+      "Bash(bin/check-repo.sh*)",
       "Bash(my-laravel-app/bin/doctor.sh*)",
       "Bash(cat:*)",
       "Bash(echo:*)",

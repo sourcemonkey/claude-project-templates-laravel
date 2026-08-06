@@ -43,8 +43,9 @@ PHP 8.4.23 / Laravel 13 向けに移植したものです。フェーズ分割�
     ├── .gitignore               ← Laravel アプリ用の除外設定（.env / coverage/ 等を含む）
     ├── .npmrc                   ← npm の方針（ignore-scripts / audit）。生成物ではなくテンプレート同梱
     ├── .tool-versions           ← my-laravel-app 配下での PHP / Node.js バージョン
-    ├── bin/
-    │   └── doctor.sh            ← 開発環境の前提条件を検査（読み取りのみ・利用者プロジェクトへ引き継がれる）
+    ├── bin/                     ← 検査スクリプト（読み取りのみ・利用者プロジェクトへ引き継がれる）
+    │   ├── check-repo.sh        ← .env の整合・生成物の .gitignore 除外・同梱ファイルの変更を検査
+    │   └── doctor.sh            ← 開発環境の前提条件（PHP / Composer / Node / Docker 等）を検査
     ├── CLAUDE.md                ← プロジェクト固有のエントリポイント
     ├── compose.yaml             ← 開発用 MySQL コンテナ定義
     ├── config/
@@ -133,6 +134,21 @@ Laravel Installer、Docker デーモンと Compose v2、DB ポートの空き、
   モデルの解釈が入らなくなりました。**
 - `my-laravel-app/bin/` に置いてあるため、`bin/init-project.sh` で作った**利用者の
   プロジェクトにも引き継がれます**（新メンバーがクローンした直後にも使えます）。
+
+### リポジトリ衛生の検査（`bin/check-repo.sh`）
+
+各フェーズの完了基準のうち機械的に判定できるものを 1 回で検査します。同じく読み取り専用で、
+フェーズ 1〜4 のどの時点でも同じコマンドで走ります（まだ存在しないものは検査しません）。
+
+```sh
+cd my-laravel-app && bin/check-repo.sh
+```
+
+- `.env` が `.gitignore` で除外され、`.env.example` は追跡対象で、差分が `APP_KEY` のみか
+- 生成物（`vendor` / `node_modules` / `public/hot` / `coverage` / `.env.dusk.local` 等）が
+  `.gitignore` で除外されているか
+- テンプレート同梱ファイルが意図せず変更されていないか（変更は `[WARN]` で一覧表示）
+- 未追跡ファイルに生成物らしきものが残っていないか（`.gitignore` の網羅漏れ検出）
 
 ### Laravel のバージョン方針
 

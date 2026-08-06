@@ -442,6 +442,11 @@ DB_PASSWORD=app_password
 
 ## このフェーズの完了基準
 
+まず `bin/check-repo.sh` を実行する（`.env` と `.env.example` の整合・生成物の
+`.gitignore` 除外・テンプレート同梱ファイルの変更有無を 1 回で検査する。読み取りのみ）。
+終了コード 0 を確認してから、以下の残りの項目を確認する。
+
+
 - [ ] `docker compose up -d --wait db` で DB が healthy になる
 - [ ] `composer run setup` で DB 起動 → セットアップ完了まで一気通貫で動く
 - [ ] `composer.json` の `scripts.setup` に `docker compose up -d --wait db` と `migrate --seed --force` が反映済み
