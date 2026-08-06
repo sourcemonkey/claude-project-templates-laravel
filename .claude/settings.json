@@ -14,6 +14,8 @@
       "Bash(bash -n bin/reset-phase.sh)",
       "Bash(bin/phase-tokens.sh*)",
       "Bash(../bin/phase-tokens.sh*)",
+      "Bash(bin/doctor.sh*)",
+      "Bash(my-laravel-app/bin/doctor.sh*)",
       "Bash(cat:*)",
       "Bash(echo:*)",
       "Bash(find:*)",

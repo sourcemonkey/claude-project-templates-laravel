@@ -43,6 +43,8 @@ PHP 8.4.23 / Laravel 13 向けに移植したものです。フェーズ分割�
     ├── .gitignore               ← Laravel アプリ用の除外設定（.env / coverage/ 等を含む）
     ├── .npmrc                   ← npm の方針（ignore-scripts / audit）。生成物ではなくテンプレート同梱
     ├── .tool-versions           ← my-laravel-app 配下での PHP / Node.js バージョン
+    ├── bin/
+    │   └── doctor.sh            ← 開発環境の前提条件を検査（読み取りのみ・利用者プロジェクトへ引き継がれる）
     ├── CLAUDE.md                ← プロジェクト固有のエントリポイント
     ├── compose.yaml             ← 開発用 MySQL コンテナ定義
     ├── config/
@@ -104,6 +106,33 @@ Laravel の生成物（`app/`・`composer.json`・`.env.example` など）が加
 
 DBMS は MySQL 8.x を **Docker コンテナ** で起動する設計です。
 ホスト OS への MySQL インストールは不要です。
+
+### 前提条件の検査（`bin/doctor.sh`）
+
+上表を満たしているかは、Claude Code を起動する前に検査できます。
+
+```sh
+cd my-laravel-app && bin/doctor.sh
+```
+
+終了コード 0 なら Phase 1 に進めます。満たしていない項目は `[NG]` と対処方法が出るので、
+解消して再実行してください。`[WARN]` は続行して構いません（PCOV 未導入は Phase 4 の
+カバレッジ判定でのみ必要、DB ボリュームの残存は初回セットアップ時のみ問題になります）。
+
+検査するのは、PHP のバージョンと `zip` / `pcov` 拡張、Composer 2 系、Node.js のバージョンと
+バージョンマネージャの併存（`nodenv` / `nvm` が `.tool-versions` を無視する問題）、
+Laravel Installer、Docker デーモンと Compose v2、DB ポートの空き、DB ボリュームの衝突です。
+
+- **何も変更しません**（読み取りのみ）。ホストの PHP へ拡張を追加するような変更は、
+  対処として案内するだけで実行はしません。何度実行しても結果が変わらないので、
+  対処のたびに再実行できます。
+- **バージョンの一次情報は `.tool-versions`** で、スクリプトがそこから読みます。上表や
+  スクリプトに数値を書き足す必要はありません。
+- Phase 1 の手順書（`/scaffold-phase1-skeleton`）も冒頭でこれを実行します。以前は同じ検査を
+  自然言語の 8 手順として書いていましたが、**合否が終了コードで決まる形にしたことで
+  モデルの解釈が入らなくなりました。**
+- `my-laravel-app/bin/` に置いてあるため、`bin/init-project.sh` で作った**利用者の
+  プロジェクトにも引き継がれます**（新メンバーがクローンした直後にも使えます）。
 
 ### Laravel のバージョン方針
 

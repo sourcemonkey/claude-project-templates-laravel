@@ -25,24 +25,27 @@ Laravel 本体はホスト側で動かす。
 
 ### 1. 事前確認
 
-1. **PHP バージョン確認**: `my-laravel-app/` 内で `php -v` を実行し 8.4.23 系が出るか確認。出ない場合は asdf / mise 等でインストールを促し中断。
-2. **PHP 拡張の確認**: `php -m | grep -i zip` で `zip` 拡張が有効か確認する（`laravel/dusk` v8.x 系が `ext-zip` を要求するため）。無効な場合、`pecl install zip` でビルドし、`php --ini` で表示される `conf.d` 配下の ini ファイルに `extension=zip.so` を追記する（このホストの PHP 全体に適用される変更のため、事前にユーザーへ確認する）。`libzip` が未インストールの場合は `brew install libzip` を促す。
-3. **Composer の確認**: `composer --version` を実行し **2 系**であることを確認する（`-V` の短縮形は許可リストに含めていないため使わない）。`laravel new` は内部で `composer create-project` を呼ぶため必須。1 系または未インストールの場合はインストール・更新を促し中断する（要件は `docs/stack.md` のランタイム表が一次情報。`.tool-versions` では固定していない）。
-4. **Node.js バージョン確認**: `node -v` を実行し、`.tool-versions` の `nodejs` 行と一致するか確認する（バージョンは `.tool-versions` が一次情報。この手順書に数値を書かない）。バージョン不一致のまま進めると `npm run build` で Vite 系パッケージのネイティブバインディングが解決できず失敗することがある。
+`my-laravel-app/` で次を実行する。
 
-   一致しない場合は `which -a node` で**どのバージョンマネージャが解決しているか**を確認する。`.tool-versions` は asdf / mise の形式なので、**nodenv や nvm が併存して PATH で先に解決されると、この指定が無視される**。対処は 2 通り:
-   - **推奨**: 併存しているマネージャを PATH から外し、`.tool-versions` を読むマネージャ（asdf / mise）に一本化する（例: nodenv なら `~/.zprofile` の `eval "$(nodenv init -)"` を無効化）
-   - 一本化できない事情がある場合は、優先されているマネージャ側で該当バージョンを入れ、プロジェクトディレクトリにローカルピン留めする（例: `nodenv local <version>`）。ただしフェーズを回すたびに再設定が要る
-5. **Laravel Installer の確認**: `laravel --version` を実行。存在しない場合は `composer global require laravel/installer` を提案し、`~/.composer/vendor/bin`（または `~/.config/composer/vendor/bin`）に PATH が通っているか確認。
-6. **Docker の確認**:
-   - `docker version` で Docker Engine が利用可能か確認
-     - `Cannot connect to the Docker daemon` 等のエラーが出た場合は「インストール済みだが Docker Desktop アプリが起動していない」ケース。ユーザーに Docker Desktop の起動を促し、起動後に再実行する
-     - `command not found` の場合は「未インストール」のケース。「Docker Desktop か Docker Engine + Compose v2 をインストールしてください」と案内し中断
-   - `docker compose version` で Compose v2 が利用可能か確認
-7. **ポート 3306 の空き確認**:
-   - `lsof -i :3306` または `nc -z 127.0.0.1 3306` で確認
-   - 既に使用中ならユーザーに案内し、停止または別ポート利用を判断してもらう
-8. **カバレッジ計測ドライバの確認（警告のみ・中断しない）**: `php -m | grep pcov` を実行する。出力が空の場合、「PCOV が未導入のため Phase 4 のカバレッジ 80% 判定が実行できない。Phase 1〜3 は影響を受けないので続行するが、Phase 4 に入る前に `docs/stack.md` の「テストカバレッジ設定（正規形）」の手順で導入が必要」と**報告してから続行する**。ここで中断しないのは、カバレッジが Phase 1 の完了基準に含まれず、Phase 1〜3 だけを試す利用者の足止めになるため。必須チェックは Phase 4 の Step 2-0 に置いてある（そこでは未導入なら中断する）。
+```sh
+bin/doctor.sh
+```
+
+**終了コードが 0 でなければ先へ進まない。** `[NG]` の項目と対処が出力されるので、その内容を
+**ユーザーに提示して解消を依頼し、解消後に再実行する**。`[WARN]` は続行してよい。
+
+検査項目は、PHP のバージョンと `zip` / `pcov` 拡張、Composer 2 系、Node.js のバージョンと
+バージョンマネージャの併存、Laravel Installer、Docker デーモンと Compose v2、DB ポートの空き、
+DB ボリュームの衝突。バージョンの一次情報は `.tool-versions` で、スクリプトがそこから読む
+（**この手順書にもスクリプトにも数値を書かない**）。
+
+> **このスクリプトは何も変更しない（読み取りのみ）。** 何度実行しても同じ結果になるので、
+> 対処のたびに再実行してよい。ホストの PHP への拡張追加のようにホスト全体へ影響する変更は、
+> **対処として案内するだけで実行はしない**（実行はユーザーの判断）。
+>
+> `[WARN]` の 2 つは意味が異なる。**pcov 未導入**は Phase 4 のカバレッジ 80% 判定にのみ必要で、
+> Phase 1〜3 は影響を受けない（必須チェックは Phase 4 の Step 2-0 にあり、そこでは未導入なら中断する）。
+> **DB ボリュームの残存**は初回セットアップ時のみ問題になる（詳細は次節「起動失敗時の典型原因」）。
 
 ### 2. DB コンテナの起動
 
