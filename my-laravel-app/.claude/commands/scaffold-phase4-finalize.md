@@ -299,8 +299,7 @@ vendor/bin/pint
    完了基準の記録としては (b) の HTML を残しておくとレビューしやすい。
    (a) と (b) は同じ数値になる（小数第 2 位まで見たい場合は (b)）。
 4. `php artisan dusk` が all green。**別ターミナルで
-   `php artisan serve --env=dusk.local` を起動してから実行する**（Phase 3 手順書参照）。
-   Phase 3 と同じく**連続 2 回以上 green になること**を確かめる
+   `php artisan serve --env=dusk.local` を起動してから実行する**（Phase 3 手順書参照）
 5. `vendor/bin/pint --test` が違反 0
 6. `vendor/bin/phpstan analyse` でエラー 0
 7. `composer audit` で既知の脆弱性 0

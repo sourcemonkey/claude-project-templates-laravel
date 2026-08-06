@@ -486,9 +486,9 @@ $browser->waitUntil('window.Alpine') // Alpine のロードを待ってから押
 > （`Failed asserting that two variables reference the same object.` で、在庫制約が原因だと
 > 分かりにくい）。Phase 4 の Dusk だけでなく、本フェーズの Feature テストでも同じ罠を踏む。
 
-`php artisan dusk` で確認。**通ったら続けてもう 1〜2 回実行し、毎回 green になることを
-確かめること**（ハイドレーション待ちの漏れは 1 回目にたまたま通ることがあり、
-実行ごとに落ちるテストが変わる形で後から顕在化する）。
+`php artisan dusk` で確認する。**green になったことを「待機条件が正しい」ことの証明に
+しないこと**（ハイドレーション待ちの漏れはサーバーが速く返れば通ってしまう）。待機の
+書き方は前掲「Livewire で一覧が絞り込まれるのを待つ」の原則で担保する。
 
 あわせて Feature テスト（`php artisan test`）でも
 主要フロー（借用申請の業務ルール、認可、ロール変更、通知の既読化、返却、**ページネーション**）を押さえること。
@@ -583,8 +583,7 @@ Blade 側の null 参照を Dusk より早く・安く検出できる。
 - [ ] メンバー蔵書一覧のページネーションが `Livewire::test()` で検証済み（`assertViewHas` を
       `$this->get('/books')` に対して書いていない）
 - [ ] `php artisan test` が all green（Phase 1 の Breeze 認証テストを含む）
-- [ ] `php artisan dusk` が all green（`tests/Browser/ExampleTest.php` の書き換えを含む）。
-      **連続 2 回以上 green になること**
+- [ ] `php artisan dusk` が all green（`tests/Browser/ExampleTest.php` の書き換えを含む）
 - [ ] `vendor/bin/pint --test` が違反 0
 - [ ] `vendor/bin/phpstan analyse --memory-limit=512M` がエラー 0
 
