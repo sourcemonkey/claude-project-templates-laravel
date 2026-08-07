@@ -5,6 +5,7 @@
 #
 # 使い方:
 #   bin/phase-tokens.sh                最新のトライアルセッションを集計
+#   bin/phase-tokens.sh --all          複数セッションを横断して集計（bin/run-trial.sh 用）
 #   bin/phase-tokens.sh <セッションID>  セッションを指定して集計
 #   bin/phase-tokens.sh <path.jsonl>   トランスクリプトを直接指定
 #   bin/phase-tokens.sh --list         候補セッションを新しい順に一覧
@@ -46,46 +47,9 @@ list_sessions() {
     done
 }
 
-if [ "${1:-}" = "--list" ]; then
-    list_sessions
-    exit 0
-fi
-
-session_file=""
-if [ -n "${1:-}" ]; then
-    if [ -f "$1" ]; then
-        session_file="$1"
-    elif [ -f "$TRANSCRIPT_DIR/$1.jsonl" ]; then
-        session_file="$TRANSCRIPT_DIR/$1.jsonl"
-    else
-        echo "指定されたセッションが見つかりません: $1" >&2
-        exit 1
-    fi
-else
-    for f in $(ls -t "$TRANSCRIPT_DIR"/*.jsonl 2>/dev/null); do
-        if is_trial "$f"; then
-            session_file="$f"
-            break
-        fi
-    done
-fi
-
-if [ -z "$session_file" ]; then
-    echo "トライアルセッションのトランスクリプトが見つかりません: $TRANSCRIPT_DIR" >&2
-    echo "（bin/phase-tokens.sh --list で候補を確認できます）" >&2
-    exit 1
-fi
-
-echo "session: $session_file" >&2
-
-if ! grep -q '\[phase-tokens\] *phase=' "$session_file"; then
-    echo "警告: [phase-tokens] マーカーが見つかりません。マーカー導入前のセッションか、" >&2
-    echo "      トライアルが出力を忘れています。全区間が「マーカー外」に集計されます。" >&2
-fi
-
 # 同一 message.id が content ブロックの数だけ重複記録され、各行が同じ usage を持つ。
 # message.id で最初の 1 行だけを採用しないと数倍に膨らむ。
-jq -s -r '
+JQ_PROGRAM='
 def n: if . == null then 0 else . end;
 
 # 3 桁区切り（44 = ",")
@@ -172,4 +136,100 @@ def cell($a): [
                 else "-" end) + " |"),
   ("| **合計** | " + (cell($total) | join(" | "))
    + " | " + (if $total.first != null then (($total.last - $total.first) | hms) else "-" end) + " |")
-' "$session_file"
+'
+
+# 「経過」列はフック（PreToolUse の待機など）による停止時間を含む。作業時間の
+# 指標として読まないこと。実測（2026-08-06）では Phase 3 の経過 4:44:31 のうち
+# 4:16 が limit-guard.sh による 5 時間枠のリセット待ちで、実作業は約 30 分だった。
+elapsed_note() {
+    echo "※ 「経過」はフックの待機時間を含む。作業時間の指標ではない。" >&2
+}
+
+if [ "${1:-}" = "--list" ]; then
+    list_sessions
+    exit 0
+fi
+
+# --all: 複数セッションを横断して 1 枚の表にまとめる。bin/run-trial.sh は
+# フェーズごとに別セッションで起動するため、既定の自動検出（最新 1 本）では
+# 最後のフェーズしか見えない。
+#
+# **フェーズ番号ごとに最も新しいセッションを 1 本だけ採る。** 単純に全セッションを
+# 足すと、過去の実行に含まれる同じフェーズまで合算されて数字が意味を失う
+# （Phase 1 を 3 回試していれば 3 回分が合計される）。この規則なら「最後の実行」が
+# 得られ、あるフェーズだけ後から再実行した場合もその最新版が採られる。
+if [ "${1:-}" = "--all" ]; then
+    session_files=""
+    claimed=" "
+    for f in $(ls -t "$TRANSCRIPT_DIR"/*.jsonl 2>/dev/null); do
+        is_trial "$f" || continue
+        # マーカーが無ければ grep が非 0 を返す。set -e で落ちないよう吸収する
+        phases="$(grep -o '\[phase-tokens\] *phase=[0-9]*' "$f" 2>/dev/null \
+            | grep -o '[0-9]*$' | sort -u || true)"
+        [ -n "$phases" ] || continue
+
+        wanted=""
+        for p in $phases; do
+            case "$claimed" in
+                *" $p "*) ;;
+                *) wanted="$wanted $p" ;;
+            esac
+        done
+        [ -n "$wanted" ] || continue
+
+        for p in $wanted; do claimed="$claimed$p "; done
+        session_files="$f $session_files"
+    done
+
+    if [ -z "$session_files" ]; then
+        echo "マーカーを持つトライアルセッションが見つかりません: $TRANSCRIPT_DIR" >&2
+        exit 1
+    fi
+
+    # shellcheck disable=SC2086
+    set -- $session_files
+    echo "sessions: $# 本（フェーズごとに最新のものを採用）" >&2
+    for f in "$@"; do
+        p="$(grep -o '\[phase-tokens\] *phase=[0-9]*' "$f" | grep -o '[0-9]*$' | sort -u | tr '\n' ',' | sed 's/,$//')"
+        echo "  $(basename "$f" .jsonl)  Phase $p" >&2
+    done
+    elapsed_note
+    jq -s -r "$JQ_PROGRAM" "$@"
+    exit $?
+fi
+
+session_file=""
+if [ -n "${1:-}" ]; then
+    if [ -f "$1" ]; then
+        session_file="$1"
+    elif [ -f "$TRANSCRIPT_DIR/$1.jsonl" ]; then
+        session_file="$TRANSCRIPT_DIR/$1.jsonl"
+    else
+        echo "指定されたセッションが見つかりません: $1" >&2
+        exit 1
+    fi
+else
+    for f in $(ls -t "$TRANSCRIPT_DIR"/*.jsonl 2>/dev/null); do
+        if is_trial "$f"; then
+            session_file="$f"
+            break
+        fi
+    done
+fi
+
+if [ -z "$session_file" ]; then
+    echo "トライアルセッションのトランスクリプトが見つかりません: $TRANSCRIPT_DIR" >&2
+    echo "（bin/phase-tokens.sh --list で候補を確認できます）" >&2
+    exit 1
+fi
+
+echo "session: $session_file" >&2
+
+if ! grep -q '\[phase-tokens\] *phase=' "$session_file"; then
+    echo "警告: [phase-tokens] マーカーが見つかりません。マーカー導入前のセッションか、" >&2
+    echo "      トライアルが出力を忘れています。全区間が「マーカー外」に集計されます。" >&2
+fi
+
+
+elapsed_note
+jq -s -r "$JQ_PROGRAM" "$session_file"
