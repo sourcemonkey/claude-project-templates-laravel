@@ -154,13 +154,17 @@ fi
 # フェーズごとに別セッションで起動するため、既定の自動検出（最新 1 本）では
 # 最後のフェーズしか見えない。
 #
-# **フェーズ番号ごとに最も新しいセッションを 1 本だけ採る。** 単純に全セッションを
-# 足すと、過去の実行に含まれる同じフェーズまで合算されて数字が意味を失う
-# （Phase 1 を 3 回試していれば 3 回分が合計される）。この規則なら「最後の実行」が
-# 得られ、あるフェーズだけ後から再実行した場合もその最新版が採られる。
+# **新しい順にたどり、既に集めたフェーズと重なるセッションが現れた時点で打ち切る。**
+# そこが前回の実行との境目だからである。
+#
+# 「フェーズごとに最新のセッションを採る」という採り方にしてはいけない。jq は
+# **ファイル全体を処理する**ため、Phase 3 のために採用した古い通し実行のセッションから
+# その Phase 1・2 まで一緒に集計され、**二重計上になる**（2026-08-07 に実際に起きた。
+# Phase 1 が 69 + 66 = 135 呼び出しと表示された）。重なりで打ち切る形なら、
+# 採用したセッション群のフェーズが重複しないことが構成上保証される。
 if [ "${1:-}" = "--all" ]; then
     session_files=""
-    claimed=" "
+    collected=" "
     for f in $(ls -t "$TRANSCRIPT_DIR"/*.jsonl 2>/dev/null); do
         is_trial "$f" || continue
         # マーカーが無ければ grep が非 0 を返す。set -e で落ちないよう吸収する
@@ -168,16 +172,15 @@ if [ "${1:-}" = "--all" ]; then
             | grep -o '[0-9]*$' | sort -u || true)"
         [ -n "$phases" ] || continue
 
-        wanted=""
+        overlap=0
         for p in $phases; do
-            case "$claimed" in
-                *" $p "*) ;;
-                *) wanted="$wanted $p" ;;
+            case "$collected" in
+                *" $p "*) overlap=1; break ;;
             esac
         done
-        [ -n "$wanted" ] || continue
+        [ "$overlap" -eq 0 ] || break
 
-        for p in $wanted; do claimed="$claimed$p "; done
+        for p in $phases; do collected="$collected$p "; done
         session_files="$f $session_files"
     done
 
@@ -188,7 +191,7 @@ if [ "${1:-}" = "--all" ]; then
 
     # shellcheck disable=SC2086
     set -- $session_files
-    echo "sessions: $# 本（フェーズごとに最新のものを採用）" >&2
+    echo "sessions: $# 本（最後の実行。フェーズが重なる手前で打ち切り）" >&2
     for f in "$@"; do
         p="$(grep -o '\[phase-tokens\] *phase=[0-9]*' "$f" | grep -o '[0-9]*$' | sort -u | tr '\n' ',' | sed 's/,$//')"
         echo "  $(basename "$f" .jsonl)  Phase $p" >&2
