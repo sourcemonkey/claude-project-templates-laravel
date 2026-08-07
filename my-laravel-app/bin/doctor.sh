@@ -73,7 +73,7 @@ fi
 # ---- PHP -----------------------------------------------------------------
 want_php="$(tool_version php)"
 if ! command -v php >/dev/null 2>&1; then
-    ng "PHP: 未インストール（.tool-versions の要求は $want_php）"
+    ng "PHP: 未インストール（.tool-versions の要求は ${want_php}）"
     hint "asdf / mise 等で php $want_php を導入してください"
 else
     have_php="$(php -r 'echo PHP_VERSION;' 2>/dev/null)"
@@ -83,10 +83,10 @@ else
     if [ "$have_php" = "$want_php" ]; then
         ok "PHP $have_php"
     elif same_series "$have_php" "$want_php"; then
-        warn "PHP $have_php（.tool-versions は $want_php。パッチ差のみ）"
+        warn "PHP ${have_php}（.tool-versions は ${want_php}。パッチ差のみ）"
         hint "動作に支障が出ることは稀ですが、揃えるなら asdf / mise で $want_php を導入してください"
     else
-        ng "PHP $have_php（.tool-versions は $want_php）"
+        ng "PHP ${have_php}（.tool-versions は ${want_php}）"
         hint "asdf / mise 等で php $want_php を導入してください"
         hint "which -a php: $(command -v -a php 2>/dev/null | tr '\n' ' ')"
     fi
@@ -125,7 +125,7 @@ else
         2.*) ok "Composer $composer_ver" ;;
         "")  ng "Composer: バージョンを判別できませんでした"
              hint "composer --version の出力を確認してください" ;;
-        *)   ng "Composer $composer_ver（2 系が必要）"
+        *)   ng "Composer ${composer_ver}（2 系が必要）"
              hint "composer self-update --2 で 2 系へ更新してください" ;;
     esac
 fi
@@ -133,7 +133,7 @@ fi
 # ---- Node.js -------------------------------------------------------------
 want_node="$(tool_version nodejs)"
 if ! command -v node >/dev/null 2>&1; then
-    ng "Node.js: 未インストール（.tool-versions の要求は $want_node）"
+    ng "Node.js: 未インストール（.tool-versions の要求は ${want_node}）"
     hint "asdf / mise 等で nodejs $want_node を導入してください"
 else
     have_node="$(node -v 2>/dev/null | sed 's/^v//')"
@@ -142,9 +142,9 @@ else
     else
         # バージョン不一致は npm run build 時の Vite ネイティブバインディング解決失敗につながる
         if same_series "$have_node" "$want_node"; then
-            warn "Node.js $have_node（.tool-versions は $want_node。パッチ差のみ）"
+            warn "Node.js ${have_node}（.tool-versions は ${want_node}。パッチ差のみ）"
         else
-            ng "Node.js $have_node（.tool-versions は $want_node）"
+            ng "Node.js ${have_node}（.tool-versions は ${want_node}）"
             hint "不一致のまま進めると npm run build が Vite のネイティブバインディング解決に失敗することがあります"
         fi
         # .tool-versions は asdf / mise の形式。nodenv / nvm が PATH で先に解決すると無視される
@@ -213,9 +213,9 @@ else
     elif [ "$docker_ready" = "1" ] && [ -n "$db_container" ] \
         && [ -n "$(docker ps --filter "name=^${db_container}$" --quiet 2>/dev/null)" ]; then
         # 自プロジェクトの DB コンテナが掴んでいる状態は正常（2 回目以降の実行で必ずこうなる）
-        ok "ポート $db_port は本プロジェクトの DB コンテナ（$db_container）が使用中"
+        ok "ポート $db_port は本プロジェクトの DB コンテナ（${db_container}）が使用中"
     else
-        ng "ポート $db_port を別のプロセスが使用中（$port_user）"
+        ng "ポート $db_port を別のプロセスが使用中（${port_user}）"
         hint "そのプロセスを停止するか、compose.yaml のホスト側ポートを変更してください"
     fi
 fi

@@ -162,7 +162,7 @@ confirm_or_abort() {
 
 run_copy() {
   info "コピー元: $REPO_ROOT/my-laravel-app（＋ team-rules / CLAUDE.md）"
-  info "コピー先: $DEST（ここが新しいリポジトリのルートになります）"
+  info "コピー先: ${DEST}（ここが新しいリポジトリのルートになります）"
   confirm_or_abort "実行してよいですか?"
 
   mkdir -p "$DEST"

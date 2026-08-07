@@ -42,7 +42,7 @@ esac
 
 mkdir -p "$LOG_DIR"
 
-echo "モデル: $MODEL / 対象: Phase $FROM〜$TO / ログ: $LOG_DIR"
+echo "モデル: $MODEL / 対象: Phase ${FROM}〜$TO / ログ: $LOG_DIR"
 echo
 
 phase="$FROM"
@@ -81,7 +81,7 @@ while [ "$phase" -le "$TO" ]; do
     exit 1
 done
 
-echo "Phase $FROM〜$TO をすべて完了しました。"
+echo "Phase ${FROM}〜$TO をすべて完了しました。"
 echo
 echo "トークン消費の集計:"
 echo "  bin/phase-tokens.sh --all"
