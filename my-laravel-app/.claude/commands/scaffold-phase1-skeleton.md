@@ -432,6 +432,7 @@ composer require --dev "laravel/pao:^1.1.3" --no-interaction
 5. **起動確認**: `composer run dev` をバックグラウンドで立ち上げ、`curl -sS --retry 15 --retry-all-errors --retry-delay 1 -o /dev/null -w "%{http_code}" http://localhost:8000` が 200 を返すことを確認する。`/login` `/register` も 200 になること。確認後サーバを停止する（`pkill -f "php artisan serve"`、`pkill -f "artisan pail"`、`pkill -f vite`。concurrently に `--kill-others` が付いている場合は最初の 1 つで残りも終了するが、3 つとも実行して確実に止める）。
    - `--retry` を付けるのは、`composer run dev` の起動直後は `php artisan serve` がまだ listen していないため。Bash ツールでは `sleep` を伴う待機ループが書けないので `curl` 側のリトライで吸収する
    - `--kill-others` により 1 つ目の `pkill` で全プロセスが落ちるため、2 つ目以降の `pkill` は**終了コード 1（該当プロセス無し）で返るのが正常**。失敗として扱わないこと
+   - **同じ理由で、バックグラウンド実行そのものの完了通知が `failed`（終了コード 1）で返る**。`concurrently` プロセス自体が非 0 終了するためで、これも正常。**フェーズの失敗として扱わず、原因を追わないこと**
 6. **既定 `DatabaseSeeder` の空化**: `laravel new` が生成する `database/seeders/DatabaseSeeder.php` は、固定メール（`test@example.com`）の Test User を `User::factory()->create([...])` で 1 件作る内容になっている。これは `firstOrCreate` ではないため、**`composer run setup`（内部で `migrate --seed --force`）を 2 回目に実行すると `users.email` の UNIQUE 制約違反で落ちる**（「クローンして 1 コマンドで動く」が崩れる）。`run()` の本体をコメント化して空にすること（Seeder 本体は Phase 4 で `docs/seeds.md` に沿って実装する）:
    ```php
    public function run(): void
