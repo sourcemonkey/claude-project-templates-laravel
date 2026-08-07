@@ -589,6 +589,20 @@ Blade 側の null 参照を Dusk より早く・安く検出できる。
       `$this->get('/books')` に対して書いていない）
 - [ ] `php artisan test` が all green（Phase 1 の Breeze 認証テストを含む）
 - [ ] `php artisan dusk` が all green（`tests/Browser/ExampleTest.php` の書き換えを含む）
+- [ ] **Dusk が次の 3 つを実際にブラウザで検証している**（`php artisan dusk` が green なだけでは足りない）
+  - [ ] **蔵書一覧の検索・絞り込み**（Livewire の再描画を待つ。本ファイルの
+        「Livewire で一覧が絞り込まれるのを待つ」節と `wire:model` の `id` の注意を参照）
+  - [ ] **管理画面の削除確認ダイアログ**（`x-data` と `@livewireScripts` が両方無いと
+        確認なしで削除が走る。`docs/stack.md` の Alpine の項を参照）
+  - [ ] **貸出フローの 4 ボタン**（`借用を申請` / `返却` / `承認` / `却下` を `press()` で叩く。
+        文言は `docs/screens.md` の表が一次情報）
+
+  > **この 3 つを名指しするのは、書かなければ罠を踏まずに済んでしまうため。** 2026-08-06 の
+  > Phase 1〜3 トライアルは Dusk 6 件で完了基準を満たしたが、報告の「今回参照しなかった
+  > 注意書き」3 件がすべて「該当する Dusk テストを書かなかったので踏まなかった」だった。
+  > **手順書が積み上げてきた罠の記述が、テストを書かないことで丸ごと迂回された。**
+  > 上の 3 つはいずれも過去のトライアルで実際に踏んで記録された事象であり、
+  > 検証されないまま Phase 4 へ進むと同じ失敗が再現する。
 - [ ] `vendor/bin/pint --test` が違反 0
 - [ ] `vendor/bin/phpstan analyse --memory-limit=512M` がエラー 0
 
