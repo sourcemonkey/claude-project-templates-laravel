@@ -100,6 +100,13 @@ Faker でランダム生成ではなく、明示的な書籍を入れる（画�
 - 管理者太郎が貸出を 1 件 approve: `action: "approve"`, `changes_json: { "state" => ["Requested", "Approved"] }`
 - 管理者太郎がカテゴリを 1 件 create: `action: "create"`, `changes_json: null`
 
+> **この 3 件は Seeder が直接投入するサンプルであり、アプリの実装が生成するものではない。**
+> 実行時に `audit_logs` へ書き込むのは `ApproveLendingAction` だけ（`docs/architecture.md` の
+> 「Action 一覧」の注記が一次情報）。監査ログ画面に複数の `action` が並ぶ様子を
+> 確認できるよう、Seeder では `update` / `create` も入れている。
+> **「サンプルにあるのだから CRUD でも記録するはず」と読まないこと**
+> （Phase 3 のトライアルでこの解釈の割れが実際に起きた）。
+
 ## 注意
 
 - `available_copies` は以下の通り設定する（承認済み・延滞中の貸出のみ在庫を消費する）:

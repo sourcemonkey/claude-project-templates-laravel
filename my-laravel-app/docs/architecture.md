@@ -78,6 +78,17 @@ Laravel 本体はホスト側で動き、`127.0.0.1:3306` 経由でコンテナ�
 
 各 Action の副作用の詳細は `@docs/api-spec.md` の「エンドポイント詳細」参照。
 
+> **`audit_logs` へ書き込むのは `ApproveLendingAction` だけ。** Book / Category / Tag /
+> User の CRUD では監査ログを書かない。単一モデルの CRUD に Action を作るのは
+> 「Action は複数モデルにまたがる業務処理」という上の定義に反し、Controller へ直接書けば
+> 「Controller は受付と返却のみ」に反するため、**どちらを選んでも責務分担が崩れる**。
+>
+> `docs/db-schema.md` が `action` の例に `create` / `update` / `delete` を挙げているのは
+> **カラムが取りうる値**の説明であって、現時点でアプリが生成する値ではない。
+> `docs/seeds.md` の監査ログ 3 件も Seeder が直接投入するサンプルである。
+> CRUD にも記録を広げる場合は Observer による実装が自然だが、`booted()` の
+> イベント登録を最小限にする方針との擦り合わせが要るため、**設計変更として別途判断する**。
+
 ### Model (`app/Models/`)
 
 - バリデーションルールの元となる制約定義、リレーション、スコープ、単純な属性ベースのロジック。
@@ -93,7 +104,18 @@ Laravel 本体はホスト側で動き、`127.0.0.1:3306` 経由でコンテナ�
 
 - リソースごとに `XxxPolicy` を 1 ファイル。
 - `viewAny`, `view`, `create`, `update`, `delete` を定義。
-- 一覧の絞り込み（例: 一般ユーザーは自分の貸出のみ閲覧）は Policy ではなく Controller 側で Eloquent スコープを使って表現する（Laravel の Policy には Pundit の `Scope` 相当の仕組みがないため）。例: `LendingsController#index` では `auth()->user()->isAdmin() ? Lending::query() : auth()->user()->lendings()` のように分岐する。
+- 一覧の絞り込み（例: 一般ユーザーは自分の貸出のみ閲覧）は Policy ではなく**クエリ側**で表現する（Laravel の Policy には Pundit の `Scope` 相当の仕組みがないため）。
+
+  > **本プロジェクトは member 用と admin 用を別コントローラに分けているため、
+  > 1 つの Controller 内で `isAdmin()` により分岐する形にはならない。**
+  > 見える範囲はコントローラごとに固定されている。
+  >
+  > | クエリの場所 | 範囲 |
+  > |---|---|
+  > | `LendingController::index()`（member） | 常に `auth()->user()->lendings()` |
+  > | `Admin\LendingController::index()`（admin） | `Lending::query()` で全件 |
+  > | `BookController::index()`（member） | `where('published', true)` を強制（`docs/screens.md` 参照） |
+  > | `Admin\BookController::index()`（admin） | 全件（`published` フィルタが使える） |
 - `Profile` のようにシングルトンリソースを `User` インスタンスとして扱う画面は、Laravel の自動 Policy 解決（クラス名ベース）では通常の `UserPolicy` が使われてしまう。プロフィール編集専用の認可ルールが必要な場合は、Controller で `app(ProfilePolicy::class)->update($request->user(), $targetUser)` のように Policy クラスを直接インスタンス化して呼び出し、自動解決に頼らないことを明示する。
 
 ### View (`resources/views/`) / Livewire (`app/Livewire/`)
