@@ -436,16 +436,25 @@ $browser->waitForText('こころ')
 `waitForDialog()` を挟む**こと。`press()` はクリック直後に戻るため、
 ダイアログ生成前に `acceptDialog()` を呼ぶと `no such alert` で落ちる。
 
-また、`press()` の**前に `waitUntil('window.Alpine')` を挟む**こと。確認ダイアログは
-Alpine の `x-on:submit` が発火させるため、Alpine のロード前に押すと素通りする。
+また、`press()` の**前に対象フォームの Alpine 初期化を待つ**こと。確認ダイアログは
+Alpine の `x-on:submit` が発火させるため、初期化前に押すと素通りする。
 
 ```php
-$browser->waitUntil('window.Alpine') // Alpine のロードを待ってから押す
+$browser->waitUntil("document.querySelector('form[x-data]')?._x_dataStack !== undefined")
     ->press('削除')
     ->waitForDialog()
     ->acceptDialog()
     ->waitForText('書籍を削除しました');
 ```
+
+> **`waitUntil('window.Alpine')` では足りない。** これが真になるのは *Alpine
+> オブジェクトが生えた瞬間*であって、**個々の要素の `x-data` が初期化された
+> ことは保証しない**。Livewire v3 は自身のブートを終えてから Alpine を起動する
+> ため、この 2 つの間には隙がある。Alpine v3 は初期化を終えた要素に
+> `_x_dataStack` を生やすので、**そのフォーム自身**を見るのが正確な条件になる。
+>
+> 2026-08-07 の Phase 3 トライアルは `waitUntil('window.Alpine')` を実装した状態で
+> なお `Waited 5 seconds for dialog.` を踏んだ（後述の「フレーキー時の扱い」参照）。
 
 なお、ダイアログがそもそも出ず `waitForDialog()` が
 `Waited 5 seconds for dialog.` で落ちる場合、原因は 3 つある。順に確認すること:
@@ -459,8 +468,21 @@ $browser->waitUntil('window.Alpine') // Alpine のロードを待ってから押
    `@livewireScripts` の項を確認すること
 3. **1・2 を満たしているが、ハイドレーション完了前に `press()` している**。`x-data` があり
    `@livewireScripts` もあるのに落ちる場合はこれ。上記のとおり `press()` の前に
-   `waitUntil('window.Alpine')` を挟む。**実行するたびに落ちるテストが変わる**場合は
+   `_x_dataStack` の待機を挟む。**実行するたびに落ちるテストが変わる**場合は
    まずこれを疑うこと（1・2 が原因なら毎回同じ箇所で落ちる）
+
+#### フレーキー時の扱い（1 回だけ再実行してよい）
+
+原因 3 は待機条件を精密にしても残りうる。**フルスイートで落ちたテストが単体では
+通る場合に限り、`php artisan dusk` の再実行を 1 回だけ行ってよい。**
+
+- **再実行して green なら、そのフェーズは完了基準を満たしたものとして扱う**
+  （`aborted` にしない）
+- **ただし報告に必ず書くこと。** どのテストが・どのメッセージで落ちたか、
+  単体実行では通ったか、再実行後のフルスイートは green だったかを記す。
+  黙って再実行すると、待機条件の不備が「安定している」と誤認されて残り続ける
+- **2 回目以降も落ちる場合は再実行を重ねない。** それはフレーキーではなく
+  原因 1・2 の実装漏れなので、上の 3 点を順に確認して直す
 
 ### テストシナリオ
 
