@@ -19,7 +19,7 @@ description: フェーズ2 - DB スキーマからモデル・マイグレーシ
 
 本フェーズ全体の作業順序は次のとおり。**Pint はモデルテストを書いた後に実行する**（先に実行すると `tests/Unit/Models` がまだ存在せず `The path "tests/Unit/Models" is not readable.` で失敗する）:
 
-1. `users` テーブルの補正（マイグレーション + Enum + Model）
+1. `users` テーブルの補正（マイグレーション + Enum + Model + **`UserFactory`**）
 2. 残りのモデル・マイグレーション・ファクトリの作成
 3. `php artisan migrate`
 4. モデルテストの作成
@@ -194,6 +194,15 @@ php artisan migrate
 ### ファクトリ
 
 `make:model -f` が生成するファクトリは中身が空（`return [];`）なので、`docs/db-schema.md` の定義に合わせて書くこと（ファイルが既に存在するため Read してから編集する）。
+
+> **`UserFactory` だけは前提が違う。** `laravel new` / Breeze が既に生成しており、
+> 中身も空ではなく（`name` / `email` / `password` が入っている）、`make:model` の
+> 対象でもないため「**残りの**ファクトリ」に含まれない。**上の実行順序 1（users
+> テーブルの補正）の一部として、`User` モデルと同時に直すこと。**
+>
+> 後回しにすると、モデルテストを書いた時点で `role` が `null` のまま
+> 下記の失敗を踏む（2026-08-07 のトライアルで実際に起きた）。この節を
+> 「手順 2 で読むもの」と思わず、`User` を触る時点で下の `User` の項まで読むこと。
 
 - `User` ファクトリのメールは `@test.local` ドメインにする（Breeze 標準ファクトリの既定ドメインとテスト実行時に衝突しないようにするため）。`role` を扱う `admin()` state も追加する
 
