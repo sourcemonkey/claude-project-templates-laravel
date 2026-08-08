@@ -170,8 +170,17 @@
    - **`git -C <path> ...` と `cd <path> && git ...`**（前者は `Bash(git add *)`
      等の前置パターンに一致せず、後者は「移動先のフックを実行しうる形」として
      ツール自身に拒否される）。git はセッションのカレントディレクトリから
-     そのまま実行し、対象は相対パスの pathspec で絞る（例: `my-laravel-app/`
-     から `git status --short -- docs ../prompts`）。
+     そのまま実行し、対象は相対パスの pathspec で絞る。**pathspec はカレントで
+     書き分けが要る**ので、下表のどちらにいるかを確かめてから書くこと。
+
+     | カレント | 同じ対象を指す pathspec |
+     |---|---|
+     | `my-laravel-app/` | `git status --short -- docs ../prompts` |
+     | リポジトリルート | `git status --short -- my-laravel-app/docs prompts` |
+
+     > **ルートで `../prompts` と書くとリポジトリの外を指してエラーになる**
+     > （`fatal: '../prompts' is outside repository at '<ルート>'`）。上の表の
+     > 左列だけを見て形をコピーすると踏む。Phase 2 のトライアルで実際に起きた。
 
      > **pathspec を間違えても `git status` は黙って空を返す。** カレントが
      > `my-laravel-app/` のときに `git status --short -- my-laravel-app` と書くと
