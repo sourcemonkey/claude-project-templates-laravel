@@ -6,6 +6,11 @@ description: フェーズ3 - Controller / View / Policy を生成し UI を完�
 
 `docs/screens.md` と `docs/api-spec.md` に従って画面と認可を構築する。ルーティング・エンドポイント・認可マトリクスは `docs/api-spec.md`、画面構成は `docs/screens.md` が一次情報。
 
+> **実行場所**: 本手順書のコマンドは、断りが無い限りすべて **`my-laravel-app/` をカレント**として書かれている（`php artisan` / `composer` / `vendor/bin/*` / `bin/*.sh` の
+> すべて）。Bash ツールのカレントは呼び出しをまたいで持続するので、**最初に一度だけ**
+> `cd my-laravel-app` し、以降は移動しない。リポジトリルートの `bin/` は中身が別物なので、
+> ルートから `bin/check-repo.sh` を打つと `exit 127` になる。
+
 ## 実行順序
 
 1. **ルーティング**: `docs/api-spec.md` の「全体構造」の通りに `routes/web.php` を記述。`Route::get('/', ...)` に対応する `HomeController::index()`（公開のランディングページ）もあわせて作成する

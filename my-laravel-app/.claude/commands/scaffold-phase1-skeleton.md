@@ -8,6 +8,11 @@ description: フェーズ1 - Laravel 雛形を生成し依存を導入する（D
 DBMS は **MySQL 8.x** を **Docker コンテナ** で起動して利用する。
 Laravel 本体はホスト側で動かす。
 
+> **実行場所**: 本手順書のコマンドは、断りが無い限りすべて **`my-laravel-app/` をカレント**として書かれている（`php artisan` / `composer` / `vendor/bin/*` / `bin/*.sh` の
+> すべて）。Bash ツールのカレントは呼び出しをまたいで持続するので、**最初に一度だけ**
+> `cd my-laravel-app` し、以降は移動しない。リポジトリルートの `bin/` は中身が別物なので、
+> ルートから `bin/check-repo.sh` を打つと `exit 127` になる。
+
 ## 前提
 
 以下はテンプレートに同梱済み。Phase 1 で新規作成しない:

@@ -6,6 +6,11 @@ description: フェーズ2 - DB スキーマからモデル・マイグレーシ
 
 `docs/db-schema.md` の定義に厳密に従ってマイグレーションとモデルを作成する。テーブル定義・カラム制約・インデックス・enum 値・リレーションはすべて `docs/db-schema.md` が一次情報。
 
+> **実行場所**: 本手順書のコマンドは、断りが無い限りすべて **`my-laravel-app/` をカレント**として書かれている（`php artisan` / `composer` / `vendor/bin/*` / `bin/*.sh` の
+> すべて）。Bash ツールのカレントは呼び出しをまたいで持続するので、**最初に一度だけ**
+> `cd my-laravel-app` し、以降は移動しない。リポジトリルートの `bin/` は中身が別物なので、
+> ルートから `bin/check-repo.sh` を打つと `exit 127` になる。
+
 > **前提**: Phase 1 が完走し、`phpunit.xml` のテスト DB が MySQL の `bookkeeper_test` に設定済みであること（Phase 1 手順書の Step 9 参照）。既定の `sqlite` / `:memory:` のままだと、本フェーズで追加する `books` の `ALTER TABLE ... ADD CONSTRAINT ... CHECK` が SQLite の構文エラーで失敗し、モデルテストが全滅する。
 
 ## 実行順序
