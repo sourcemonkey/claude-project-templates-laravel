@@ -324,16 +324,31 @@ DB_PASSWORD=app_password
 
 開発サーバーの起動もセットアップも、`laravel new` 既定の `composer.json` のスクリプト（`composer run dev` / `composer run setup`）を使う。**自前のラッパースクリプト（`bin/dev`・`bin/setup` 等）は作らない**（`composer.json` 側との二重管理になるため。`docs/stack.md` の「開発サーバー起動（正規形）」「初回セットアップ（正規形）」参照）。既定の生成物を本プロジェクトの方針に合わせて編集する。
 
-**`scripts.dev`**: `laravel new` の既定生成物には `php artisan queue:listen ...` を含む concurrently コマンドが入っているため、`docs/stack.md` の規約（Queue ワーカーを起動しない）に従い、この行を削除する（`pail` と `npm run dev` はそのまま残してよい）。`--names` と `-c`（色指定）からも `queue` に対応する要素を落とすこと（残すと名前と実プロセスの対応がずれる）。
-
-変更後（`laravel new` 既定の 4 プロセスから `queue` を抜いた 3 プロセス構成）:
+**`scripts.dev`**: **`composer.json` は書き換えない。** Laravel 13.17 以降の `laravel new` が生成する `dev` は、`concurrently` の直書きではなく Laravel 本体の `php artisan dev` への委譲になっている:
 
 ```json
 "dev": [
     "Composer\\Config::disableProcessTimeout",
-    "npx concurrently -c \"#93c5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,logs,vite --kill-others"
+    "@php artisan dev"
 ]
 ```
+
+起動するプロセスは `Illuminate\Foundation\DevCommands::registerDefaults()` が登録する `server` / `queue` / `logs` / `vite` の 4 つで、**`composer.json` に `queue:listen` という文字列は存在しない**。`docs/stack.md` の規約（Queue ワーカーを起動しない）に従うため、`app/Providers/AppServiceProvider.php` の `boot()` で除外する:
+
+```php
+use Illuminate\Foundation\DevCommands;
+
+public function boot(): void
+{
+    // docs/stack.md の方針により Queue ワーカーは起動しない。
+    // composer run dev → php artisan dev の対象から queue を外す。
+    DevCommands::except('queue');
+}
+```
+
+`php artisan dev:list` を実行し、`queue` が消えて `server` / `logs` / `vite` の 3 つになることを確認する。
+
+> **`composer.json` の `dev` を `concurrently` 直書きへ戻さないこと。** 2026-08-12 のトライアルまで、本手順は「`dev` スクリプトから `queue:listen` の要素を削除する」と書かれていたが、**削除対象の文字列がそもそも存在せず適用できなかった**。上流の既定へ書き戻す形にすると同じ陳腐化を繰り返す。
 
 **`scripts.setup`**: 本プロジェクトは DB を Docker で動かし、かつ Seeder 込みで「最初から動く状態」にするため、既定の生成物（Laravel Framework 13.20.0 で確認）に次の 3 点を変更する:
 
@@ -406,9 +421,9 @@ composer require --dev "laravel/pao:^1.1.3" --no-interaction
    > **終了コード 1 は本物の失敗として扱う。**握り潰さずに原因を追うこと。Step 8 で
    > `laravel/pao` を `^1.1.3` 以上に固定してあるため、v1.1.2 以前の既知事象
    > （全件パスでも 1 が返る）はもう起きない。
-5. **起動確認**: `composer run dev` をバックグラウンドで立ち上げ、`curl -sS --retry 15 --retry-all-errors --retry-delay 1 -o /dev/null -w "%{http_code}" http://localhost:8000` が 200 を返すことを確認する。`/login` `/register` も 200 になること。確認後サーバを停止する（`pkill -f "php artisan serve"`、`pkill -f "artisan pail"`、`pkill -f vite`。concurrently に `--kill-others` が付いている場合は最初の 1 つで残りも終了するが、3 つとも実行して確実に止める）。
+5. **起動確認**: `composer run dev` をバックグラウンドで立ち上げ、`curl -sS --retry 15 --retry-all-errors --retry-delay 1 -o /dev/null -w "%{http_code}" http://localhost:8000` が 200 を返すことを確認する。`/login` `/register` も 200 になること。確認後サーバを停止する（`pkill -f "php artisan serve"`、`pkill -f "artisan pail"`、`pkill -f vite`。最初の 1 つで残りも終了するが、3 つとも実行して確実に止める）。
    - `--retry` を付けるのは、`composer run dev` の起動直後は `php artisan serve` がまだ listen していないため。Bash ツールでは `sleep` を伴う待機ループが書けないので `curl` 側のリトライで吸収する
-   - **停止まわりの終了コード 1 はすべて正常。フェーズの失敗として扱わず、原因を追わないこと。** `--kill-others` により 1 つ目の `pkill` で全プロセスが落ちるため 2 つ目以降は「該当プロセス無し」で 1 を返し、同じ理由でバックグラウンド実行の完了通知も `failed`（`concurrently` 自体の非 0 終了）になる
+   - **停止まわりの終了コード 1 はすべて正常。フェーズの失敗として扱わず、原因を追わないこと。** 1 つ目の `pkill` で残りのプロセスも終了するため 2 つ目以降は「該当プロセス無し」で 1 を返し、同じ理由でバックグラウンド実行の完了通知も `failed`（`php artisan dev` 自体の非 0 終了）になる
 6. **既定 `DatabaseSeeder` の空化**: `laravel new` が生成する `database/seeders/DatabaseSeeder.php` は、固定メール（`test@example.com`）の Test User を `User::factory()->create([...])` で 1 件作る内容になっている。これは `firstOrCreate` ではないため、**`composer run setup`（内部で `migrate --seed --force`）を 2 回目に実行すると `users.email` の UNIQUE 制約違反で落ちる**（「クローンして 1 コマンドで動く」が崩れる）。`run()` の本体をコメント化して空にすること（Seeder 本体は Phase 5 で `docs/seeds.md` に沿って実装する）:
    ```php
    public function run(): void
@@ -449,7 +464,7 @@ composer require --dev "laravel/pao:^1.1.3" --no-interaction
 - [ ] `composer.json` に `docs/stack.md` の「手動追加 ✅」パッケージがすべて記載
 - [ ] Laravel Breeze（Livewire スタック）/ laravel-lang / larastan / Dusk の初期化済み
 - [ ] `php artisan dusk:chrome-driver --detect` を実行済み（ホストの Chrome とバージョンが一致）
-- [ ] `composer.json` の `dev` スクリプトに Queue ワーカー（`php artisan queue:work` / `queue:listen`）が**含まれていない**
+- [ ] `php artisan dev:list` に `queue` が**含まれていない**（`server` / `logs` / `vite` の 3 つ）
 - [ ] `php artisan test` が green（終了コードで判定する）
 - [ ] `composer.json` の `require-dev` の `laravel/pao` が `^1.1.3` 以上になっている
 - [ ] `vendor/bin/pint --test` が違反 0

@@ -141,8 +141,8 @@ Laravel 標準の Queue（database ドライバ）・Cache（database/file ド�
 - `CACHE_STORE` は development では `database`、test では `array` を使う（Laravel の既定に準拠）
 - メール送信（Breeze のパスワード再発行等）は同期送信で良い。
   development では `MAIL_MAILER=log` で確認するため非同期化は不要
-- `composer.json` の `dev` スクリプトに Queue ワーカー（`php artisan queue:listen`）は**追加しない**。
-  `laravel new` が既定で追加する場合は削除する
+- 開発サーバー（`composer run dev`）で Queue ワーカー（`php artisan queue:listen`）を**起動しない**。
+  除外の方法は次節「開発サーバー起動（正規形）」参照
 - Redis / Laravel Horizon / Reverb などの追加導入もしない
 
 ## ビュー / フロント
@@ -169,9 +169,23 @@ Laravel 標準の Queue（database ドライバ）・Cache（database/file ド�
 
 ## 開発サーバー起動（正規形）
 
-開発サーバーは `laravel new` 既定の `composer.json` の `dev` スクリプト（`composer run dev`）で起動する。concurrently により `php artisan serve` / `php artisan pail` / `npm run dev`（Vite）が並行起動する。**同内容の自前スクリプト（`bin/dev` 等）は作らない**（`composer.json` 側との二重管理になるため）。
+開発サーバーは `laravel new` 既定の `composer.json` の `dev` スクリプト（`composer run dev`）で起動する。**同内容の自前スクリプト（`bin/dev` 等）は作らない**（`composer.json` 側との二重管理になるため）。
 
-ただし `laravel new` の既定生成物には `php artisan queue:listen --tries=1` が含まれる。本プロジェクトでは Queue を使わない方針（前述）に従い、`dev` スクリプトから **`queue:listen` の要素を削除する**。`--names` と `-c`（色指定）からも `queue` に対応する要素を落とすこと（残すと名前と実プロセスの対応がずれる）。
+**Laravel 13.17 以降、`dev` スクリプトは `@php artisan dev` への委譲になっている**（それ以前は `concurrently` の直書きだった）。起動するプロセスは `Illuminate\Foundation\DevCommands::registerDefaults()` が登録する 4 つ — `server`（`artisan serve`）/ `queue`（`queue:listen`）/ `logs`（`pail`）/ `vite`（`npm run dev`）。
+
+本プロジェクトは Queue を使わない方針（前述）に従い、**`queue` だけを除外する**。除外は `composer.json` ではなく `app/Providers/AppServiceProvider.php` の `boot()` で行う:
+
+```php
+use Illuminate\Foundation\DevCommands;
+
+DevCommands::except('queue');
+```
+
+対象は `php artisan dev:list` で確認できる（除外後は `server` / `logs` / `vite` の 3 つ）。
+
+> **`composer.json` の `dev` を `concurrently` 直書きへ書き換えないこと。** 上流の既定から意図的に
+> 逸脱することになり、`php artisan dev` が持つ機能を手放したうえ、`laravel new` の既定が次に
+> 変わったときに再び陳腐化する。
 
 ## 初回セットアップ（正規形）
 
