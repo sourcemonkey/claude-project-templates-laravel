@@ -641,6 +641,21 @@ ls patches/          # トライアル後、未処理の申し送りが残って
 そこから共有してよいパターンを選別して `settings.json` にマージしていくと、
 次プロジェクトでさらに承認回数が減らせます。
 
+### 許可リストの設計前提
+
+`.claude/settings.json` の deny リスト（`rm -rf *` / `git push*` 等）は前置パターン
+による照合であり、**迂回経路が複数開いている**。
+
+- `Bash(php artisan *)` → `php artisan tinker --execute=` で任意の PHP を実行できる
+- `Bash(npm run *)` / `Bash(composer run dev)` / `Bash(composer run setup)`
+  → `Edit` / `Write` で `package.json` / `composer.json` の `scripts` を書き換えてから実行できる
+- `git -c alias.x=!cmd` のような形は `Bash(git push*)` の前置パターンに一致しない
+
+`php -r` を許可リストへ含めていないのは慣習としての最小権限であって、deny を
+実効的に守るものではない。**deny の強制力は「Claude Code が意図的に迂回しよう
+としない」ことに依存している。** 前提を変えたい場合は許可リスト全体の設計を
+見直す必要があり、個別コマンドの足し引きでは解決しない。
+
 ## トラブルシューティング
 
 ### 想定外の挙動になった
