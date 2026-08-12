@@ -8,10 +8,10 @@ description: フェーズ1 - Laravel 雛形を生成し依存を導入する（D
 DBMS は **MySQL 8.x** を **Docker コンテナ** で起動して利用する。
 Laravel 本体はホスト側で動かす。
 
-> **実行場所**: 本手順書のコマンドは、断りが無い限りすべて **`my-laravel-app/` をカレント**として書かれている（`php artisan` / `composer` / `vendor/bin/*` / `bin/*.sh` の
-> すべて）。Bash ツールのカレントは呼び出しをまたいで持続するので、**最初に一度だけ**
-> `cd my-laravel-app` し、以降は移動しない。リポジトリルートの `bin/` は中身が別物なので、
-> ルートから `bin/check-repo.sh` を打つと `exit 127` になる。
+> **実行場所**: 本手順書のコマンドは、断りが無い限りすべて **`my-laravel-app/` をカレント**として
+> 書かれている。Bash ツールのカレントは呼び出しをまたいで持続するので、**最初に一度だけ**
+> `cd my-laravel-app` し、以降は移動しない（ルートにも別物の `bin/` があり、そこから
+> `bin/check-repo.sh` を打つと `exit 127` になる）。
 
 ## 前提
 
@@ -87,11 +87,14 @@ grep '"laravel/framework"' tmp-skeleton/composer.json
 
 `^13.` 以外だった場合は**ここで手順を中断し、ユーザーに報告する**。以降のステップへ進んではならない。
 
-> **なぜ確認が要るか**: `laravel new` には**バージョン指定オプションが無い**（`NewCommand::getVersion()` は `--dev` 指定時のみ `dev-master` を返し、通常は空文字＝最新安定版）。内部で実行されるのは `composer create-project laravel/laravel "$dir" --remove-vcs --prefer-dist --no-scripts` であり、取得されるのは**その時点の `laravel/laravel` の最新安定版**である。Laravel はメジャーリリースを毎年 ~Q1 に出すため（13 は 2026-03-17、14 は 2027 Q1 見込み）、Laravel 14 のリリース以降は同じコマンドが 14 を生成する。
+> **なぜ確認が要るか**: `laravel new` には**バージョン指定オプションが無く**、常にその時点の
+> `laravel/laravel` の最新安定版を取得する。Laravel はメジャーリリースを毎年 ~Q1 に出すため
+> （13 は 2026-03-17、14 は 2027 Q1 見込み）、14 のリリース以降は同じコマンドが 14 を生成する。
+> 本テンプレートの `docs/` 一式は Laravel 13 系を前提に書かれており、検証せずに進むと記述と
+> 生成物がずれたまま後段が失敗して原因の特定に時間がかかる。
 >
-> 本テンプレートの `docs/` 一式は Laravel 13 系を前提に書かれている（`docs/stack.md` の `laravel/framework (^13.0)`、`config/app.php` のロケール設定、`phpunit.xml` の既定値、`.env` の `DB_*` コメントアウト状態など）。検証せずに進むと、これらの記述と実際の生成物がずれたまま後段のステップが失敗し、原因の特定に時間がかかる。
->
-> 14 以降で本テンプレートを使う必要が生じた場合は、`laravel new` をやめて `composer create-project laravel/laravel:^13.0 tmp-skeleton --remove-vcs --prefer-dist` に置き換え、Installer が `--pest` で行っている処理を手順に展開する（`composer remove phpunit/phpunit --dev --no-update` → `composer require pestphp/pest pestphp/pest-plugin-laravel --no-update --dev` → `composer update` → `./vendor/bin/pest --init` → `pest-plugin-drift` による変換）。判断は `docs/stack.md` の「公式スターターキットを採用しない理由」とあわせてユーザーに委ねること。
+> **14 以降で 13 系を生成する代替手順は `docs/stack.md` の「Laravel 14 以降で 13 系を生成する」節。**
+> どちらを採るかの判断はユーザーに委ねること。
 
 生成完了後、`rsync` で全生成物（ドットファイル含む）を `my-laravel-app/` 直下へ配置し、一時ディレクトリを削除する:
 
@@ -103,13 +106,9 @@ ls -a .env .env.example artisan composer.json composer.lock phpunit.xml
 
 最後の `ls` は配置が成功したことの確認。1 つでも「No such file」になる場合は先に進まず、原因を調べること。
 
-> **注意（配置手段の選定理由）**: この配置を **`mv` と glob で書かないこと**。理由は 3 つある。
+> **注意（配置手段の選定理由）**: この配置を **`mv` と glob で書かないこと**。`mv tmp-skeleton/* .` はドットファイル（`.env` 等）を含まないため `.env` を欠いたまま以降の `key:generate` / `migrate` が全滅し、しかもエラーはフェーズ後半まで表面化しない。加えて Bash ツールが**書き込み系コマンドの glob を拒否**する（`find ... -exec mv` も同様に拒否される）。
 >
-> - `mv tmp-skeleton/* .` はドットファイル（`.env`, `.env.example`, `.editorconfig`, `.gitattributes`）を含まず、`.env` を欠いたまま以降の `key:generate` / `migrate` が全滅する。しかもエラーは移動時点では出ず、フェーズ後半まで表面化しない
-> - Claude Code の Bash ツールは**書き込み系コマンドの glob を拒否**する（`Glob patterns are not allowed in write operations.`）ため、そもそも `mv tmp-skeleton/* .` は実行できない
-> - `find tmp-skeleton -mindepth 1 -maxdepth 1 -exec mv {} . \;` も、`-exec` がファイルを変更するため許可リストの `Bash(find:*)` では自動許可されず拒否される
->
-> `rsync -a` は末尾スラッシュ付きのディレクトリ指定でドットファイルを含めて再帰コピーするため、シェルの glob 展開に依存せず zsh / bash のどちらで評価されても同じ結果になる。コピー後に残る `tmp-skeleton` は未追跡なので `git clean -fdxq` で除去する（追跡ファイルを巻き込む事故が起きない）。
+> `rsync -a` は末尾スラッシュ付きのディレクトリ指定でドットファイルを含めて再帰コピーするため、シェルの glob 展開に依存しない。コピー後に残る `tmp-skeleton` は未追跡なので `git clean -fdxq` で除去する。
 
 `laravel new` は `.gitignore` / `.npmrc` を独自に生成するが、上記の `--exclude` により**テンプレート同梱版がそのまま残る**。テンプレート側を正とするため、除外は必ず指定すること（`--exclude=/.gitignore` の先頭 `/` は転送元ルート直下のみを対象にする指定で、`storage/framework/*/.gitignore` 等の下位ディレクトリの `.gitignore` は除外されない）。
 
@@ -202,16 +201,7 @@ composer require --dev larastan/larastan laravel/dusk laravel-lang/lang laravel/
   > `session not created: This version of ChromeDriver only supports Chrome version NNN / Current browser version is MMM ...`
   > で失敗する。`--detect` はホストにインストールされた Chrome のバージョンを検出して対応する ChromeDriver を入れ直すため、Phase 1 の時点で実行しておく（Chrome を更新した場合も同じコマンドで追従する）。
 
-  > **重要（`tests/Pest.php` を先に並べ替える）**: Dusk 8.6 の `dusk:install` は `tests/Pest.php` の**先頭**（`use` 文より前）に完全修飾名で次の行を挿入する:
-  > ```php
-  > pest()->extend(Tests\DuskTestCase::class)
-  > //  ->use(Illuminate\Foundation\Testing\DatabaseMigrations::class)
-  >     ->in('Browser');
-  >
-  > use Illuminate\Foundation\Testing\RefreshDatabase;
-  > use Tests\TestCase;
-  > ```
-  > この状態で Step 9 の Pint を掛けると `fully_qualified_strict_types` / `ordered_imports` が短縮名 + `use` 文へ書き換え、`use Tests\DuskTestCase;` が `pest()->extend(DuskTestCase::class)` の**後ろ**に置かれる。Pest は `pest()->extend()` をブートストラップ段階で評価するため、`php artisan test` が `The class DuskTestCase was not found.` で失敗する。
+  > **重要（`tests/Pest.php` を先に並べ替える）**: Dusk 8.6 の `dusk:install` は `pest()->extend(Tests\DuskTestCase::class)->in('Browser');` を `tests/Pest.php` の**先頭**（`use` 文より前）に完全修飾名で挿入する。この状態で Step 9 の Pint を掛けると `fully_qualified_strict_types` / `ordered_imports` が短縮名 + `use` 文へ書き換え、`use Tests\DuskTestCase;` が `pest()->extend(DuskTestCase::class)` の**後ろ**に置かれる。Pest は `pest()->extend()` をブートストラップ段階で評価するため、`php artisan test` が `The class DuskTestCase was not found.` で失敗する。
   >
   > **`dusk:install` の直後に**、挿入されたブロックを `use` 文の**後ろ**へ移し、短縮名 + `use Tests\DuskTestCase;` の形に直しておくこと。こうしておけば Pint はこのファイルを一切書き換えず（トライアルで確認済み）、Step 9 での手戻りが発生しない:
   > ```php
@@ -277,17 +267,12 @@ composer require --dev larastan/larastan laravel/dusk laravel-lang/lang laravel/
   > 開くことを MUST として要求する**）を `team-rules/` と `docs/` への誘導へ差し替える。
   > **いずれもテンプレート同梱の追跡ファイルなので、リセット後もそのまま残る。**
   >
-  > 生成後、`grep -n "^## Project Rules" docs/boost-guidelines.md` が**何も出力しない**ことを
-  > 確認する（上書きファイルのパスが Boost 側のガイドラインキーとずれると、エラーにならず
-  > 素通りする）。`## Project Rules` は Boost v2.5.0 の `.ai/boost/core.blade.php` が出す
-  > 節見出しで、上書きが効いていれば `## プロジェクトのルール` に置き換わっている。
-  >
-  > **`grep "\.ai/rules"` で判定しないこと。** 上書きファイル自身が「`.ai/rules/` は使わない」と
-  > 説明のために言及しているため、**上書きが成功していても必ずヒットする**（ヒットの有無で
-  > 判定すると、常に「上書き失敗」と誤読する）。
-  >
-  > `boost:install` の出力に並ぶガイドライン名のうち、上書きが効いたものには
-  > `boost*` `volt/core*` のように `*` が付く。こちらも併せて確認材料になる。
+  > **上書きの成否は `grep -n "^## Project Rules" docs/boost-guidelines.md` が無出力かで判定する**
+  > （上書きファイルのパスが Boost 側のガイドラインキーとずれると、エラーにならず素通りする）。
+  > 効いていれば `## プロジェクトのルール` に置き換わっている。**`grep "\.ai/rules"` で判定しない
+  > こと**——上書きファイル自身が「`.ai/rules/` は使わない」と説明のために言及しているため、
+  > **成功していても必ずヒットする**。`boost:install` の出力でも、上書きが効いたガイドライン名には
+  > `boost*` `volt/core*` のように `*` が付く。
 
 ### 7. .env の準備
 
@@ -350,20 +335,7 @@ DB_PASSWORD=app_password
 ]
 ```
 
-**`scripts.setup`**: 既定の生成物は次の形になっている（Laravel Framework 13.20.0 で確認）。
-
-```json
-"setup": [
-    "composer install",
-    "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
-    "@php artisan key:generate",
-    "@php artisan migrate --force",
-    "npm install --ignore-scripts",
-    "npm run build"
-]
-```
-
-本プロジェクトは DB を Docker で動かし、かつ Seeder 込みで「最初から動く状態」にするため、次の 3 点を変更する:
+**`scripts.setup`**: 本プロジェクトは DB を Docker で動かし、かつ Seeder 込みで「最初から動く状態」にするため、既定の生成物（Laravel Framework 13.20.0 で確認）に次の 3 点を変更する:
 
 1. **先頭に `docker compose up -d --wait db` を足す** — 後続の `migrate` は DB が healthy でないと失敗するため。`--wait` を使う理由は Step 2 と同じ（判定条件を `compose.yaml` の healthcheck に一本化する）
 2. **`@php artisan migrate --force` を `@php artisan migrate --seed --force` にする** — `docs/seeds.md` のサンプルデータ投入まで含めて一発で完了させるため
@@ -436,8 +408,7 @@ composer require --dev "laravel/pao:^1.1.3" --no-interaction
    > （全件パスでも 1 が返る）はもう起きない。
 5. **起動確認**: `composer run dev` をバックグラウンドで立ち上げ、`curl -sS --retry 15 --retry-all-errors --retry-delay 1 -o /dev/null -w "%{http_code}" http://localhost:8000` が 200 を返すことを確認する。`/login` `/register` も 200 になること。確認後サーバを停止する（`pkill -f "php artisan serve"`、`pkill -f "artisan pail"`、`pkill -f vite`。concurrently に `--kill-others` が付いている場合は最初の 1 つで残りも終了するが、3 つとも実行して確実に止める）。
    - `--retry` を付けるのは、`composer run dev` の起動直後は `php artisan serve` がまだ listen していないため。Bash ツールでは `sleep` を伴う待機ループが書けないので `curl` 側のリトライで吸収する
-   - `--kill-others` により 1 つ目の `pkill` で全プロセスが落ちるため、2 つ目以降の `pkill` は**終了コード 1（該当プロセス無し）で返るのが正常**。失敗として扱わないこと
-   - **同じ理由で、バックグラウンド実行そのものの完了通知が `failed`（終了コード 1）で返る**。`concurrently` プロセス自体が非 0 終了するためで、これも正常。**フェーズの失敗として扱わず、原因を追わないこと**
+   - **停止まわりの終了コード 1 はすべて正常。フェーズの失敗として扱わず、原因を追わないこと。** `--kill-others` により 1 つ目の `pkill` で全プロセスが落ちるため 2 つ目以降は「該当プロセス無し」で 1 を返し、同じ理由でバックグラウンド実行の完了通知も `failed`（`concurrently` 自体の非 0 終了）になる
 6. **既定 `DatabaseSeeder` の空化**: `laravel new` が生成する `database/seeders/DatabaseSeeder.php` は、固定メール（`test@example.com`）の Test User を `User::factory()->create([...])` で 1 件作る内容になっている。これは `firstOrCreate` ではないため、**`composer run setup`（内部で `migrate --seed --force`）を 2 回目に実行すると `users.email` の UNIQUE 制約違反で落ちる**（「クローンして 1 コマンドで動く」が崩れる）。`run()` の本体をコメント化して空にすること（Seeder 本体は Phase 4 で `docs/seeds.md` に沿って実装する）:
    ```php
    public function run(): void
@@ -458,10 +429,7 @@ composer require --dev "laravel/pao:^1.1.3" --no-interaction
 
 ## このフェーズの完了基準
 
-まず `bin/check-repo.sh` を実行する（`.env` と `.env.example` の整合・生成物の
-`.gitignore` 除外・テンプレート同梱ファイルの変更有無を 1 回で検査する。読み取りのみ）。
-終了コード 0 を確認してから、以下の残りの項目を確認する。
-
+まず `bin/check-repo.sh`（読み取りのみ）を実行し、終了コード 0 を確認してから以下を確認する。
 
 - [ ] `docker compose up -d --wait db` で DB が healthy になる
 - [ ] `composer run setup` で DB 起動 → セットアップ完了まで一気通貫で動く
@@ -481,14 +449,11 @@ composer require --dev "laravel/pao:^1.1.3" --no-interaction
 - [ ] `composer.json` に `docs/stack.md` の「手動追加 ✅」パッケージがすべて記載
 - [ ] Laravel Breeze（Livewire スタック）/ laravel-lang / larastan / Dusk の初期化済み
 - [ ] `php artisan dusk:chrome-driver --detect` を実行済み（ホストの Chrome とバージョンが一致）
-- [ ] `my-laravel-app/.env` が存在し、`.gitignore` で除外されている
-- [ ] `my-laravel-app/.env.example` が存在し、コミット対象に含まれている。`diff .env .env.example` の差分が `APP_KEY` の 1 行だけ（`DB_*` / `APP_LOCALE` / `APP_FAKER_LOCALE` / `MAIL_FROM_ADDRESS` / `APP_URL` が同期されている）
 - [ ] `composer.json` の `dev` スクリプトに Queue ワーカー（`php artisan queue:work` / `queue:listen`）が**含まれていない**
 - [ ] `php artisan test` が green（終了コードで判定する）
 - [ ] `composer.json` の `require-dev` の `laravel/pao` が `^1.1.3` 以上になっている
 - [ ] `vendor/bin/pint --test` が違反 0
 - [ ] `vendor/bin/phpstan analyse --memory-limit=512M` がエラー 0
-- [ ] `git status --short` に `.gitignore` 漏れの生成物が出ていない
 
 ## やらないこと
 

@@ -6,10 +6,10 @@ description: フェーズ3 - Controller / View / Policy を生成し UI を完�
 
 `docs/screens.md` と `docs/api-spec.md` に従って画面と認可を構築する。ルーティング・エンドポイント・認可マトリクスは `docs/api-spec.md`、画面構成は `docs/screens.md` が一次情報。
 
-> **実行場所**: 本手順書のコマンドは、断りが無い限りすべて **`my-laravel-app/` をカレント**として書かれている（`php artisan` / `composer` / `vendor/bin/*` / `bin/*.sh` の
-> すべて）。Bash ツールのカレントは呼び出しをまたいで持続するので、**最初に一度だけ**
-> `cd my-laravel-app` し、以降は移動しない。リポジトリルートの `bin/` は中身が別物なので、
-> ルートから `bin/check-repo.sh` を打つと `exit 127` になる。
+> **実行場所**: 本手順書のコマンドは、断りが無い限りすべて **`my-laravel-app/` をカレント**として
+> 書かれている。Bash ツールのカレントは呼び出しをまたいで持続するので、**最初に一度だけ**
+> `cd my-laravel-app` し、以降は移動しない（ルートにも別物の `bin/` があり、そこから
+> `bin/check-repo.sh` を打つと `exit 127` になる）。
 
 ## 実行順序
 
@@ -26,9 +26,7 @@ description: フェーズ3 - Controller / View / Policy を生成し UI を完�
    > `App\Livewire\Actions\Logout` を呼ぶ**小さな Livewire コンポーネント**をヘッダに置く
    > （詳細は `docs/screens.md` の管理レイアウトの注記）。`routes/web.php` に `logout` を
    > 足して解決してはならない。
-5. **例外ハンドリング（`bootstrap/app.php`）**:
-   - `withExceptions()` 内で認可エラーを `render()` し、`flash('error', 'この操作を行う権限がありません。')` の上で `redirect()->route('home')` を返す（挙動は `@docs/architecture.md` の「認可エラーの挙動」参照）
-   - **コールバックの型は `Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException` にする**。`Illuminate\Auth\Access\AuthorizationException` を指定してはならない（後述の「認可エラーの render コールバック」）
+5. **例外ハンドリング（`bootstrap/app.php`）**: `withExceptions()` 内で認可エラーを `render()` し、`flash('error', ...)` の上で `redirect()->route('home')` を返す（挙動と文言は `@docs/architecture.md` の「認可エラーの挙動」）。**コールバックの型**は後述の「認可エラーの render コールバック」に従うこと（誤った型を書くとコールバックが呼ばれない）
 6. **`EnsureUserIsAdmin` ミドルウェア**（`app/Http/Middleware/`）:
    - `$request->user()->isAdmin()` が false なら `flash('error', '管理者のみアクセスできます。')` の上で `redirect()->route('home')`
    - `bootstrap/app.php` の `withMiddleware()` で `admin` エイリアスとして登録
@@ -190,16 +188,11 @@ $exceptions->render(function (AccessDeniedHttpException $e, Request $request) {
   **クラスコンポーネント**（`app/View/Components/AppLayout.php` / `GuestLayout.php`）として提供している。
   `x-admin-layout` を使うには `app/View/Components/AdminLayout.php` を同じ形で作ること
   （`resources/views/layouts/admin.blade.php` を置くだけでは解決されない）
-- **`layouts/admin.blade.php` には `@livewireScripts` を明示的に書くこと**。Livewire v3 は
-  **そのページが Livewire コンポーネントを実際に描画したときだけ** `livewire.js`（Alpine を
-  同梱する）を注入する。管理レイアウトを使う画面には Livewire コンポーネントを持たないもの
-  （蔵書一覧・カテゴリ・タグ）があり、そこでは **Alpine が読み込まれず `x-on:submit` の
-  削除確認ダイアログがエラーも出さずに無効化される**（確認なしで削除が実行される）。
-  `resources/js/app.js` は `laravel new` の生成物では実質空で Alpine を import していないため、
-  この経路での補完も効かない。`layouts/app.blade.php` は `<livewire:layout.navigation />` を
-  含むため自動注入が働き、この問題は起きない。詳細は `docs/stack.md` の Alpine の項参照
-  （ただし Alpine が読み込まれても、前述のとおりフォーム側に `x-data` が無ければ発火しない。
-  両方を満たすこと）
+- **`layouts/admin.blade.php` には `@livewireScripts` を明示的に書くこと**。管理レイアウトを
+  使う画面には Livewire コンポーネントを持たないもの（蔵書一覧・カテゴリ・タグ）があり、
+  そこでは `livewire.js` が注入されず **Alpine が読み込まれないまま削除確認ダイアログが
+  エラーも出さずに無効化される**（確認なしで削除が実行される）。詳細は `docs/stack.md` の
+  Alpine の項参照。**`@livewireScripts` と `x-data` は両方必要**で、片方だけでは発火しない
 - **フォームの部分ビュー（`_form.blade.php` 等）に `@props` を使わないこと**。`@props` は
   Blade コンポーネント（`x-` 記法で解決されるもの）専用のディレクティブで、`@include` した
   ビューでは機能しない。既定値が要る変数は `@php($book = $book ?? null)` のように書く
@@ -432,12 +425,10 @@ $browser->waitForText('こころ')
 
 ### confirm ダイアログを伴う操作
 
-削除ボタンのように `confirm()` を挟む操作は、`acceptDialog()` の**前に
-`waitForDialog()` を挟む**こと。`press()` はクリック直後に戻るため、
-ダイアログ生成前に `acceptDialog()` を呼ぶと `no such alert` で落ちる。
-
-また、`press()` の**前に対象フォームの Alpine 初期化を待つ**こと。確認ダイアログは
-Alpine の `x-on:submit` が発火させるため、初期化前に押すと素通りする。
+削除ボタンのように `confirm()` を挟む操作は、次の 2 つを守ること。`press()` はクリック
+直後に戻るため、**`acceptDialog()` の前に `waitForDialog()` を挟む**（ダイアログ生成前に
+呼ぶと `no such alert` で落ちる）。また確認ダイアログは Alpine の `x-on:submit` が発火
+させるため、**`press()` の前に対象フォームの Alpine 初期化を待つ**（初期化前に押すと素通りする）。
 
 ```php
 $browser->waitUntil("document.querySelector('form[x-data]')?._x_dataStack !== undefined")
@@ -460,10 +451,8 @@ $browser->waitUntil("document.querySelector('form[x-data]')?._x_dataStack !== un
 `Waited 5 seconds for dialog.` で落ちる場合、原因は 3 つある。順に確認すること:
 
 1. **フォームに `x-data` が無い**（`livewire.js` は読み込まれているのにダイアログが出ない
-   場合はこれ）。Alpine v3 は `x-data` スコープ内の要素しか `x-on:` を処理しないため、
-   `<form x-on:submit="confirm(...)">` は `x-data` が無いと発火しない。`<form x-data
-   x-on:submit="...">` にする（「画面実装の注意」の削除確認の項参照）。`layouts/app.blade.php`
-   を使うメンバー画面（返却フォーム等）でも起きる
+   場合はこれ）。「画面実装の注意」の削除確認の項を参照。`layouts/app.blade.php` を使う
+   メンバー画面（返却フォーム等）でも起きる
 2. **そもそも Alpine が読み込まれていない**（管理画面で顕著）。「画面実装の注意」の
    `@livewireScripts` の項を確認すること
 3. **1・2 を満たしているが、ハイドレーション完了前に `press()` している**。`x-data` があり
@@ -554,11 +543,9 @@ $browser->waitUntil("document.querySelector('form[x-data]')?._x_dataStack !== un
 >     ->assertViewHas('books', fn ($books) => $books->count() === 5);
 > ```
 >
-> **(a) の画面で「Controller にも paginate を置いて `assertViewHas` で書く」ことはできない。**
-> Livewire の `WithPagination` が差し替えた `Paginator::currentPageResolver` が同一
-> テストプロセスの後続リクエストへ残り、Controller 側の `paginate()` が `?page=2` でも
-> **1 ページ目を返す**ため、`currentPage()` が 1 のまま `count() === 5` が落ちる
-> （「画面実装の注意」のページネーションの項も参照）。
+> **(a) の画面で「Controller にも paginate を置いて `assertViewHas` で書く」ことはできない**
+> （理由は「画面実装の注意」のページネーションの項。`?page=2` でも 1 ページ目が返るため
+> `count() === 5` が落ちる）。
 >
 > **Livewire コンポーネントには `WithPagination` トレイトを付けること。** 付け忘れると、
 > 2 ページ目を開いた状態で検索条件を変えたときに**ページ番号がリセットされず「該当なし」に
@@ -598,10 +585,7 @@ Blade 側の null 参照を Dusk より早く・安く検出できる。
 
 ## このフェーズの完了基準
 
-まず `bin/check-repo.sh` を実行する（`.env` と `.env.example` の整合・生成物の
-`.gitignore` 除外・テンプレート同梱ファイルの変更有無を 1 回で検査する。読み取りのみ）。
-終了コード 0 を確認してから、以下の残りの項目を確認する。
-
+まず `bin/check-repo.sh`（読み取りのみ）を実行し、終了コード 0 を確認してから以下を確認する。
 
 - [ ] `php artisan route:list` で `docs/api-spec.md` の全ルートが存在
 - [ ] 各画面が（データなしでも）500 にならずに表示できる
@@ -625,11 +609,9 @@ Blade 側の null 参照を Dusk より早く・安く検出できる。
         文言は `docs/screens.md` の表が一次情報）
 
   > **この 3 つを名指しするのは、書かなければ罠を踏まずに済んでしまうため。** 2026-08-06 の
-  > Phase 1〜3 トライアルは Dusk 6 件で完了基準を満たしたが、報告の「今回参照しなかった
-  > 注意書き」3 件がすべて「該当する Dusk テストを書かなかったので踏まなかった」だった。
-  > **手順書が積み上げてきた罠の記述が、テストを書かないことで丸ごと迂回された。**
-  > 上の 3 つはいずれも過去のトライアルで実際に踏んで記録された事象であり、
-  > 検証されないまま Phase 4 へ進むと同じ失敗が再現する。
+  > トライアルは Dusk 6 件で完了基準を満たしたが、報告の「今回参照しなかった注意書き」3 件が
+  > すべて「該当する Dusk テストを書かなかったので踏まなかった」で、**手順書が積み上げてきた
+  > 罠の記述がテストを書かないことで丸ごと迂回された**。
 - [ ] `vendor/bin/pint --test` が違反 0
 - [ ] `vendor/bin/phpstan analyse --memory-limit=512M` がエラー 0
 

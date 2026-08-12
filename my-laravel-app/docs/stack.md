@@ -94,6 +94,24 @@ Laravel 12 以降、`laravel new` は公式スターターキット（Livewire /
 
 > **`laravel/breeze` は非推奨でもアーカイブでもない。** 2026-07-19 時点の最新 v2.4.2（2026-05-14 リリース）が `illuminate/* ^11.0|^12.0|^13.0` として Laravel 13 を明示サポートしており、`breeze:install livewire` も現行の 2.x に存在する。`composer.json` に Breeze があるのを「メンテナンスが止まったパッケージ」と判断して公式スターターキットへ差し替えないこと。
 
+### Laravel 14 以降で 13 系を生成する
+
+`laravel new` には**バージョン指定オプションが無い**（`NewCommand::getVersion()` は `--dev` 指定時のみ `dev-master` を返し、通常は空文字＝最新安定版）。内部で実行されるのは `composer create-project laravel/laravel "$dir" --remove-vcs --prefer-dist --no-scripts` であり、取得されるのは**その時点の `laravel/laravel` の最新安定版**である。Laravel 14 のリリース以降は同じコマンドが 14 を生成するため、Phase 1 は生成直後にメジャーバージョンを検証する。
+
+14 以降で本テンプレートを使う必要が生じた場合は、`laravel new` をやめて次に置き換え、Installer が `--pest` で行っている処理を手順に展開する。
+
+```sh
+composer create-project laravel/laravel:^13.0 tmp-skeleton --remove-vcs --prefer-dist
+```
+
+1. `composer remove phpunit/phpunit --dev --no-update`
+2. `composer require pestphp/pest pestphp/pest-plugin-laravel --no-update --dev`
+3. `composer update`
+4. `./vendor/bin/pest --init`
+5. `pest-plugin-drift` による変換
+
+13 系に留まるか 14 へ追随するかは、前節「公式スターターキットを採用しない理由」とあわせてユーザーが判断する。
+
 ### 公式のエージェント向けプレイブックとの差分
 
 Laravel 公式は AI コーディングエージェント向けの手順書を

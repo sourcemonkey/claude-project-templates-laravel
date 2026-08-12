@@ -6,10 +6,10 @@ description: フェーズ4 - Seeder、テスト、README、起動確認で完成
 
 最終フェーズ。「最初から動くもの」を完成させる。投入データ・テストアカウント等の具体値は `docs/seeds.md` が一次情報。
 
-> **実行場所**: 本手順書のコマンドは、断りが無い限りすべて **`my-laravel-app/` をカレント**として書かれている（`php artisan` / `composer` / `vendor/bin/*` / `bin/*.sh` の
-> すべて）。Bash ツールのカレントは呼び出しをまたいで持続するので、**最初に一度だけ**
-> `cd my-laravel-app` し、以降は移動しない。リポジトリルートの `bin/` は中身が別物なので、
-> ルートから `bin/check-repo.sh` を打つと `exit 127` になる。
+> **実行場所**: 本手順書のコマンドは、断りが無い限りすべて **`my-laravel-app/` をカレント**として
+> 書かれている。Bash ツールのカレントは呼び出しをまたいで持続するので、**最初に一度だけ**
+> `cd my-laravel-app` し、以降は移動しない（ルートにも別物の `bin/` があり、そこから
+> `bin/check-repo.sh` を打つと `exit 127` になる）。
 
 ## 実行手順
 
@@ -69,12 +69,11 @@ description: フェーズ4 - Seeder、テスト、README、起動確認で完成
   例: `->select('category_id', (string) $category->id)`。**表示テキストで選択できると
   思い込まないこと**（`select('category_id', '技術書')` は一致せず、選択されないまま
   submit されてバリデーションエラーになる）
-- **返却テストでは「1 冊消費済み」の書籍を用意すること**（Phase 3 手順書の同名の注意と同じ罠。書き方も揃えてある）。
+- **返却テストでは「1 冊消費済み」の書籍を用意すること**（`approved()` は在庫を減らさないため、そのまま返却させると CHECK 制約に違反する。理由と失敗の見え方は Phase 3 手順書「テストシナリオ」節の同名の注意を参照）。
   ```php
   $book = Book::factory()->create(['total_copies' => 2, 'available_copies' => 1]);
   $lending = Lending::factory()->approved()->create(['book_id' => $book->id]);
   ```
-  `approved()` / `overdue()` は state を設定するだけで `available_copies` を減らさず、ファクトリの既定は在庫満杯のため、そのまま返却させると `increment` が `total_copies` を超えて CHECK 制約に違反する。
 - **Feature テストのクエリ文字列に日本語を直接埋めないこと。** `$this->get('/admin/users?filter[name]=検索対象')` はマルチバイトがそのまま URL に入って壊れ、絞り込みが一致しない。`urlencode('検索対象')` を通す。失敗時の症状は「該当 0 件」なので**原因が絞り込みロジック側にあるように見え**、切り分けに時間がかかる（Phase 4 のトライアルで踏んだ）。
 
 `docs/screens.md` の主要動線を Dusk で網羅する。Phase 3 で 4 件（蔵書一覧の表示 /
@@ -176,25 +175,22 @@ Phase 4 では Seeder が実装済みのため、`docs/seeds.md` のサンプル
 （フレームワークの紹介・スポンサー一覧）が既に存在するので、新規作成ではなく
 全文の置き換えになる。** Write ツールを使う場合は先に Read が必要。
 
-> **README は「アプリがリポジトリのルートにある」構成を前提に書くこと。** この README の
-> 読み手は、`bin/init-project.sh` で作られた**開発用リポジトリを clone した人**である。
-> そのリポジトリでは `my-laravel-app/` の中身が直下に展開され、`composer.json` はルートに
-> 置かれる（`bin/init-project.sh` のヘッダ参照）。したがってコマンドの実行場所は
-> **「リポジトリ直下」で正しい**。テンプレート開発中はアプリがサブディレクトリにあるが、
-> それに合わせて `my-laravel-app/ で実行する` と書き換えてはならない。
+> **README は「アプリがリポジトリのルートにある」構成を前提に書くこと。** 読み手は
+> `bin/init-project.sh` で作られた**開発用リポジトリを clone した人**で、そこでは
+> `my-laravel-app/` の中身が直下に展開される。したがってコマンドの実行場所は
+> **「リポジトリ直下」で正しく**、`my-laravel-app/ で実行する` と書き換えてはならない
+> （**冒頭の「実行場所」の不変条件はこの手順書が指示するコマンドの話であり、
+> README に書く手順とは別物**）。
 >
-> **冒頭の「実行場所」の不変条件をここへ持ち込まないこと。** あれは*この手順書が
-> 指示するコマンド*をどこで打つかの話で、*README に書く手順*の実行場所とは別物である。
->
-> clone した人の手元には `vendor/` も `node_modules/` も `.env` も無い（すべて `.gitignore`
-> 済み）。**セットアップ手順は「実行済みだから不要」ではなく、その人にとっての最初の 1 手**である。
+> clone した人の手元には `vendor/` も `node_modules/` も `.env` も無い。**セットアップ手順は
+> 「実行済みだから不要」ではなく、その人にとっての最初の 1 手**である。
 
 含めるべき項目:
 
 - プロジェクト概要（1-2 段落）
 - 必要なランタイム（`docs/stack.md` の「ランタイム」表からコピー。**PCOV の行も落とさずに含める** — `composer install` で導入されないマシン側の前提条件であり、README が唯一の周知手段になるため）
 - セットアップ手順（`composer run setup`）
-- **別マシン・別ディレクトリへの持ち込み手順**: `node_modules/` と `vendor/` は**コピーせず、持ち込み先で `composer run setup`（`composer install` + `npm install` を含む）により生成する**こと。`cp -r`（macOS）でこれらを含めて丸ごとコピーすると、`node_modules/.bin/` 配下のシンボリックリンクが実ファイルに化けて `npm run build` が `ERR_MODULE_NOT_FOUND`（例: `Cannot find module '.../node_modules/dist/node/cli.js'`）で失敗する。git 管理外（`.gitignore` 済み）なので `git clone` すればそもそも含まれない。どうしてもコピーするなら `rsync -a --exclude=node_modules --exclude=vendor` で生成物を除外する
+- **別マシン・別ディレクトリへの持ち込み手順**: `node_modules/` と `vendor/` は**コピーせず、持ち込み先で `composer run setup` により生成する**こと（`cp -r` で丸ごとコピーすると `node_modules/.bin/` のシンボリックリンクが実ファイルに化け、`npm run build` が `ERR_MODULE_NOT_FOUND` で失敗する）。どうしてもコピーするなら `rsync -a --exclude=node_modules --exclude=vendor` で除外する
 - 起動手順（`composer run dev`）
 - テストアカウント表（`docs/seeds.md` の「アカウント」表をコピー）
 - **DB 接続情報**（DBeaver / TablePlus などの GUI クライアントから繋ぐために必要な項目を網羅する。値は `compose.yaml` と `docs/stack.md` の「MySQL 設定の規約」が一次情報）:
@@ -258,54 +254,39 @@ vendor/bin/pint
    > docker compose exec -T db mysql -uapp -papp_password bookkeeper -e "SELECT state, COUNT(*) n FROM lendings GROUP BY state ORDER BY state;"
    > ```
 
-   > **`php artisan migrate:fresh --seed` は使わない。** 破壊的コマンドとして
-   > `.claude/settings.json` の deny リスト（ルート CLAUDE.md 厳守事項 #2 に対応）で
-   > 拒否される。
-
+   > **`php artisan migrate:fresh --seed` は使わない**（deny リストで拒否される）。
+   >
    > **`docker compose down -v` → `composer run setup` による完全な再構築確認は任意。**
-   > これが固有に検証できるのは「まっさらなボリュームから `composer run setup` 一発で
-   > 立ち上がるか」だけで、マイグレーションのクリーン適用は上記でカバーされている。
-   > **`down -v` は開発用 DB のデータを消す**ため、実行するのは破棄してよい場合に限ること
-   > （Seeder で戻せるのは `docs/seeds.md` のデータのみで、画面から手で入れたデータは戻らない）。
-   > なお `bookkeeper_test` は `docker/mysql/initdb/` の init スクリプトが再作成するため、
-   > `down -v` してもテスト DB は失われない。
+   > これが固有に検証できるのは「まっさらなボリュームから一発で立ち上がるか」だけで、
+   > マイグレーションのクリーン適用は上記でカバーされている。**`down -v` は開発用 DB の
+   > データを消す**ため、破棄してよい場合に限ること（`bookkeeper_test` は init スクリプトが
+   > 再作成するので失われない）。
 2. `php artisan test` が all green（`laravel/pao` v1.1.3 以降は終了コードで判定してよい。
    1 が返った場合は版を確認する。Phase 1 手順書 Step 9-4 の既知事象を参照）
-3. **カバレッジが 80% 以上**であることを確認する。方法は 2 つある。**どちらを使う場合も
-   `laravel/pao` が整形する JSON の `result` フィールドだけは信用してはならない**（後述）。
+3. **カバレッジが 80% 以上**であることを確認する。**合否は終了コードで判定する**
+   （未達なら 1、達していれば 0）。ルートの `.claude/settings.json` に
+   `Bash(vendor/bin/pest*)` があるためヘッドレスでも実行できる。
 
-   **(a) `vendor/bin/pest` で直接判定する**:
    ```sh
    vendor/bin/pest --coverage --min=80
    ```
-   ルートの `.claude/settings.json` に `Bash(vendor/bin/pest*)` があるため**ヘッドレスでも
-   実行できる**。**合否は終了コードで判定する**（未達なら 1、達していれば 0）。
-   数値と失敗理由は pao の JSON の `raw` 配列末尾に
-   `"Total: NN.N %"` および
+
+   数値と失敗理由は pao の JSON の `raw` 配列末尾に `"Total: NN.N %"` と
    `"FAIL Code coverage below expected 80.0 %, currently NN.N %."` として入る。
+   **`result` フィールドは未達でも `"passed"` のままなので、合否の判断に使わないこと**
+   （`docs/stack.md` の「80% 判定の規約」参照）。
 
-   > **`result` フィールドは未達でも `"passed"` のまま**である。トライアルで実カバレッジ
-   > 91.9% に対して `--min=95` を指定したところ、終了コードは 1 になり `raw` にも FAIL 行が
-   > 入ったが、JSON は `{"tool":"pest","result":"passed",...}` を返した。
-   > **`result` を見て合否を判断すると未達を「達成」と誤認する。**
+   内訳を見たい場合や、レビュー用に記録を残したい場合は HTML レポートを併用する。
+   ファイル内で最初に現れる `NN.NN%` が Total 行の行カバレッジにあたる。
 
-   **(b) HTML レポートの数値を読む**:
    ```sh
    php artisan test --coverage-html coverage
    grep -oE '[0-9]+\.[0-9]+%' coverage/index.html | head -1
    ```
-   PHPUnit の HTML レポートは先頭に「Total」行（プロジェクト全体の集計）を出力し、
-   **ファイル内で最初に現れる `NN.NN%` がその Total 行の行カバレッジ**にあたる。
-   `php artisan test` 側には `--min` が無いため、数値を読んで自分で判定する。
 
    > **`grep -o 'Total[^%]*%'` のように 1 行で `Total` から `%` までを拾う書き方は使えない。**
-   > レポートでは `<td class="success">Total</td>` のセルと百分率（`<td ...>93.41%</td>` や
-   > `aria-valuenow="93.41"`）が**別々の行**に出力されるため、行単位で動く `grep` は
-   > `Total` と `%` を 1 行内で連結できず、**何もマッチせず空を返す**（80% 判定が
-   > できないまま「達成」と誤認しかねない）。上記のとおり百分率だけを拾って先頭を取る。
-
-   完了基準の記録としては (b) の HTML を残しておくとレビューしやすい。
-   (a) と (b) は同じ数値になる（小数第 2 位まで見たい場合は (b)）。
+   > レポートでは `Total` のセルと百分率が**別々の行**に出力されるため、行単位で動く
+   > `grep` は**何もマッチせず空を返す**（判定できないまま「達成」と誤認しかねない）。
 4. `php artisan dusk` が all green。**別ターミナルで
    `php artisan serve --env=dusk.local` を起動してから実行する**（Phase 3 手順書参照）
 5. `vendor/bin/pint --test` が違反 0
@@ -314,21 +295,17 @@ vendor/bin/pint
 8. `composer run dev` で起動し、以下を curl で確認:
    - `GET /` → 200 または 302（ログインへ）
    - `GET /login` → 200
-9. **（完了基準ではない・任意）** ブラウザでアクセスして以下を目視確認する。コマンドでは
-   見えない部分（レイアウト崩れ・配色）の確認であり、**フェーズの完了判定には含めない**:
+9. **（完了基準ではない・任意）** ブラウザで目視確認する。コマンドでは見えない部分
+   （レイアウト崩れ・配色）の確認であり、機能面は Dusk が主要動線を押さえている:
    - 管理者でログインしてダッシュボード
    - メンバーでログインして借用申請
 
-   > 機能面は Dusk が主要動線を押さえている。ヘッドレス実行ではこの確認を行わず、
-   > **未実施であることを理由に「完了」を保留しない**。対話セッションでは起動 URL と
-   > テストアカウントを添えてユーザーに促すだけでよい。
+   > **ヘッドレス実行ではこの確認を行わず、未実施を理由に「完了」を保留しない。**
+   > 対話セッションでは起動 URL とテストアカウントを添えてユーザーに促すだけでよい。
 
 ## このフェーズの完了基準（= プロジェクト全体の完成）
 
-まず `bin/check-repo.sh` を実行する（`.env` と `.env.example` の整合・生成物の
-`.gitignore` 除外・テンプレート同梱ファイルの変更有無を 1 回で検査する。読み取りのみ）。
-終了コード 0 を確認してから、以下の残りの項目を確認する。
-
+まず `bin/check-repo.sh`（読み取りのみ）を実行し、終了コード 0 を確認してから以下を確認する。
 
 - [ ] `composer run setup` 一発でセットアップ完了
 - [ ] `composer run dev` で起動して全機能が動作
@@ -340,12 +317,10 @@ vendor/bin/pint
       足す Feature テストにも同じ基準を適用する）
 - [ ] 「2-1. テストシナリオの実装」に列挙した Dusk シナリオが**すべてテストとして存在する**
       （本フェーズで追加する 4 件を含め 8 件以上。green であることと網羅していることは別）
-- [ ] カバレッジが 80% 以上（手順 6-3 の (a) の終了コード、または (b) の HTML の数値で確認）。
+- [ ] カバレッジが 80% 以上（手順 6-3 の `vendor/bin/pest --coverage --min=80` の終了コードで判定）。
       **Dusk は寄与しない**ため、届かない場合は Feature テストを足す（手順 2-1 の注記参照）
 - [ ] `vendor/bin/pint --test` 違反 0、`vendor/bin/phpstan analyse` エラー 0
 - [ ] README にテストアカウント・起動方法が記載
-- [ ] `git status --short` に `.gitignore` 漏れの生成物が出ていない
-      （`coverage/`・`.env.dusk.local` は Phase 4 で新たに生成される。どちらも除外済みのはず）
 
 ## 完了後
 

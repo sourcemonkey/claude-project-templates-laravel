@@ -6,10 +6,10 @@ description: フェーズ2 - DB スキーマからモデル・マイグレーシ
 
 `docs/db-schema.md` の定義に厳密に従ってマイグレーションとモデルを作成する。テーブル定義・カラム制約・インデックス・enum 値・リレーションはすべて `docs/db-schema.md` が一次情報。
 
-> **実行場所**: 本手順書のコマンドは、断りが無い限りすべて **`my-laravel-app/` をカレント**として書かれている（`php artisan` / `composer` / `vendor/bin/*` / `bin/*.sh` の
-> すべて）。Bash ツールのカレントは呼び出しをまたいで持続するので、**最初に一度だけ**
-> `cd my-laravel-app` し、以降は移動しない。リポジトリルートの `bin/` は中身が別物なので、
-> ルートから `bin/check-repo.sh` を打つと `exit 127` になる。
+> **実行場所**: 本手順書のコマンドは、断りが無い限りすべて **`my-laravel-app/` をカレント**として
+> 書かれている。Bash ツールのカレントは呼び出しをまたいで持続するので、**最初に一度だけ**
+> `cd my-laravel-app` し、以降は移動しない（ルートにも別物の `bin/` があり、そこから
+> `bin/check-repo.sh` を打つと `exit 127` になる）。
 
 > **前提**: Phase 1 が完走し、`phpunit.xml` のテスト DB が MySQL の `bookkeeper_test` に設定済みであること（Phase 1 手順書の Step 9 参照）。既定の `sqlite` / `:memory:` のままだと、本フェーズで追加する `books` の `ALTER TABLE ... ADD CONSTRAINT ... CHECK` が SQLite の構文エラーで失敗し、モデルテストが全滅する。
 
@@ -40,7 +40,12 @@ php artisan make:migration add_role_to_users_table --table=users
 
 次に `App\Models\User` を補正する。
 
-> **注意1（`role` を Mass assignment 対象にしない）**: `team-rules/security.md` は「`id` や `role` 等の権限に関わるカラムを `$fillable` に含めない」と定めている。**`role` は fillable に追加しないこと**（追加すると Mass assignment による権限昇格の余地が生まれる）。ロール変更（`PATCH /admin/users/{user}`）は Phase 3 の admin Controller で `$user->role = ...; $user->save();` と明示代入する。Model Factory は fillable を経由せず属性を設定するため、`role` を fillable 外にしても `User::factory()->admin()` は問題なく機能する（トライアルで確認済み）。
+> **注意1（`role` を Mass assignment 対象にしない）**: `team-rules/security.md` の
+> 「`id` や `role` 等の権限に関わるカラムを `$fillable` に含めない」に従い、**`role` は
+> fillable に追加しない**（追加すると Mass assignment による権限昇格の余地が生まれる）。
+> ロール変更（`PATCH /admin/users/{user}`）は Phase 3 の admin Controller で
+> `$user->role = ...; $user->save();` と明示代入する。Model Factory は fillable を
+> 経由しないため、`User::factory()->admin()` は問題なく機能する（トライアルで確認済み）。
 
 > **注意2（Laravel 13 の User モデルは属性ベース）**: `laravel new`（Laravel 13.x）が生成する `User` モデルは、`protected $fillable` / `protected $hidden` プロパティではなく PHP 属性 `#[Fillable([...])]` / `#[Hidden([...])]` を使う。上記の通り `role` は fillable に足さないので、`#[Fillable(['name', 'email', 'password'])]` はそのままでよい。
 
@@ -97,18 +102,22 @@ enum UserRole: int
 
 Enum クラスは `app/Enums/` に置く。値は `docs/db-schema.md` の各テーブル定義に明示されているものを使い、**推測で採番しない**（`UserRole` / `LendingState` / `NotificationKind` の 3 つ）。
 
-> **注意（`audit_logs` の `$timestamps`）**: `audit_logs` は不変レコードで `updated_at` を持たない（`created_at` のみ）。`AuditLog` モデルに `public $timestamps = false;` を設定すること。設定しないと Eloquent が保存時に `updated_at` を書こうとして「Unknown column 'updated_at'」で失敗する。`created_at` はマイグレーションの `useCurrent()` により DB 側で設定される。`changes_json` は `'changes_json' => 'array'` でキャストする。
+> **注意（`audit_logs` は `updated_at` を持たない）**: 不変レコードのため `AuditLog` モデルに
+> `public $timestamps = false;` を設定する（設定しないと Eloquent が保存時に `updated_at` を
+> 書こうとして「Unknown column 'updated_at'」で失敗する）。`created_at` はマイグレーションの
+> `useCurrent()` により DB 側で設定される。この設定に伴い、次の 3 点が要る:
 >
-> **`created_at` も `'created_at' => 'datetime'` でキャストすること。** `$timestamps = false` のモデルは `created_at` を**自動ではキャストしない**ため、明示しないと DB から読んだ値が文字列のままになる。Phase 3 の監査ログ画面で `{{ $log->created_at?->format('Y-m-d H:i') }}` と書くと `Call to a member function format() on string` で **500** になる（`?->` は null 用であり、文字列には効かない）。あわせて larastan 用に `@property \Illuminate\Support\Carbon|null $created_at` を付ける（日時キャストに `@property` を要求する前述の方針と揃える）。
->
-> **`created_at` は生成直後のインスタンスに載らない。** `useCurrent()` が生成するのは DB 側の
-> `DEFAULT CURRENT_TIMESTAMP` であり、`$timestamps = false` の Eloquent は `created_at` を
-> 自分で設定せず、INSERT 後の再取得も行わない。そのため
-> `AuditLog::factory()->create()->created_at` は **`null` を返す**。値を読むときは
-> `->fresh()` を挟むこと（`$log->fresh()->created_at`）。後述のモデルテストで
-> `created_at` の存在を検証する場合、`fresh()` を忘れると
-> `Expecting null not to be null.` で落ちる。これは `User::$role` を DB の `default(0)` に
-> 任せた場合と同じ理屈であり、後述のファクトリの注意と対になっている。
+> - `changes_json` を `'changes_json' => 'array'` でキャストする
+> - **`created_at` も `'created_at' => 'datetime'` でキャストする。** `$timestamps = false` の
+>   モデルは `created_at` を**自動ではキャストしない**ため、明示しないと DB から読んだ値が
+>   文字列のままになる。Phase 3 の監査ログ画面で `{{ $log->created_at?->format('Y-m-d H:i') }}`
+>   と書くと `Call to a member function format() on string` で **500** になる（`?->` は null 用で、
+>   文字列には効かない）。larastan 用に `@property \Illuminate\Support\Carbon|null $created_at` も付ける
+> - **`created_at` は生成直後のインスタンスに載らない。** `useCurrent()` が生成するのは DB 側の
+>   `DEFAULT CURRENT_TIMESTAMP` で、Eloquent は自分で設定も再取得もしないため
+>   `AuditLog::factory()->create()->created_at` は **`null` を返す**。値を読むときは
+>   `->fresh()` を挟む（忘れるとモデルテストが `Expecting null not to be null.` で落ちる）。
+>   `User::$role` を DB の `default(0)` に任せた場合と同じ理屈で、後述のファクトリの注意と対になっている
 
 ジェネレータの自動生成だけでは制約が足りないので、以下を必ず確認:
 
@@ -195,14 +204,11 @@ php artisan migrate
 
 `make:model -f` が生成するファクトリは中身が空（`return [];`）なので、`docs/db-schema.md` の定義に合わせて書くこと（ファイルが既に存在するため Read してから編集する）。
 
-> **`UserFactory` だけは前提が違う。** `laravel new` / Breeze が既に生成しており、
-> 中身も空ではなく（`name` / `email` / `password` が入っている）、`make:model` の
-> 対象でもないため「**残りの**ファクトリ」に含まれない。**上の実行順序 1（users
-> テーブルの補正）の一部として、`User` モデルと同時に直すこと。**
->
-> 後回しにすると、モデルテストを書いた時点で `role` が `null` のまま
-> 下記の失敗を踏む（2026-08-07 のトライアルで実際に起きた）。この節を
-> 「手順 2 で読むもの」と思わず、`User` を触る時点で下の `User` の項まで読むこと。
+> **`UserFactory` だけは前提が違う。** `laravel new` / Breeze が既に生成済みで
+> 中身も空でないため「**残りの**ファクトリ」に含まれない。**実行順序 1（users
+> テーブルの補正）の一部として、`User` を触る時点で下の `User` の項まで読み、
+> モデルと同時に直すこと**（後回しにすると `role` が `null` のままモデルテストが
+> 落ちる。2026-08-07 のトライアルで発生）。
 
 - `User` ファクトリのメールは `@test.local` ドメインにする（Breeze 標準ファクトリの既定ドメインとテスト実行時に衝突しないようにするため）。`role` を扱う `admin()` state も追加する
 
@@ -273,10 +279,7 @@ vendor/bin/pint
 
 ## このフェーズの完了基準
 
-まず `bin/check-repo.sh` を実行する（`.env` と `.env.example` の整合・生成物の
-`.gitignore` 除外・テンプレート同梱ファイルの変更有無を 1 回で検査する。読み取りのみ）。
-終了コード 0 を確認してから、以下の残りの項目を確認する。
-
+まず `bin/check-repo.sh`（読み取りのみ）を実行し、終了コード 0 を確認してから以下を確認する。
 
 - [ ] `php artisan migrate:status` で全マイグレーションが `Ran`
 - [ ] `php artisan migrate:rollback` → `php artisan migrate` が両方成功する（可逆性）
