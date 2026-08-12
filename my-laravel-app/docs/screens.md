@@ -4,7 +4,7 @@
 
 | パス | 画面名 | 概要 |
 |---|---|---|
-| `GET /` | ランディング | ログイン誘導 |
+| `GET /` | ランディング | ログイン誘導。**見出しに `BookKeeper` を含める**（Phase 4 の `tests/Browser/ExampleTest.php` がこの文言を assert する）。未ログインでも `layouts/app.blade.php` を使う（nav 側が `@auth` / `@guest` で分岐する） |
 | `GET /login` | ログイン | Laravel Breeze |
 | `GET /forgot-password` | パスワード再発行 | Laravel Breeze |
 
@@ -12,7 +12,7 @@
 
 | パス | 画面名 | 概要 |
 |---|---|---|
-| `GET /books` | 蔵書一覧 | 検索 / ページネーション / タグ・カテゴリで絞り込み（Livewire コンポーネント）。**`published = true` の書籍のみ**（下記） |
+| `GET /books` | 蔵書一覧 | 検索 / ページネーション / タグ・カテゴリで絞り込み（Livewire コンポーネント）。**`published = true` の書籍のみ**（下記）。検索欄に出すのは `title` / `author` / カテゴリ / タグの 4 つ（`docs/db-schema.md` の `allowedFilters` にはこれ以外も並ぶが、UI に出すのはこの 4 つに固定する） |
 | `GET /books/{book}` | 蔵書詳細 | 在庫数表示、借用申請ボタン。**`published = false` は 404**（下記） |
 | `POST /lendings` | 借用申請 | 詳細画面から POST |
 | `GET /lendings` | 自分の貸出一覧 | 状態フィルタ（Livewire コンポーネント） |
@@ -63,7 +63,7 @@ URL プレフィックス: `/admin/`
 | `POST /admin/tags` | タグ作成 | |
 | `PATCH /admin/tags/{tag}` | タグ更新 | |
 | `DELETE /admin/tags/{tag}` | タグ削除 | |
-| `GET /admin/books` | 蔵書一覧 | |
+| `GET /admin/books` | 蔵書一覧 | 検索欄に出すのは `title` / `author` / `published` の 3 つ |
 | `GET /admin/books/create` | 蔵書登録 | |
 | `POST /admin/books` | 蔵書作成 | |
 | `GET /admin/books/{book}/edit` | 蔵書編集 | |
@@ -73,7 +73,7 @@ URL プレフィックス: `/admin/`
 | `GET /admin/lendings/{lending}` | 貸出詳細 | 承認・却下ボタン |
 | `PATCH /admin/lendings/{lending}/approve` | 申請承認 | |
 | `PATCH /admin/lendings/{lending}/reject` | 申請却下 | |
-| `GET /admin/audit-logs` | 監査ログ | `action` / `target_type` での絞り込みと `created_at` のソート（`docs/db-schema.md` の Query Builder 表が一次情報。**日付範囲での絞り込みは持たない**）。**対象は `target_type` / `target_id` をそのまま表示し、対象レコードを解決しない**（`audit_logs` に FK は無く、削除済みレコードを指すことがあるため） |
+| `GET /admin/audit-logs` | 監査ログ | `action` / `target_type` での絞り込みと `created_at` のソート（`docs/db-schema.md` の Query Builder 表が一次情報。**日付範囲での絞り込みは持たない**）。**対象は `target_type` / `target_id` をそのまま表示し、対象レコードを解決しない**（`audit_logs` に FK は無く、削除済みレコードを指すことがあるため）。**操作者は `$log->user?->name ?? '-'` で表示する**（`user_id` は nullable で、操作者が削除されるとログだけが残る） |
 
 ## レイアウト
 

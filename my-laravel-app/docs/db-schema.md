@@ -147,6 +147,8 @@ audit_logs (独立、polymorphic 相当のカラム構成)
 
 - `User`: email 必須・形式・一意、name 必須
 - `Book`: title / author / category_id 必須、`total_copies` は 1 以上の整数、`available_copies` は 0 以上の整数、ISBN は形式チェック（あれば）
+  - **新規登録フォームに `available_copies` の入力欄を出さない。** `total_copies` と同値で初期化する（在庫が満杯の状態で登録される）
+  - **編集フォームでは直接編集できる**が、Form Request に **`lte:total_copies` を必ず付ける**。付けないと `total_copies` を超える値が通り、CHECK 制約 `books_available_lte_total` に違反して **500** になる（バリデーションで弾けば入力欄の下にエラーが出る）
 - `Lending`: state 遷移は Form Request ではなく Model のメソッド（`approve()` 等）内でバリデーションする
 - `Tag` / `Category`: name 一意
 

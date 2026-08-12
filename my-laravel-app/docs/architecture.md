@@ -118,6 +118,12 @@ Laravel 本体はホスト側で動き、`127.0.0.1:3306` 経由でコンテナ�
   > | `Admin\BookController::index()`（admin） | 全件（`published` フィルタが使える） |
 - `Profile` のようにシングルトンリソースを `User` インスタンスとして扱う画面は、Laravel の自動 Policy 解決（クラス名ベース）では通常の `UserPolicy` が使われてしまう。プロフィール編集専用の認可ルールが必要な場合は、Controller で `app(ProfilePolicy::class)->update($request->user(), $targetUser)` のように Policy クラスを直接インスタンス化して呼び出し、自動解決に頼らないことを明示する。
 
+  > **ただし本仕様では `ProfilePolicy` を作らない。** `docs/api-spec.md` の `/profile` 系ルートは
+  > `{user}` パラメータを持たず、対象は常に `$request->user()` 自身になるため、上記の形で呼んでも
+  > **同一インスタンスの比較になり常に true** で、認可として機能しない。`auth` ミドルウェアで
+  > 十分である。上の記述は「シングルトンリソースに他人を対象に取りうる操作を足す場合」の
+  > 一般則として残している（2026-08-12 のトライアルで、実質無意味な Policy が実装された）。
+
 ### View (`resources/views/`) / Livewire (`app/Livewire/`)
 
 - Blade。ロジックは Blade コンポーネントか Livewire コンポーネントに逃がす。
