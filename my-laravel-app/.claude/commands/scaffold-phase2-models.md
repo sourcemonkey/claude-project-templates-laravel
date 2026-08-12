@@ -43,9 +43,10 @@ php artisan make:migration add_role_to_users_table --table=users
 > **注意1（`role` を Mass assignment 対象にしない）**: `team-rules/security.md` の
 > 「`id` や `role` 等の権限に関わるカラムを `$fillable` に含めない」に従い、**`role` は
 > fillable に追加しない**（追加すると Mass assignment による権限昇格の余地が生まれる）。
-> ロール変更（`PATCH /admin/users/{user}`）は Phase 3 の admin Controller で
-> `$user->role = ...; $user->save();` と明示代入する。Model Factory は fillable を
-> 経由しないため、`User::factory()->admin()` は問題なく機能する（トライアルで確認済み）。
+> ロール変更（`PATCH /admin/users/{user}`）を明示代入で書く必要があるが、**その実装は
+> Phase 3 の担当**であり、一次情報は `docs/api-spec.md` の同エンドポイントの項に置いてある
+> （手順書は当該フェーズのセッションしか読まないため、ここには書かない）。Model Factory は
+> fillable を経由しないため、`User::factory()->admin()` は問題なく機能する（トライアルで確認済み）。
 
 > **注意2（Laravel 13 の User モデルは属性ベース）**: `laravel new`（Laravel 13.x）が生成する `User` モデルは、`protected $fillable` / `protected $hidden` プロパティではなく PHP 属性 `#[Fillable([...])]` / `#[Hidden([...])]` を使う。上記の通り `role` は fillable に足さないので、`#[Fillable(['name', 'email', 'password'])]` はそのままでよい。
 

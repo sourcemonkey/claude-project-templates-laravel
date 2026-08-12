@@ -89,6 +89,25 @@ Route::middleware('auth')->group(function () {
 - 副作用: state を `Rejected`、通知作成
 - 実装: `RejectLendingAction` で実装
 
+### `PATCH /admin/users/{user}`（ロール変更）
+
+- 認証: 要 admin
+- パラメータ: `role`（`UserRole` の値。Form Request でバリデーション）
+- 副作用: 対象ユーザーの `role` を更新する
+- **実装は明示代入で行う**。`team-rules/security.md` の方針により `role` は
+  `$fillable` に含めないため、`$user->update($request->validated())` と書くと
+  **例外も出さずに黙って無視され、ロールが変わらない**:
+
+  ```php
+  $user->role = UserRole::from($request->validated()['role']);
+  $user->save();
+  ```
+
+  同じ理由で `docs/seeds.md` の `UserSeeder` も `firstOrCreate()` の第 2 引数に
+  `role` を渡さない。**症状は「更新したのに変わらない」だけで画面上のエラーが無く、
+  認可の実装ミスに見えるため原因にたどり着きにくい**（2026-08-12 のトライアルでは
+  Phase 4 の Feature テストで初めて検出された）。
+
 ### `PATCH /notifications/{notification}/read`
 
 - 認証: 要ログイン、本人のみ
