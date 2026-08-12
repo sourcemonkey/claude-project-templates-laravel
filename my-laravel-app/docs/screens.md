@@ -73,7 +73,7 @@ URL プレフィックス: `/admin/`
 | `GET /admin/lendings/{lending}` | 貸出詳細 | 承認・却下ボタン |
 | `PATCH /admin/lendings/{lending}/approve` | 申請承認 | |
 | `PATCH /admin/lendings/{lending}/reject` | 申請却下 | |
-| `GET /admin/audit-logs` | 監査ログ | 検索 / 日付絞り込み。**対象は `target_type` / `target_id` をそのまま表示し、対象レコードを解決しない**（`audit_logs` に FK は無く、削除済みレコードを指すことがあるため） |
+| `GET /admin/audit-logs` | 監査ログ | `action` / `target_type` での絞り込みと `created_at` のソート（`docs/db-schema.md` の Query Builder 表が一次情報。**日付範囲での絞り込みは持たない**）。**対象は `target_type` / `target_id` をそのまま表示し、対象レコードを解決しない**（`audit_logs` に FK は無く、削除済みレコードを指すことがあるため） |
 
 ## レイアウト
 
