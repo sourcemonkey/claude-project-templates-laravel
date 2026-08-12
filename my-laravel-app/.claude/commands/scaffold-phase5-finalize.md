@@ -293,7 +293,7 @@ vendor/bin/pint
 4. `php artisan dusk` が all green。**別ターミナルで
    `php artisan serve --env=dusk.local` を起動してから実行する**（Phase 4 手順書参照）
 5. `vendor/bin/pint --test` が違反 0
-6. `vendor/bin/phpstan analyse` でエラー 0
+6. `vendor/bin/phpstan analyse --memory-limit=512M` でエラー 0（**`--memory-limit` を省略しない**。この環境の PHP の既定は 128M で、省略すると並列ワーカーが `Child process error (exit code 255): while running parallel worker` で落ちる）
 7. `composer audit` で既知の脆弱性 0
 8. `composer run dev` で起動し、以下を curl で確認:
    - `GET /` → 200 または 302（ログインへ）
@@ -322,7 +322,7 @@ vendor/bin/pint
       （本フェーズで追加する 4 件を含め 8 件以上。green であることと網羅していることは別）
 - [ ] カバレッジが 80% 以上（手順 6-3 の `vendor/bin/pest --coverage --min=80` の終了コードで判定）。
       **Dusk は寄与しない**ため、届かない場合は Feature テストを足す（手順 2-1 の注記参照）
-- [ ] `vendor/bin/pint --test` 違反 0、`vendor/bin/phpstan analyse` エラー 0
+- [ ] `vendor/bin/pint --test` 違反 0、`vendor/bin/phpstan analyse --memory-limit=512M` エラー 0
 - [ ] README にテストアカウント・起動方法が記載
 
 ## 完了後

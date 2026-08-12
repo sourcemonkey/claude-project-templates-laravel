@@ -165,7 +165,7 @@ Laravel 標準の Queue（database ドライバ）・Cache（database/file ド�
 | `php artisan dusk` | システムテスト |
 | `vendor/bin/pint --test` | Lint（チェックのみ） |
 | `vendor/bin/pint` | Lint（自動修正） |
-| `vendor/bin/phpstan analyse` | 静的解析（larastan/larastan） |
+| `vendor/bin/phpstan analyse --memory-limit=512M` | 静的解析（larastan/larastan）。**`--memory-limit` を省略しない**（PHP の既定 128M では並列ワーカーが `Child process error (exit code 255)` で落ちる） |
 
 ## 開発サーバー起動（正規形）
 
