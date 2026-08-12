@@ -10,7 +10,15 @@
 @docs/db-schema.md  
 @docs/screens.md  
 @docs/api-spec.md  
-@docs/seeds.md  
+
+次の 2 つは**意図的に `@` 参照していない**。読む場面が限られる一方、`@` を付けると
+全セッションの文脈に常時載り、以降のすべての API 呼び出しで再送されるため。
+**必要になった時点で Read すること。**
+
+| ファイル | 読むべき場面 |
+|---|---|
+| `docs/seeds.md` | Seeder の実装（Phase 5）と、投入済みサンプルデータの件数・値を前提にする作業 |
+| `docs/decisions.md` | 技術選定の理由を確かめるとき、採用しなかった選択肢へ変更を検討するとき |
 
 Laravel エコシステムの一般的な規約は Laravel Boost が生成する次のファイルにある（Phase 1 で
 生成されるため、それ以前は存在しない）。**上記 `docs/*.md` と `team-rules/` が優先し、Boost の
