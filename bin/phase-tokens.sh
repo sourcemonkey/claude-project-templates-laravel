@@ -157,6 +157,11 @@ fi
 # **新しい順にたどり、既に集めたフェーズと重なるセッションが現れた時点で打ち切る。**
 # そこが前回の実行との境目だからである。
 #
+# **重なりだけでは足りない。** `bin/run-trial.sh 1 2` のように範囲を絞って実行すると、
+# 前回ランの Phase 3 は「まだ集めていないフェーズ」なので重ならず、そのまま採用されて
+# しまう（2026-08-12 に発生。Phase 1〜2 の実行なのに合計へ前回の Phase 3 が入った）。
+# `run-trial.sh` はフェーズを**連番でしか実行しない**ため、番号の連続性も条件に加える。
+#
 # 「フェーズごとに最新のセッションを採る」という採り方にしてはいけない。jq は
 # **ファイル全体を処理する**ため、Phase 3 のために採用した古い通し実行のセッションから
 # その Phase 1・2 まで一緒に集計され、**二重計上になる**（2026-08-07 に実際に起きた。
@@ -165,6 +170,7 @@ fi
 if [ "${1:-}" = "--all" ]; then
     session_files=""
     collected=" "
+    min_phase=""
     for f in $(ls -t "$TRANSCRIPT_DIR"/*.jsonl 2>/dev/null); do
         is_trial "$f" || continue
         # マーカーが無ければ grep が非 0 を返す。set -e で落ちないよう吸収する
@@ -180,7 +186,21 @@ if [ "${1:-}" = "--all" ]; then
         done
         [ "$overlap" -eq 0 ] || break
 
+        cand_max=""
+        cand_min=""
+        for p in $phases; do
+            if [ -z "$cand_max" ] || [ "$p" -gt "$cand_max" ]; then cand_max="$p"; fi
+            if [ -z "$cand_min" ] || [ "$p" -lt "$cand_min" ]; then cand_min="$p"; fi
+        done
+
+        # 2 本目以降は、直前に採ったセッションの最小フェーズの 1 つ手前を担当する
+        # セッションでなければ別ランとみなして打ち切る
+        if [ -n "$min_phase" ] && [ "$cand_max" -ne $((min_phase - 1)) ]; then
+            break
+        fi
+
         for p in $phases; do collected="$collected$p "; done
+        min_phase="$cand_min"
         session_files="$f $session_files"
     done
 
@@ -191,7 +211,7 @@ if [ "${1:-}" = "--all" ]; then
 
     # shellcheck disable=SC2086
     set -- $session_files
-    echo "sessions: $# 本（最後の実行。フェーズが重なる手前で打ち切り）" >&2
+    echo "sessions: $# 本（最後の実行。フェーズが重なるか連番が途切れた手前で打ち切り）" >&2
     for f in "$@"; do
         p="$(grep -o '\[phase-tokens\] *phase=[0-9]*' "$f" | grep -o '[0-9]*$' | sort -u | tr '\n' ',' | sed 's/,$//')"
         echo "  $(basename "$f" .jsonl)  Phase $p" >&2
