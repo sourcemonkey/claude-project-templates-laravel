@@ -399,7 +399,7 @@ vendor/bin/pest --coverage --min=80
 HTML レポート（`coverage/index.html`）は数値の内訳を見るために使う。どのディレクトリが低いかを
 特定して埋める用途で、合否判定の一次情報ではない。
 
-具体的な実行手順と出力例は `.claude/commands/scaffold-phase4-finalize.md` の手順 6-3 参照。
+具体的な実行手順と出力例は `.claude/commands/scaffold-phase5-finalize.md` の手順 6-3 参照。
 
 未導入の場合の導入手順（**PHP ランタイム全体に影響する変更のため、必ず事前にユーザーへ確認する**）:
 

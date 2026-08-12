@@ -15,8 +15,8 @@
 
 `claude -p "$(cat prompts/trial-phase.md)"` のようにリポジトリルートで
 ヘッドレス実行し、対象フェーズの実行 → 問題点の洗い出し → ドキュメント修正 →
-コミットを自動で行うためのプロンプト。「実行対象フェーズ」の1行を
-書き換えるだけで対象範囲を広げられる。
+コミットを自動で行うためのプロンプト。対象フェーズの指定方法は
+「実行対象フェーズ」節を参照。
 
 ## 前提条件
 
@@ -516,7 +516,7 @@ Bash ツールは `&&` / `||` / `;` の連結を拒否するため（前提条�
    - **ユーザーが手で確認する必要が残っている項目**: ヘッドレスでは原理的に
      実施できない**完了基準**を列挙する。**1 件でも残っていればフェーズを「完了」と
      書かない。** 自動で埋まらない項目は報告に出さないと存在ごと忘れられるため、
-     該当が無い場合も「なし」と明記する。なお Phase 4 手順 9 のブラウザ目視確認は
+     該当が無い場合も「なし」と明記する。なお Phase 5 手順 9 のブラウザ目視確認は
      完了基準から外した（任意の確認に格下げ）ため、ここには挙げない。
    - **今回参照しなかった注意書き**: 手順書・docs の注意書き（過去に踏んだ罠・
      既知事象）のうち、**この回で一度も参照せず、再現もしなかったもの**を箇所
@@ -815,8 +815,9 @@ Bash ツールは `&&` / `||` / `;` の連結を拒否するため（前提条�
 |---|---|---|---|---|
 | Phase 1 | スケルトン生成 | `bin/reset-phase.sh 1` | `/scaffold-phase1-skeleton` | — |
 | Phase 2 | DB スキーマ・モデル生成 | `bin/reset-phase.sh 2` | `/scaffold-phase2-models` | Phase 1 が単体で完走すること |
-| Phase 3 | 認証・UI | `bin/reset-phase.sh 3` | `/scaffold-phase3-ui` | Phase 1〜2 が完走すること |
-| Phase 4 | 仕上げ | `bin/reset-phase.sh 4` | `/scaffold-phase4-finalize` | Phase 1〜3 が完走すること |
+| Phase 3 | UI 実装（Controller / View / Policy） | `bin/reset-phase.sh 3` | `/scaffold-phase3-ui` | Phase 1〜2 が完走すること |
+| Phase 4 | UI テスト（Feature / Dusk） | `bin/reset-phase.sh 4` | `/scaffold-phase4-ui-tests` | Phase 1〜3 が完走すること |
+| Phase 5 | 仕上げ | `bin/reset-phase.sh 5` | `/scaffold-phase5-finalize` | Phase 1〜4 が完走すること |
 
 対象ファイルは `my-laravel-app/.claude/commands/<実行コマンド名>.md`、
 完了確認は各フェーズとも `/verify`（該当フェーズのチェック項目）。

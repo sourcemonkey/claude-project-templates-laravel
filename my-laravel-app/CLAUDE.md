@@ -27,12 +27,13 @@ Laravel エコシステムの一般的な規約は Laravel Boost が生成する
 
 ## 開発フェーズ（順序厳守）
 
-このプロジェクトは 4 フェーズで構築する。各フェーズは `.claude/commands/` のスラッシュコマンドで実行する。
+このプロジェクトは 5 フェーズで構築する。各フェーズは `.claude/commands/` のスラッシュコマンドで実行する。
 
 1. `/scaffold-phase1-skeleton` — Laravel 雛形 + 依存・認証（Breeze）導入 + Docker DB 起動
 2. `/scaffold-phase2-models` — DB スキーマ + Model + マイグレーション
 3. `/scaffold-phase3-ui` — Controller + Livewire/Blade + 認可
-4. `/scaffold-phase4-finalize` — Seeder + テスト + 起動確認
+4. `/scaffold-phase4-ui-tests` — Phase 3 の UI を Feature / Dusk テストで検証
+5. `/scaffold-phase5-finalize` — Seeder + テスト + 起動確認
 
 各フェーズ完了時、`/verify` で完了基準を満たしているかセルフチェックする。
 
@@ -42,10 +43,10 @@ Laravel エコシステムの一般的な規約は Laravel Boost が生成する
 > 判定は、そのフェーズの手順書（`.claude/commands/scaffold-phase*.md`）の
 > 完了基準に書かれた項目だけで行う。
 >
-> 特に**カバレッジ 80% は Phase 4 で初めて測る**。Phase 1〜3 の時点では対象コードが
+> 特に**カバレッジ 80% は Phase 5 で初めて測る**。Phase 1〜4 の時点では対象コードが
 > 揃っておらず、達していなくても正常である。前倒しで測ってもよいが、
-> **未達を理由にフェーズを `aborted` にしないこと**（Phase 3 のトライアルで、
-> Phase 3 の完了基準に無いカバレッジ計測が行われた）。
+> **未達を理由にフェーズを `aborted` にしないこと**（過去のトライアルで、当該フェーズの
+> 完了基準に無いカバレッジ計測が行われた）。
 
 ## 完了の定義（プロジェクト全体）
 

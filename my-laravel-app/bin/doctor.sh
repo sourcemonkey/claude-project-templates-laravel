@@ -104,13 +104,13 @@ if command -v php >/dev/null 2>&1; then
     fi
 fi
 
-# ---- PHP 拡張: pcov（Phase 4 のカバレッジ判定でのみ必要。中断しない）-----
+# ---- PHP 拡張: pcov（Phase 5 のカバレッジ判定でのみ必要。中断しない）-----
 if command -v php >/dev/null 2>&1; then
     if has_php_module pcov; then
         ok "PHP 拡張 pcov（カバレッジ計測）"
     else
         warn "PHP 拡張 pcov が未導入（カバレッジ判定にのみ必要）"
-        hint "Phase 1〜3 は影響を受けません。Phase 4 に入る前に導入してください"
+        hint "Phase 1〜4 は影響を受けません。Phase 5 に入る前に導入してください"
         hint "手順は docs/stack.md の「テストカバレッジ設定（正規形）」"
     fi
 fi

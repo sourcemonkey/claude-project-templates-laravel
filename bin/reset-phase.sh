@@ -13,7 +13,8 @@ declare -a PHASE_COMMANDS=(
   [1]="scaffold-phase1-skeleton"
   [2]="scaffold-phase2-models"
   [3]="scaffold-phase3-ui"
-  [4]="scaffold-phase4-finalize"
+  [4]="scaffold-phase4-ui-tests"
+  [5]="scaffold-phase5-finalize"
 )
 
 usage() {
@@ -128,7 +129,7 @@ case "$PHASE" in
     echo ""
     echo "✅ リセット完了。${APP_REL} は Phase 1 実行前（Laravel 未生成）の状態に戻りました。"
     ;;
-  2 | 3 | 4)
+  2 | 3 | 4 | 5)
     reset_to_template
     PREV=$((PHASE - 1))
     echo ""
@@ -150,7 +151,7 @@ case "$PHASE" in
     echo "     ${STEPS}"
     ;;
   *)
-    echo "Phase ${PHASE} は未対応です（1〜4 を指定してください）。" >&2
+    echo "Phase ${PHASE} は未対応です（1〜5 を指定してください）。" >&2
     usage
     exit 1
     ;;

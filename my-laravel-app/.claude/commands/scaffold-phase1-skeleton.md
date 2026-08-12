@@ -48,8 +48,8 @@ DB ボリュームの衝突。バージョンの一次情報は `.tool-versions`
 > 対処のたびに再実行してよい。ホストの PHP への拡張追加のようにホスト全体へ影響する変更は、
 > **対処として案内するだけで実行はしない**（実行はユーザーの判断）。
 >
-> `[WARN]` の 2 つは意味が異なる。**pcov 未導入**は Phase 4 のカバレッジ 80% 判定にのみ必要で、
-> Phase 1〜3 は影響を受けない（必須チェックは Phase 4 の Step 2-0 にあり、そこでは未導入なら中断する）。
+> `[WARN]` の 2 つは意味が異なる。**pcov 未導入**は Phase 5 のカバレッジ 80% 判定にのみ必要で、
+> Phase 1〜4 は影響を受けない（必須チェックは Phase 5 の Step 2-0 にあり、そこでは未導入なら中断する）。
 > **DB ボリュームの残存**は初回セットアップ時のみ問題になる（詳細は次節「起動失敗時の典型原因」）。
 
 ### 2. DB コンテナの起動
@@ -197,7 +197,7 @@ composer require --dev larastan/larastan laravel/dusk laravel-lang/lang laravel/
   ```
   `dusk:install` は ChromeDriver も自動でインストールするが、入るのは**最新版**である。
 
-  > **重要（`dusk:chrome-driver --detect` を必ず続けて実行する）**: ホストの Google Chrome が 1 世代古いと、`dusk:install` が入れた ChromeDriver とメジャーバージョンが噛み合わず、Phase 3 の `php artisan dusk` が全件
+  > **重要（`dusk:chrome-driver --detect` を必ず続けて実行する）**: ホストの Google Chrome が 1 世代古いと、`dusk:install` が入れた ChromeDriver とメジャーバージョンが噛み合わず、Phase 4 の `php artisan dusk` が全件
   > `session not created: This version of ChromeDriver only supports Chrome version NNN / Current browser version is MMM ...`
   > で失敗する。`--detect` はホストにインストールされた Chrome のバージョンを検出して対応する ChromeDriver を入れ直すため、Phase 1 の時点で実行しておく（Chrome を更新した場合も同じコマンドで追従する）。
 
@@ -308,7 +308,7 @@ DB_PASSWORD=app_password
 > 放置すると、リポジトリを新規クローンして `composer run setup` した利用者の `.env` は
 > `.env.example` からコピーされるため `APP_URL=http://localhost` になる。一方 `composer run dev`
 > の `php artisan serve` が listen するのは 8000 番なので、`url()` / `route()` が組み立てる
-> 絶対 URL（パスワード再発行メールのリンク等）が到達しないポートを指す。Phase 3 の Dusk は
+> 絶対 URL（パスワード再発行メールのリンク等）が到達しないポートを指す。Phase 4 の Dusk は
 > `.env` から `.env.dusk.local` を作るため表面化しないぶん、発見が遅れる。
 >
 > `APP_KEY` だけは例外で、`.env.example` では空のままにする（秘密情報をコミットしないため）。
@@ -409,11 +409,11 @@ composer require --dev "laravel/pao:^1.1.3" --no-interaction
 5. **起動確認**: `composer run dev` をバックグラウンドで立ち上げ、`curl -sS --retry 15 --retry-all-errors --retry-delay 1 -o /dev/null -w "%{http_code}" http://localhost:8000` が 200 を返すことを確認する。`/login` `/register` も 200 になること。確認後サーバを停止する（`pkill -f "php artisan serve"`、`pkill -f "artisan pail"`、`pkill -f vite`。concurrently に `--kill-others` が付いている場合は最初の 1 つで残りも終了するが、3 つとも実行して確実に止める）。
    - `--retry` を付けるのは、`composer run dev` の起動直後は `php artisan serve` がまだ listen していないため。Bash ツールでは `sleep` を伴う待機ループが書けないので `curl` 側のリトライで吸収する
    - **停止まわりの終了コード 1 はすべて正常。フェーズの失敗として扱わず、原因を追わないこと。** `--kill-others` により 1 つ目の `pkill` で全プロセスが落ちるため 2 つ目以降は「該当プロセス無し」で 1 を返し、同じ理由でバックグラウンド実行の完了通知も `failed`（`concurrently` 自体の非 0 終了）になる
-6. **既定 `DatabaseSeeder` の空化**: `laravel new` が生成する `database/seeders/DatabaseSeeder.php` は、固定メール（`test@example.com`）の Test User を `User::factory()->create([...])` で 1 件作る内容になっている。これは `firstOrCreate` ではないため、**`composer run setup`（内部で `migrate --seed --force`）を 2 回目に実行すると `users.email` の UNIQUE 制約違反で落ちる**（「クローンして 1 コマンドで動く」が崩れる）。`run()` の本体をコメント化して空にすること（Seeder 本体は Phase 4 で `docs/seeds.md` に沿って実装する）:
+6. **既定 `DatabaseSeeder` の空化**: `laravel new` が生成する `database/seeders/DatabaseSeeder.php` は、固定メール（`test@example.com`）の Test User を `User::factory()->create([...])` で 1 件作る内容になっている。これは `firstOrCreate` ではないため、**`composer run setup`（内部で `migrate --seed --force`）を 2 回目に実行すると `users.email` の UNIQUE 制約違反で落ちる**（「クローンして 1 コマンドで動く」が崩れる）。`run()` の本体をコメント化して空にすること（Seeder 本体は Phase 5 で `docs/seeds.md` に沿って実装する）:
    ```php
    public function run(): void
    {
-       // Seeder は Phase 4 で docs/seeds.md に沿って実装する。
+       // Seeder は Phase 5 で docs/seeds.md に沿って実装する。
        // laravel new 既定の Test User 生成は、setup 再実行時に
        // users.email の UNIQUE 制約へ衝突するため空にしておく。
    }
@@ -459,7 +459,7 @@ composer require --dev "laravel/pao:^1.1.3" --no-interaction
 
 - モデル生成（Phase 2 で実施）
 - Controller / View 生成（Phase 3 で実施）
-- Seeder（Phase 4 で実施）
+- Seeder（Phase 5 で実施）
 - Laravel 本体のコンテナ化（プロジェクト方針として行わない）
 - Queue ワーカーの起動設定（本プロジェクトでは非同期ジョブを使わない）
 - Redis / Reverb の追加

@@ -239,8 +239,8 @@ php artisan migrate
     で落ちる。これは Phase 4 の Dusk（返却テストで在庫を指定して書籍を作る）で初めて
     顕在化するため、**Phase 2 の時点でクロージャにしておくこと**。
     `outOfStock()` などの state は definition の解決後に適用されるので影響を受けない。
-- `Lending` ファクトリには state ごとの state メソッド（`approved()`, `overdue()`, `returned()`, `rejected()`）を用意しておくと、モデルテストと Phase 3・4 の Feature / Dusk テストの両方で使える
-  - **Seeder では使わない。** Phase 4 の Seeder は `docs/seeds.md` の固定値を `firstOrCreate()` で投入する方式のため、ファクトリを経由しない。`approved()` の `due_on` は `docs/api-spec.md` の承認仕様（14 日後）に従うので、**seeds.md の Approved サンプル（`due_on = 7 日後`）とは一致しない**。Seeder でこの state を使うと seeds.md と食い違うデータが入る
+- `Lending` ファクトリには state ごとの state メソッド（`approved()`, `overdue()`, `returned()`, `rejected()`）を用意しておくと、モデルテストと Phase 4・5 の Feature / Dusk テストの両方で使える
+  - **Seeder では使わない。** Phase 5 の Seeder は `docs/seeds.md` の固定値を `firstOrCreate()` で投入する方式のため、ファクトリを経由しない。`approved()` の `due_on` は `docs/api-spec.md` の承認仕様（14 日後）に従うので、**seeds.md の Approved サンプル（`due_on = 7 日後`）とは一致しない**。Seeder でこの state を使うと seeds.md と食い違うデータが入る
 
 ### モデルテスト
 
@@ -312,7 +312,7 @@ vendor/bin/pint
 - Controller / View（Phase 3 で実施）
 - Enum の `label()` メソッド（Phase 3 で実施）
 - Action クラス（Phase 3 で実施）
-- Seeder（Phase 4 で実施）
+- Seeder（Phase 5 で実施）
 - Queue 関連のマイグレーション・モデル・設定ファイルへの手出し
 
 ## 完了後

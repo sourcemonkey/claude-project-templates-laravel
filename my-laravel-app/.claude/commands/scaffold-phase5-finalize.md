@@ -1,8 +1,8 @@
 ---
-description: フェーズ4 - Seeder、テスト、README、起動確認で完成させる
+description: フェーズ5 - Seeder、テスト、README、起動確認で完成させる
 ---
 
-# Phase 4: 仕上げ（Seeder + テスト + 起動確認）
+# Phase 5: 仕上げ（Seeder + テスト + 起動確認）
 
 最終フェーズ。「最初から動くもの」を完成させる。投入データ・テストアカウント等の具体値は `docs/seeds.md` が一次情報。
 
@@ -53,7 +53,7 @@ description: フェーズ4 - Seeder、テスト、README、起動確認で完成
 
 #### 2-0. カバレッジ計測の確認（テストを書く前に必ず実施）
 
-**まず `php -m | grep pcov` でカバレッジ計測ドライバを確認する。出力が空の場合はここで中断し、`docs/stack.md` の「テストカバレッジ設定（正規形）」の導入手順を提示してユーザーに導入を依頼する**（PHP ランタイム全体に影響する変更のため、Claude Code の単独判断で `pecl install` や php.ini の編集を行わない）。カバレッジ 80% 以上は Phase 4 の完了基準であり、ドライバ無しでは達成を確認できないため、先にテストを書き進めても手戻りになる。
+**まず `php -m | grep pcov` でカバレッジ計測ドライバを確認する。出力が空の場合はここで中断し、`docs/stack.md` の「テストカバレッジ設定（正規形）」の導入手順を提示してユーザーに導入を依頼する**（PHP ランタイム全体に影響する変更のため、Claude Code の単独判断で `pecl install` や php.ini の編集を行わない）。カバレッジ 80% 以上は Phase 5 の完了基準であり、ドライバ無しでは達成を確認できないため、先にテストを書き進めても手戻りになる。
 
 ドライバを確認できたら、`docs/stack.md` の「テストカバレッジ設定（正規形）」の通りに `phpunit.xml` を設定する。設定後、`php artisan test --coverage-html coverage` を一度実行して `coverage/index.html` が生成され、かつカバレッジが 0% でないことを確認してから次のステップへ進む。
 
@@ -69,14 +69,14 @@ description: フェーズ4 - Seeder、テスト、README、起動確認で完成
   例: `->select('category_id', (string) $category->id)`。**表示テキストで選択できると
   思い込まないこと**（`select('category_id', '技術書')` は一致せず、選択されないまま
   submit されてバリデーションエラーになる）
-- **返却テストでは「1 冊消費済み」の書籍を用意すること**（`approved()` は在庫を減らさないため、そのまま返却させると CHECK 制約に違反する。理由と失敗の見え方は Phase 3 手順書「テストシナリオ」節の同名の注意を参照）。
+- **返却テストでは「1 冊消費済み」の書籍を用意すること**（`approved()` は在庫を減らさないため、そのまま返却させると CHECK 制約に違反する。理由と失敗の見え方は Phase 4 手順書「テストシナリオ」節の同名の注意を参照）。
   ```php
   $book = Book::factory()->create(['total_copies' => 2, 'available_copies' => 1]);
   $lending = Lending::factory()->approved()->create(['book_id' => $book->id]);
   ```
-- **Feature テストのクエリ文字列に日本語を直接埋めないこと。** `$this->get('/admin/users?filter[name]=検索対象')` はマルチバイトがそのまま URL に入って壊れ、絞り込みが一致しない。`urlencode('検索対象')` を通す。失敗時の症状は「該当 0 件」なので**原因が絞り込みロジック側にあるように見え**、切り分けに時間がかかる（Phase 4 のトライアルで踏んだ）。
+- **Feature テストのクエリ文字列に日本語を直接埋めないこと。** `$this->get('/admin/users?filter[name]=検索対象')` はマルチバイトがそのまま URL に入って壊れ、絞り込みが一致しない。`urlencode('検索対象')` を通す。失敗時の症状は「該当 0 件」なので**原因が絞り込みロジック側にあるように見え**、切り分けに時間がかかる（本フェーズのトライアルで踏んだ）。
 
-`docs/screens.md` の主要動線を Dusk で網羅する。Phase 3 で 4 件（蔵書一覧の表示 /
+`docs/screens.md` の主要動線を Dusk で網羅する。Phase 4 で 4 件（蔵書一覧の表示 /
 借用申請 / 申請の承認 / 非 admin の `/admin` リダイレクト）を実装済みなので、
 **本フェーズではそれに加えて次の 4 件を新規に追加する**:
 
@@ -85,8 +85,8 @@ description: フェーズ4 - Seeder、テスト、README、起動確認で完成
 - 認可: 他人の貸出詳細にアクセスすると `home` へリダイレクトされる（Policy）
 - メンバー: 蔵書一覧で**2 ページ目へページ送り**できる（下記）
 
-> **Phase 3 で先に書いてあるものがあれば、その分だけ本フェーズの新規追加は減る。**
-> 上 4 件は Phase 3 の最低要件には含まれないが、Phase 3 を厚めに書いた回では
+> **Phase 4 で先に書いてあるものがあれば、その分だけ本フェーズの新規追加は減る。**
+> 上 4 件は Phase 4 の最低要件には含まれないが、Phase 4 を厚めに書いた回では
 > 「返却」「書籍削除」が既に存在した。**重複して書き足すのではなく、不足分を埋めること**
 > （最終的に Dusk が下記の完了基準の件数に達していればよい）。
 
@@ -122,23 +122,23 @@ description: フェーズ4 - Seeder、テスト、README、起動確認で完成
 > `Book::where('published', true)->orderBy('id')->offset(25)->limit(25)->pluck('title')`
 > のように**DB から引いた値で assert する**と、順序の実装を変えても壊れない。
 
-あわせて Phase 3 で書いた既存 2 件を、動線として通しで確認する形へ広げる:
+あわせて Phase 4 で書いた既存 2 件を、動線として通しで確認する形へ広げる:
 
 - メンバー: ログイン → 蔵書検索 → 詳細 → 借用申請 → 自分の貸出一覧で確認
 - 管理者: ログイン → 申請一覧 → 承認 → 通知が作られ在庫が減ること
 
-> **「Phase 3 で似たテストがあるから網羅済み」と判断しないこと。** 上記のうち Phase 3 の
+> **「Phase 4 で似たテストがあるから網羅済み」と判断しないこと。** 上記のうち Phase 4 の
 > シナリオに含まれないものは、書かなくても `php artisan dusk` は green になる
 > （＝完了基準をすり抜ける）。**最終的に Dusk のテストは 8 件以上**になる。
 
-> **カバレッジ 80% に届くかは Phase 3 の Feature テストの厚さ次第。**
+> **カバレッジ 80% に届くかは Phase 4 の Feature テストの厚さ次第。**
 > **Dusk は `php artisan test` のカバレッジに寄与しない**（ブラウザが別プロセスで動くため
 > PCOV が実行行を拾わない）。上の Dusk 4 件を足しても数値は動かない。
 >
-> 過去のトライアルでは Phase 3 までで **72.02%** にとどまり、下記 4 領域の Feature テストを
-> 足して **94.64%** まで引き上げた。一方、Phase 3 手順書の「観測可能な振る舞いは assert で
+> 過去のトライアルでは UI テストまでで **72.02%** にとどまり、下記 4 領域の Feature テストを
+> 足して **94.64%** まで引き上げた。一方、Phase 4 手順書の「観測可能な振る舞いは assert で
 > 固定する」に沿って認可・業務ルール・ページネーションの Feature テストを厚めに書いた回では、
-> **Phase 4 に入った時点で 88〜92%** に達しており追加は不要だった。**まず数値を測ってから
+> **Phase 5 に入った時点で 88〜92%** に達しており追加は不要だった。**まず数値を測ってから
 > 判断すること**（足りている場合に機械的に足す必要はない）。
 >
 > 不足する場合は `coverage/` のディレクトリ別インデックスで低い箇所を特定して埋める。
@@ -167,7 +167,7 @@ Phase 1 で調整済みの `composer.json` の `setup` スクリプト（`compos
 4. `php artisan migrate --seed --force`
 5. `npm install --ignore-scripts` / `npm run build`
 
-Phase 4 では Seeder が実装済みのため、`docs/seeds.md` のサンプルデータが実際に投入されることまで確認する（Phase 1 の確認では Seeder が空だった）。
+Phase 5 では Seeder が実装済みのため、`docs/seeds.md` のサンプルデータが実際に投入されることまで確認する（Phase 1 の確認では Seeder が空だった）。
 
 ### 4. README.md の作成
 
@@ -213,7 +213,7 @@ Phase 4 では Seeder が実装済みのため、`docs/seeds.md` のサンプル
 - 主要 URL（`/`, `/admin`）
 - テスト実行コマンド。**`php artisan dusk` は別ターミナルで
   `php artisan serve --env=dusk.local` を先に起動する必要がある**旨も書く
-  （Dusk は自前でサーバーを起動しない。Phase 3 手順書の「Dusk 実行時の前提」参照）
+  （Dusk は自前でサーバーを起動しない。Phase 4 手順書の「Dusk 実行時の前提」参照）
 - **AI エージェント向けの設定**: `composer run setup` が `php artisan boost:install --mcp --guidelines` を実行し、`.mcp.json`（Laravel Boost の MCP サーバー登録）と `docs/boost-guidelines.md`（AI ガイドライン）を生成すること。**どちらも `.gitignore` 済みでリポジトリには含まれない**ため、クローン後に `composer run setup` を実行して初めて有効になる旨を明記する
 - 関連ドキュメントへのリンク（`docs/` 配下）
 
@@ -288,7 +288,7 @@ vendor/bin/pint
    > レポートでは `Total` のセルと百分率が**別々の行**に出力されるため、行単位で動く
    > `grep` は**何もマッチせず空を返す**（判定できないまま「達成」と誤認しかねない）。
 4. `php artisan dusk` が all green。**別ターミナルで
-   `php artisan serve --env=dusk.local` を起動してから実行する**（Phase 3 手順書参照）
+   `php artisan serve --env=dusk.local` を起動してから実行する**（Phase 4 手順書参照）
 5. `vendor/bin/pint --test` が違反 0
 6. `vendor/bin/phpstan analyse` でエラー 0
 7. `composer audit` で既知の脆弱性 0
@@ -313,7 +313,7 @@ vendor/bin/pint
 - [ ] 貸出の 5 状態が 1 件ずつ揃っている（admin ダッシュボードの申請待ち・延滞が 0 にならない）
 - [ ] `php artisan test` および `php artisan dusk` が all green
 - [ ] **`docs/` が定める観測可能な振る舞い（ステータスコード・フラッシュ文言・ラベル）に、対応する
-      assert が存在する**（Phase 3 手順書の「観測可能な振る舞いは assert で固定する」参照。本フェーズで
+      assert が存在する**（Phase 4 手順書の「観測可能な振る舞いは assert で固定する」参照。本フェーズで
       足す Feature テストにも同じ基準を適用する）
 - [ ] 「2-1. テストシナリオの実装」に列挙した Dusk シナリオが**すべてテストとして存在する**
       （本フェーズで追加する 4 件を含め 8 件以上。green であることと網羅していることは別）

@@ -206,4 +206,4 @@ FK 制約を持つテーブルは依存先を後に削除する（ER 図の矢�
 AuditLog → Notification → Lending → BookTag → Book → Tag → Category → User
 ```
 
-Laravel Dusk のシステムテストではブラウザが別プロセスで動作するため、DB トランザクションによるロールバックが効かない。各モデルの `truncate()`（外部キー制約を一時的に無効化した上で）をこの順序で呼び出す必要がある。詳細な実装は `.claude/commands/scaffold-phase3-ui.md` 参照。
+Laravel Dusk のシステムテストではブラウザが別プロセスで動作するため、DB トランザクションによるロールバックが効かない。各モデルの `truncate()`（外部キー制約を一時的に無効化した上で）をこの順序で呼び出す必要がある。詳細な実装は `.claude/commands/scaffold-phase4-ui-tests.md` 参照。

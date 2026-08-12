@@ -3,9 +3,9 @@
 # フェーズトライアルを**フェーズごとに別セッション**で順に実行する。
 #
 # 使い方:
-#   bin/run-trial.sh                 Phase 1〜4 を順に実行
+#   bin/run-trial.sh                 Phase 1〜5 を順に実行
 #   bin/run-trial.sh 1 3             Phase 1〜3 を実行
-#   bin/run-trial.sh 2 4             Phase 2〜4 を実行（Phase 1 完走済みの状態から）
+#   bin/run-trial.sh 2 5             Phase 2〜5 を実行（Phase 1 完走済みの状態から）
 #   CC_TRIAL_MODEL=opus bin/run-trial.sh     モデルを変える（既定: sonnet）
 #
 # なぜ 1 セッションで通さないか:
@@ -29,7 +29,7 @@ MODEL="${CC_TRIAL_MODEL:-sonnet}"
 LOG_DIR="${CC_TRIAL_LOG_DIR:-$HOME/claude-trial-logs}"
 
 FROM="${1:-1}"
-TO="${2:-4}"
+TO="${2:-5}"
 
 if [ ! -f "$PROMPT_FILE" ]; then
     echo "プロンプトが見つかりません: $PROMPT_FILE" >&2
@@ -37,7 +37,7 @@ if [ ! -f "$PROMPT_FILE" ]; then
 fi
 
 case "$FROM$TO" in
-    *[!0-9]*) echo "フェーズ番号は数字で指定してください（例: bin/run-trial.sh 2 4）" >&2; exit 1 ;;
+    *[!0-9]*) echo "フェーズ番号は数字で指定してください（例: bin/run-trial.sh 2 5）" >&2; exit 1 ;;
 esac
 
 mkdir -p "$LOG_DIR"

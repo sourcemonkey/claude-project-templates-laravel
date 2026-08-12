@@ -1,11 +1,12 @@
 # Laravel プロジェクト生成テンプレートキット
 
-Claude Code に Laravel 中規模プロジェクトを 4 フェーズで生成させるための
+Claude Code に Laravel 中規模プロジェクトを 5 フェーズで生成させるための
 `CLAUDE.md` / 仕様ドキュメント / スラッシュコマンド一式です。
 
 [claude-project-templates](../claude-project-templates)（Rails 版）を
 PHP 8.4.23 / Laravel 13 向けに移植したものです。フェーズ分割の考え方
-（雛形 → モデル → UI → 仕上げ）や CLAUDE.md 階層構造は Rails 版と共通です。
+（雛形 → モデル → UI → 仕上げ）や CLAUDE.md 階層構造は Rails 版と共通です
+（本テンプレートは UI フェーズを実装とテストに分けたため 5 フェーズ構成です）。
 
 題材として「蔵書管理 + 貸出記録システム（BookKeeper）」を同梱していますが、
 これはあくまで例で、`my-laravel-app/docs/` を差し替えれば他の業務系プロジェクトの
@@ -68,11 +69,12 @@ PHP 8.4.23 / Laravel 13 向けに移植したものです。フェーズ分割�
             ├── scaffold-phase1-skeleton.md
             ├── scaffold-phase2-models.md
             ├── scaffold-phase3-ui.md
-            ├── scaffold-phase4-finalize.md
+            ├── scaffold-phase4-ui-tests.md
+            ├── scaffold-phase5-finalize.md
             └── verify.md
 ```
 
-**上図はテンプレートリポジトリの構成です。** Phase 1〜4 を実行すると `my-laravel-app/` 配下に
+**上図はテンプレートリポジトリの構成です。** Phase 1〜5 を実行すると `my-laravel-app/` 配下に
 Laravel の生成物（`app/`・`composer.json`・`.env.example` など）が加わります。それらは
 `.gitignore` で除外されるものを除きコミット対象になりますが、テンプレート同梱ファイルと
 区別するため上図には含めていません（例外的に `.env.example` だけは、`.gitignore` の
@@ -118,7 +120,7 @@ cd my-laravel-app && bin/doctor.sh
 ```
 
 終了コード 0 なら Phase 1 に進めます。満たしていない項目は `[NG]` と対処方法が出るので、
-解消して再実行してください。`[WARN]` は続行して構いません（PCOV 未導入は Phase 4 の
+解消して再実行してください。`[WARN]` は続行して構いません（PCOV 未導入は Phase 5 の
 カバレッジ判定でのみ必要、DB ボリュームの残存は初回セットアップ時のみ問題になります）。
 
 検査するのは、PHP のバージョンと `zip` / `pcov` 拡張、Composer 2 系、Node.js のバージョンと
@@ -139,7 +141,7 @@ Laravel Installer、Docker デーモンと Compose v2、DB ポートの空き、
 ### リポジトリ衛生の検査（`bin/check-repo.sh`）
 
 各フェーズの完了基準のうち機械的に判定できるものを 1 回で検査します。同じく読み取り専用で、
-フェーズ 1〜4 のどの時点でも同じコマンドで走ります（まだ存在しないものは検査しません）。
+フェーズ 1〜5 のどの時点でも同じコマンドで走ります（まだ存在しないものは検査しません）。
 
 ```sh
 cd my-laravel-app && bin/check-repo.sh
@@ -246,7 +248,9 @@ Claude Code のセッションで順番にスラッシュコマンドを実行�
 /verify
 /scaffold-phase3-ui
 /verify
-/scaffold-phase4-finalize
+/scaffold-phase4-ui-tests
+/verify
+/scaffold-phase5-finalize
 /verify
 ```
 
@@ -262,7 +266,7 @@ composer run setup  # MySQL コンテナ起動 + composer/npm install + migrate 
 composer run dev    # 開発サーバ起動
 ```
 
-具体的な起動 URL・テストアカウントは Phase 4 で生成される
+具体的な起動 URL・テストアカウントは Phase 5 で生成される
 `my-laravel-app/README.md` 参照。
 
 ### 6. 独立リポジトリへの移行（任意）
@@ -468,7 +472,7 @@ claude -p "$(cat prompts/trial-phase.md)"
 
 ```sh
 bin/run-trial.sh          # Phase 1〜4
-bin/run-trial.sh 2 4      # Phase 2〜4（Phase 1 完走済みの状態から）
+bin/run-trial.sh 2 5      # Phase 2〜5（Phase 1 完走済みの状態から）
 CC_TRIAL_MODEL=opus bin/run-trial.sh
 ```
 
@@ -481,6 +485,10 @@ CC_TRIAL_MODEL=opus bin/run-trial.sh
 | Phase 1 | 69 | 9.4M | 134K |
 | Phase 2 | 69 | 13.3M | 192K |
 | Phase 3 | 208 | 66.1M | 315K |
+
+> **この表の Phase 3 は、UI 実装とテストが 1 フェーズだった頃の値です。** 208 呼び出し・
+> 66.1M という突出が分割の根拠になり、現在は Phase 3（実装）と Phase 4（テスト）に
+> 分かれています。旧 Phase 4（仕上げ）は Phase 5 に繰り上がりました。
 
 **Phase 1 と Phase 2 は呼び出し数が同じ 69 回なのに、Phase 2 は 41% 高い。**
 仕事量は同じで、違うのは積み上がった文脈だけです。消費の 99% は cache 読取
