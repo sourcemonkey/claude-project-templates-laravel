@@ -9,6 +9,8 @@ APP_REL="${APP_DIR#"$REPO_ROOT"/}"
 PHASE="${1:-}"
 
 # リセット後に再実行すべきスラッシュコマンド名（フェーズ番号がキー）
+# フェーズを増減したら、この配列と下の case の両方を直すこと。トライアルの
+# プロンプトは（毎フェーズ Read するコストが割に合わないため）確認しない。
 declare -a PHASE_COMMANDS=(
   [1]="scaffold-phase1-skeleton"
   [2]="scaffold-phase2-models"
