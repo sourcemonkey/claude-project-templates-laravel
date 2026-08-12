@@ -62,7 +62,8 @@ PHP 8.4.23 / Laravel 13 向けに移植したものです。フェーズ分割�
     │   ├── db-schema.md         ← DB スキーマ
     │   ├── screens.md           ← 画面構成
     │   ├── api-spec.md          ← ルーティング・認可
-    │   └── seeds.md             ← 初期データ
+    │   ├── seeds.md             ← 初期データ
+    │   └── decisions.md         ← 技術選定の経緯（CLAUDE.md から @ 参照しない。必要時のみ読む）
     └── .claude/
         ├── settings.json        ← Claude Code の権限設定（共有用）
         └── commands/            ← フェーズ別スラッシュコマンド
