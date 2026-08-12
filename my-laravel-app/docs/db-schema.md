@@ -158,12 +158,23 @@ audit_logs (独立、polymorphic 相当のカラム構成)
 
 > **注意（`published` はメンバー画面では効かない）**: メンバー向けの蔵書一覧・詳細は `published = true` の**強制スコープ**が掛かるため、`published` フィルタが意味を持つのは管理画面だけである（`docs/screens.md` のメンバー領域の注記が一次情報）。メンバー画面のクエリでこのフィルタを許可しても、強制スコープが優先して結果は変わらない。
 
-| モデル | allowedFilters | allowedSorts |
-|---|---|---|
-| Book | title, author, publisher, isbn, description, published（**管理画面のみ有効**）, `AllowedFilter::exact('category_id')`, `AllowedFilter::exact('tags.id')` | created_at, title |
-| User（admin 画面） | name, email, `AllowedFilter::exact('role')` | created_at, name |
-| Lending（admin 画面） | `AllowedFilter::exact('state')`, `AllowedFilter::exact('user_id')`, `AllowedFilter::exact('book_id')` | requested_at, due_on |
-| AuditLog | `AllowedFilter::exact('action')`, `AllowedFilter::exact('target_type')` | created_at |
+| モデル | allowedFilters | allowedSorts | 既定順序（ソート未指定時） |
+|---|---|---|---|
+| Book | title, author, publisher, isbn, description, published（**管理画面のみ有効**）, `AllowedFilter::exact('category_id')`, `AllowedFilter::exact('tags.id')` | created_at, title | `id` 昇順 |
+| User（admin 画面） | name, email, `AllowedFilter::exact('role')` | created_at, name | `id` 昇順 |
+| Lending（admin 画面・member 画面とも） | `AllowedFilter::exact('state')`, `AllowedFilter::exact('user_id')`, `AllowedFilter::exact('book_id')` | requested_at, due_on | `requested_at` 降順 |
+| AuditLog | `AllowedFilter::exact('action')`, `AllowedFilter::exact('target_type')` | created_at | `created_at` 降順 |
+| Notification | —（一覧は既読 / 未読の切替のみ） | — | `created_at` 降順 |
+| Category / Tag | —（一覧のみ） | — | `id` 昇順 |
+
+> **既定順序は必ず明示すること（`defaultSort()` か `orderBy()`）。** MySQL は `ORDER BY` の
+> 無いクエリの行順序を保証しないため、指定しないと**ページネーションが不安定になる**。
+> 1 ページ目しか見ないテストでは通り、2 ページ目を検証した時点で「同じ行が両方のページに
+> 出る」「特定の行がどのページにも出ない」という形で落ちる（2026-08-12 のトライアルでは
+> Phase 5 が `BookList` に `->orderBy('id')` を独自に足して回避した）。
+>
+> 時系列で見るリソース（貸出・通知・監査ログ）は**新しい順**、マスタ系（書籍・ユーザー・
+> カテゴリ・タグ）は**投入順（`id` 昇順）**に揃える。
 
 ## 削除時の挙動（外部キー制約 / Eloquent イベント）
 
