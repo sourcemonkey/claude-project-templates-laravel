@@ -46,7 +46,7 @@ php artisan make:migration add_role_to_users_table --table=users
 > ロール変更（`PATCH /admin/users/{user}`）を明示代入で書く必要があるが、**その実装は
 > Phase 3 の担当**であり、一次情報は `docs/api-spec.md` の同エンドポイントの項に置いてある
 > （手順書は当該フェーズのセッションしか読まないため、ここには書かない）。Model Factory は
-> fillable を経由しないため、`User::factory()->admin()` は問題なく機能する（トライアルで確認済み）。
+> fillable を経由しないため、`User::factory()->admin()` は問題なく機能する。
 
 > **注意2（Laravel 13 の User モデルは属性ベース）**: `laravel new`（Laravel 13.x）が生成する `User` モデルは、`protected $fillable` / `protected $hidden` プロパティではなく PHP 属性 `#[Fillable([...])]` / `#[Hidden([...])]` を使う。上記の通り `role` は fillable に足さないので、`#[Fillable(['name', 'email', 'password'])]` はそのままでよい。
 
@@ -209,7 +209,7 @@ php artisan migrate
 > 中身も空でないため「**残りの**ファクトリ」に含まれない。**実行順序 1（users
 > テーブルの補正）の一部として、`User` を触る時点で下の `User` の項まで読み、
 > モデルと同時に直すこと**（後回しにすると `role` が `null` のままモデルテストが
-> 落ちる。2026-08-07 のトライアルで発生）。
+> 落ちる）。
 
 - `User` ファクトリのメールは `@test.local` ドメインにする（Breeze 標準ファクトリの既定ドメインとテスト実行時に衝突しないようにするため）。`role` を扱う `admin()` state も追加する
 
@@ -218,8 +218,7 @@ php artisan migrate
   ```
 
   > **`fake()->safeEmail('test.local')` と書かないこと。** Faker の `safeEmail()` は
-  > **引数を取らず**、常に `example.com` / `.net` / `.org` を返す。2026-08-06 と 08-07 の
-  > トライアルが**それぞれ独立に**この形を試して失敗しているため、式を明示しておく。
+  > **引数を取らず**、常に `example.com` / `.net` / `.org` を返す。
   - **`definition()` にも `'role' => UserRole::Member` を明示すること**。マイグレーションの `default(0)` に任せると、`User::factory()->create()` が返す**インスタンスに `role` 属性が載らない**（DB 側の既定値は INSERT 後に再取得しない限りモデルへ反映されない）。この状態で `$user->role` を読むと enum キャストが効かず `null` が返り、後述のモデルテスト「enum キャストの確認」が `Failed asserting that null is identical to an object of class "App\Enums\UserRole".` で落ちる
 - **`Book` ファクトリの既定は「在庫満杯」（`available_copies` = `total_copies`）にすること**。`fake()->numberBetween()` を 2 つ独立に呼ぶと CHECK 制約違反で `QueryException` になり、`available_copies` に 0 を許すと `Lending::factory()` が連鎖生成した書籍の承認が在庫チェックに弾かれて**確率的に落ちるテスト**になる。ファクトリの既定は「素直に使って通る値」とし、在庫切れの検証用に `outOfStock()` state（`available_copies = 0`）を用意して異常系はテスト側で明示する
   - **`available_copies` はローカル変数ではなくクロージャで `$attributes['total_copies']` から導出すること。**

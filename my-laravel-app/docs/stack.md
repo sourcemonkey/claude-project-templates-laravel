@@ -57,9 +57,9 @@ Alpine.js は Livewire に同梱されるため、別途 npm パッケージと�
 > 確認ダイアログが出ないまま削除・却下・返却が実行される**。削除確認等のフォームは
 > 必ず `<form x-data x-on:submit="...">` の形にすること（`layouts/app.blade.php` を使う
 > `lendings/show` の返却フォームでも、`@livewireScripts` を持つ管理画面でも、いずれも
-> `x-data` が無ければ発火しない。Phase 3 のトライアルで Dusk が
-> `Waited 5 seconds for dialog.` で失敗して判明）。ナビの `x-data="{ open: false }"` は
-> nav 要素にスコープされるため、その外側にあるフォームには効かない。
+> `x-data` が無ければ発火しない。Dusk は `Waited 5 seconds for dialog.` で失敗する）。
+> ナビの `x-data="{ open: false }"` は nav 要素にスコープされるため、その外側にある
+> フォームには効かない。
 
 > **Livewire は v3 系を使う。** 上流の最新は v4 系だが、`breeze:install livewire` が
 > `composer require livewire/livewire:^3.6.4` を実行して制約を書き込むため

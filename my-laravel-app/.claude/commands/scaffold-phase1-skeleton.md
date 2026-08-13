@@ -89,7 +89,7 @@ grep '"laravel/framework"' tmp-skeleton/composer.json
 
 > **なぜ確認が要るか**: `laravel new` には**バージョン指定オプションが無く**、常にその時点の
 > `laravel/laravel` の最新安定版を取得する。Laravel はメジャーリリースを毎年 ~Q1 に出すため
-> （13 は 2026-03-17、14 は 2027 Q1 見込み）、14 のリリース以降は同じコマンドが 14 を生成する。
+> 14 のリリース以降は同じコマンドが 14 を生成する。
 > 本テンプレートの `docs/` 一式は Laravel 13 系を前提に書かれており、検証せずに進むと記述と
 > 生成物がずれたまま後段が失敗して原因の特定に時間がかかる。
 >
@@ -203,7 +203,7 @@ composer require --dev larastan/larastan laravel/dusk laravel-lang/lang laravel/
 
   > **重要（`tests/Pest.php` を先に並べ替える）**: Dusk 8.6 の `dusk:install` は `pest()->extend(Tests\DuskTestCase::class)->in('Browser');` を `tests/Pest.php` の**先頭**（`use` 文より前）に完全修飾名で挿入する。この状態で Step 9 の Pint を掛けると `fully_qualified_strict_types` / `ordered_imports` が短縮名 + `use` 文へ書き換え、`use Tests\DuskTestCase;` が `pest()->extend(DuskTestCase::class)` の**後ろ**に置かれる。Pest は `pest()->extend()` をブートストラップ段階で評価するため、`php artisan test` が `The class DuskTestCase was not found.` で失敗する。
   >
-  > **`dusk:install` の直後に**、挿入されたブロックを `use` 文の**後ろ**へ移し、短縮名 + `use Tests\DuskTestCase;` の形に直しておくこと。こうしておけば Pint はこのファイルを一切書き換えず（トライアルで確認済み）、Step 9 での手戻りが発生しない:
+  > **`dusk:install` の直後に**、挿入されたブロックを `use` 文の**後ろ**へ移し、短縮名 + `use Tests\DuskTestCase;` の形に直しておくこと。こうしておけば Pint はこのファイルを一切書き換えず、Step 9 での手戻りが発生しない:
   > ```php
   > use Illuminate\Foundation\Testing\RefreshDatabase;
   > use Tests\DuskTestCase;
@@ -348,7 +348,7 @@ public function boot(): void
 
 `php artisan dev:list` を実行し、`queue` が消えて `server` / `logs` / `vite` の 3 つになることを確認する。
 
-> **`composer.json` の `dev` を `concurrently` 直書きへ戻さないこと。** 2026-08-12 のトライアルまで、本手順は「`dev` スクリプトから `queue:listen` の要素を削除する」と書かれていたが、**削除対象の文字列がそもそも存在せず適用できなかった**。上流の既定へ書き戻す形にすると同じ陳腐化を繰り返す。
+> **`composer.json` の `dev` を `concurrently` 直書きへ戻さないこと。** 以前の本手順は「`dev` スクリプトから `queue:listen` の要素を削除する」と書かれていたが、**削除対象の文字列がそもそも存在せず適用できなかった**。上流の既定へ書き戻す形にすると同じ陳腐化を繰り返す。
 
 **`scripts.setup`**: 本プロジェクトは DB を Docker で動かし、かつ Seeder 込みで「最初から動く状態」にするため、既定の生成物（Laravel Framework 13.20.0 で確認）に次の 3 点を変更する:
 

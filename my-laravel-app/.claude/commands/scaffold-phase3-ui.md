@@ -286,8 +286,7 @@ Action・Policy・Controller・Livewire コンポーネントの実装が完了�
 vendor/bin/pint
 ```
 
-**パスを列挙して渡さないこと。** 触ったディレクトリを書き漏らす（Phase 3 のトライアルで
-`app/Models` が漏れた）うえ、`bootstrap` を明示指定すると、**引数なしなら除外される
+**パスを列挙して渡さないこと。** 触ったディレクトリを書き漏らすうえ、`bootstrap` を明示指定すると、**引数なしなら除外される
 `bootstrap/cache/*.php`**（Laravel が生成するキャッシュ）まで整形対象に入る。
 
 ## このフェーズの完了基準
