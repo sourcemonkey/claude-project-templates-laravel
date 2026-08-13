@@ -60,6 +60,13 @@ def comma:
 
 def pad2: tostring | if length < 2 then "0" + . else . end;
 
+# 密度（ツール数 / 呼び出し数）。桁を揃えるため常に小数第 2 位まで出す
+def dens($t; $c):
+    if $c == 0 then "-"
+    else ($t / $c * 100 | round) as $x
+        | (($x / 100 | floor) | tostring) + "." + (($x % 100) | pad2)
+    end;
+
 def hms:
     if . == null then "-"
     else (. | floor) as $s
@@ -69,7 +76,7 @@ def hms:
 # 2026-08-05T11:44:27.010Z のようなミリ秒付きは fromdateiso8601 が受け付けない
 def ts2num: sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601;
 
-def zero: {calls: 0, input: 0, cc: 0, cr: 0, out: 0, peak: 0, first: null, last: null};
+def zero: {calls: 0, tools: 0, input: 0, cc: 0, cr: 0, out: 0, peak: 0, first: null, last: null};
 
 def add($u; $t):
     ((($u.input_tokens | n) + ($u.cache_creation_input_tokens | n) + ($u.cache_read_input_tokens | n)) as $ctx
@@ -83,7 +90,8 @@ def add($u; $t):
     | .last = (if .last == null then $t else ([.last, $t] | max) end));
 
 def cell($a): [
-    ($a.calls | comma), ($a.input | comma), ($a.cc | comma), ($a.cr | comma),
+    ($a.calls | comma), ($a.tools | comma), dens($a.tools; $a.calls),
+    ($a.input | comma), ($a.cc | comma), ($a.cr | comma),
     ($a.out | comma), (($a.input + $a.cc + $a.cr + $a.out) | comma), ($a.peak | comma)
 ];
 
@@ -100,6 +108,15 @@ def cell($a): [
         | (if (.acc | has($c)) then . else .acc[$c] = zero | .labels += [$c] end)
         | .acc[$c] |= add($r.message.usage; ($r.timestamp | ts2num))
      end)
+
+    # ツール呼び出しは usage と違い、同一 message.id の別行に分かれて載る。
+    # 重複排除の内側で数えると 1 行目のぶんしか拾えないため外で数える。
+    | ([$r.message.content[]? | select(.type == "tool_use")] | length) as $nt
+    | (if $nt > 0 then
+          .cur as $c
+          | (if (.acc | has($c)) then . else .acc[$c] = zero | .labels += [$c] end)
+          | .acc[$c].tools += $nt
+       else . end)
 
     # マーカーは同一 message.id の別行に載ることがあるので重複排除の外で見る
     | ([$r.message.content[]? | select(.type == "text") | .text] | join("\n")) as $text
@@ -120,13 +137,14 @@ def cell($a): [
 | ($phases + ($st.labels | map(select(startswith("Phase") | not)))) as $order
 | ($st.acc | to_entries | map(.value)
    | reduce .[] as $a (zero;
-        .calls += $a.calls | .input += $a.input | .cc += $a.cc | .cr += $a.cr
+        .calls += $a.calls | .tools += $a.tools
+        | .input += $a.input | .cc += $a.cc | .cr += $a.cr
         | .out += $a.out | .peak = ([.peak, $a.peak] | max)
         | .first = (if .first == null then $a.first else ([.first, $a.first] | min) end)
         | .last = (if .last == null then $a.last else ([.last, $a.last] | max) end))) as $total
 
-| "| 区間 | API 呼び出し | input | cache 作成 | cache 読取 | output | 合計 | ピーク文脈 | 経過 |",
-  "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+| "| 区間 | API 呼び出し | ツール | 密度 | input | cache 作成 | cache 読取 | output | 合計 | ピーク文脈 | 経過 |",
+  "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
   ($order[] as $l
    | ($st.acc[$l] // zero) as $a
    | ($st.spans[$l] // {}) as $sp
