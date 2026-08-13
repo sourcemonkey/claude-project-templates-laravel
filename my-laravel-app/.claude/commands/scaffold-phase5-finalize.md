@@ -170,7 +170,7 @@ Phase 1 で調整済みの `composer.json` の `setup` スクリプト（`compos
 4. `php artisan migrate --seed --force`
 5. `npm install --ignore-scripts` / `npm run build`
 
-Phase 5 では Seeder が実装済みのため、`docs/seeds.md` のサンプルデータが実際に投入されることまで確認する（Phase 1 の確認では Seeder が空だった）。
+Phase 5 では Seeder が実装済みのため、`docs/seeds.md` のサンプルデータが実際に投入されることまで確認する。
 
 ### 4. README.md の作成
 

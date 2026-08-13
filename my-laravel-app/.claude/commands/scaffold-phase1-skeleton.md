@@ -169,8 +169,6 @@ composer require --dev larastan/larastan laravel/dusk laravel-lang/lang laravel/
 > - Breeze の後に `composer require livewire/livewire`（制約なし）→ Breeze が書いた
 >   `^3.6.4` を**上書きして v4 系が入り**、`docs/stack.md` の想定から外れる
 
-> **注意**: 当初 `enlightn/enlightn` を予定していたが、Laravel 13.x に対応するバージョンが存在しない（`laravel/framework ^9.0|^10.0|^11.0` までのサポート）ため `larastan/larastan`（PHPStan の Laravel 版）に変更した。詳細は `docs/stack.md` 参照。
-
 > **補足（spatie/laravel-query-builder は v7 系で解決される）**: v7 の `allowedFilters()` / `allowedSorts()` は**可変長引数のみ**を受け取り、v6 までの配列渡しは `TypeError` になる。Phase 3 で使うときの書き方は `docs/architecture.md` の Model セクション参照。
 
 ### 6. 各種初期化
@@ -340,7 +338,7 @@ public function boot(): void
 
 `php artisan dev:list` を実行し、`queue` が消えて `server` / `logs` / `vite` の 3 つになることを確認する。
 
-> **`composer.json` の `dev` を `concurrently` 直書きへ戻さないこと。** 以前の本手順は「`dev` スクリプトから `queue:listen` の要素を削除する」と書かれていたが、**削除対象の文字列がそもそも存在せず適用できなかった**。上流の既定へ書き戻す形にすると同じ陳腐化を繰り返す。
+> **`composer.json` の `dev` を `concurrently` 直書きへ戻さないこと。** 上流の既定へ書き戻す形にすると、次に `laravel new` の既定が変わったときに同じ陳腐化を繰り返す。
 
 **`scripts.setup`**: 本プロジェクトは DB を Docker で動かし、かつ Seeder 込みで「最初から動く状態」にするため、既定の生成物（Laravel Framework 13.20.0 で確認）に次の 3 点を変更する:
 

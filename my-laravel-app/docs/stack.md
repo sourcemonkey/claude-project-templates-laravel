@@ -124,8 +124,6 @@ Laravel 14 以降で 13 系を生成する手順は `docs/decisions.md` にま�
 
 `factory_bot` 相当は Laravel 標準の Model Factory（`database/factories/`）、`faker` 相当は `fakerphp/faker`（Laravel の依存関係に標準で含まれる）を使う。追加インストール不要。
 
-> **注意**: 当初 `enlightn/enlightn`（セキュリティ・パフォーマンス静的解析）の採用を検討していたが、Laravel 13.x に対応するバージョンが存在しない（最新の v2.10.0 でも `laravel/framework ^9.0|^10.0|^11.0` までのサポート）ため、型・コード品質の静的解析ツールである `larastan/larastan` に変更した。Enlightn が提供していた Laravel 特化のセキュリティ・パフォーマンスチェック（本番での `APP_DEBUG` 有効化検知等）は代替ツールがないため、`team-rules/security.md` のチェックリストに沿った手動レビューでカバーする。
-
 ## メール確認（letter_opener 相当）
 
 追加コンテナを増やさない方針のため、開発環境では `MAIL_MAILER=log` を使う。送信されたメールの内容は `storage/logs/laravel.log` に出力される。`php artisan pail` でリアルタイムにログを追えるため、実質的に letter_opener に近い確認体験になる。
@@ -171,7 +169,7 @@ Laravel 標準の Queue（database ドライバ）・Cache（database/file ド�
 
 開発サーバーは `laravel new` 既定の `composer.json` の `dev` スクリプト（`composer run dev`）で起動する。**同内容の自前スクリプト（`bin/dev` 等）は作らない**（`composer.json` 側との二重管理になるため）。
 
-**Laravel 13.17 以降、`dev` スクリプトは `@php artisan dev` への委譲になっている**（それ以前は `concurrently` の直書きだった）。起動するプロセスは `Illuminate\Foundation\DevCommands::registerDefaults()` が登録する 4 つ — `server`（`artisan serve`）/ `queue`（`queue:listen`）/ `logs`（`pail`）/ `vite`（`npm run dev`）。
+**Laravel 13.17 以降、`dev` スクリプトは `@php artisan dev` への委譲になっている。** 起動するプロセスは `Illuminate\Foundation\DevCommands::registerDefaults()` が登録する 4 つ — `server`（`artisan serve`）/ `queue`（`queue:listen`）/ `logs`（`pail`）/ `vite`（`npm run dev`）。
 
 本プロジェクトは Queue を使わない方針（前述）に従い、**`queue` だけを除外する**。除外は `composer.json` ではなく `app/Providers/AppServiceProvider.php` の `boot()` で行う:
 
