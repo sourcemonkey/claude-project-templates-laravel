@@ -106,6 +106,20 @@ Route::middleware('auth')->group(function () {
   同じ理由で `docs/seeds.md` の `UserSeeder` も `firstOrCreate()` の第 2 引数に
   `role` を渡さない。
 
+### CRUD 後のリダイレクト先（実装ブレ防止のため固定）
+
+上の「エンドポイント詳細」で成功時を明記していない操作は、下表に従う。
+
+| 操作 | 成功時 |
+|---|---|
+| 蔵書の作成・更新・削除 | `redirect()->route('admin.books.index')` |
+| カテゴリ・タグの作成・更新・削除 | `back()`（フォームが一覧画面内にあるため、絞り込み条件を保ったまま戻す） |
+| プロフィール更新 | `redirect()->route('profile.edit')` |
+| ロール変更（`PATCH /admin/users/{user}`） | `back()` |
+
+いずれも `with('status', ...)` でフラッシュを添える。**Phase 4 の Feature テストが
+`assertRedirect()` でここを検証する**ため、実装時に変えないこと。
+
 ### `PATCH /notifications/{notification}/read`
 
 - 認証: 要ログイン、本人のみ

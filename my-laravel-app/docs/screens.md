@@ -12,10 +12,10 @@
 
 | パス | 画面名 | 概要 |
 |---|---|---|
-| `GET /books` | 蔵書一覧 | 検索 / ページネーション / タグ・カテゴリで絞り込み（Livewire コンポーネント）。**`published = true` の書籍のみ**（下記）。検索欄に出すのは `title` / `author` / カテゴリ / タグの 4 つ（`docs/db-schema.md` の `allowedFilters` にはこれ以外も並ぶが、UI に出すのはこの 4 つに固定する） |
+| `GET /books` | 蔵書一覧 | 検索 / ページネーション / タグ・カテゴリで絞り込み（Livewire コンポーネント `App\Livewire\Books\BookList`）。**`published = true` の書籍のみ**（下記）。検索欄に出すのは `title` / `author` / カテゴリ / タグの 4 つ（`docs/db-schema.md` の `allowedFilters` にはこれ以外も並ぶが、UI に出すのはこの 4 つに固定する） |
 | `GET /books/{book}` | 蔵書詳細 | 在庫数表示、借用申請ボタン。**`published = false` は 404**（下記） |
 | `POST /lendings` | 借用申請 | 詳細画面から POST |
-| `GET /lendings` | 自分の貸出一覧 | 状態フィルタ（Livewire コンポーネント） |
+| `GET /lendings` | 自分の貸出一覧 | 状態フィルタ（Livewire コンポーネント `App\Livewire\Lendings\LendingList`） |
 | `GET /lendings/{lending}` | 自分の貸出詳細 | 返却ボタン |
 | `PATCH /lendings/{lending}/return` | 返却操作 | state を Returned に |
 | `GET /notifications` | 通知一覧 | 未読/既読切替 |
@@ -69,7 +69,7 @@ URL プレフィックス: `/admin/`
 | `GET /admin/books/{book}/edit` | 蔵書編集 | |
 | `PATCH /admin/books/{book}` | 蔵書更新 | |
 | `DELETE /admin/books/{book}` | 蔵書削除 | |
-| `GET /admin/lendings` | 貸出申請一覧 | 状態フィルタ（Livewire コンポーネント） |
+| `GET /admin/lendings` | 貸出申請一覧 | 状態フィルタ（Livewire コンポーネント `App\Livewire\Admin\Lendings\LendingList`） |
 | `GET /admin/lendings/{lending}` | 貸出詳細 | 承認・却下ボタン |
 | `PATCH /admin/lendings/{lending}/approve` | 申請承認 | |
 | `PATCH /admin/lendings/{lending}/reject` | 申請却下 | |
@@ -127,6 +127,11 @@ URL プレフィックス: `/admin/`
 ## 画面共通の作法
 
 - 一覧画面はページネーション（Laravel 標準の `paginate(25)`）。
+- **Livewire コンポーネントにするのは、上表で「（Livewire コンポーネント）」と明記した 3 画面だけ。**
+  それ以外の一覧（`/admin/books` / `/admin/users` / `/admin/categories` / `/admin/tags` /
+  `/admin/audit-logs`）は Controller + Blade で作り、検索条件はクエリ文字列で受ける
+  （`QueryBuilder` が `request()` から読む）。クラス名は上表の指定に従う — **Phase 4 の
+  `Livewire::test()` がこの名前を直接参照する**。
 - 検索フォームは Spatie Query Builder（`QueryBuilder::for(Model::class)->allowedFilters([...])`）。
 - 削除は確認ダイアログ必須。Livewire コンポーネント内は `wire:confirm="削除しますか？"`（Livewire v3 標準機能）、非 Livewire のフォームは Alpine.js で `<form x-data x-on:submit="confirm('削除しますか？') || $event.preventDefault()">` のように実装する。**`x-data` を必ず付けること**（空でよい）。Alpine v3 は `x-data` スコープ内の要素しか `x-on:` ディレクティブを処理しないため、`x-data` の無い素の `<form x-on:submit>` は Alpine に**エラーも出さず無視され、確認なしで削除が実行される**。これは Livewire 経由で Alpine が読み込まれていても起きる（Alpine の読み込み有無とは別問題）。
 - フラッシュメッセージは画面上部、Tailwind の色でステータス表示（`session('status')` = 緑、`session('error')` = 赤）。

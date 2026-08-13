@@ -271,7 +271,7 @@ $browser->waitUntil("document.querySelector('form[x-data]')?._x_dataStack !== un
 > Book::factory()->count(30)->create(['published' => true]);
 > $this->actingAs($member);
 >
-> Livewire::test(BookSearch::class)
+> Livewire::test(BookList::class)
 >     ->assertViewHas('books', fn ($books) => $books->count() === 25 && $books->total() === 30)
 >     ->call('gotoPage', 2)
 >     ->assertViewHas('books', fn ($books) => $books->count() === 5);
@@ -298,7 +298,7 @@ $browser->waitUntil("document.querySelector('form[x-data]')?._x_dataStack !== un
 > **Livewire コンポーネントには `WithPagination` トレイトを付けること。** 付け忘れると、
 > 2 ページ目を開いた状態で検索条件を変えたときに**ページ番号がリセットされず「該当なし」に
 > なる**。この不具合は 1 ページ目しか見ないテストでは検出できないため、
-> `Livewire::test(BookSearch::class)->call('gotoPage', 2)->set('title', ...)` のように
+> `Livewire::test(BookList::class)->call('gotoPage', 2)->set('title', ...)` のように
 > ページ送り後の絞り込みも 1 件検証しておく。
 
 **各画面がデータなしでも 200 を返すことを確認する Feature テスト**（完了基準の
