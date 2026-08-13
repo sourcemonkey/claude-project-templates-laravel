@@ -299,20 +299,12 @@ DB_PASSWORD=app_password
 
 `.env` はテンプレート同梱の `.gitignore` で除外済み。`.env.example` は git 管理対象に含める（`APP_KEY=` は空のままにしておく）。**`.env` に加えた変更（`DB_*` / `APP_LOCALE` / `APP_FAKER_LOCALE` / `MAIL_FROM_ADDRESS`）は `.env.example` にも同じく反映する**（`team-rules/security.md` の「`.env.example` をリポジトリに含めて同期する」）。
 
-> **注意: `APP_URL` も `.env.example` 側を `http://localhost:8000` に揃えること**
->
-> `laravel new` は `.env` にだけ `APP_URL=http://localhost:8000` を書き込み、`.env.example` は
-> 素の `APP_URL=http://localhost`（ポートなし＝80 番）のまま残す。**この差は Installer が
-> 生成時に付けるもので、手を入れないと `.env.example` 側だけがずれる。**
->
-> 放置すると、リポジトリを新規クローンして `composer run setup` した利用者の `.env` は
-> `.env.example` からコピーされるため `APP_URL=http://localhost` になる。一方 `composer run dev`
-> の `php artisan serve` が listen するのは 8000 番なので、`url()` / `route()` が組み立てる
-> 絶対 URL（パスワード再発行メールのリンク等）が到達しないポートを指す。Phase 4 の Dusk は
-> `.env` から `.env.dusk.local` を作るため表面化しないぶん、発見が遅れる。
->
-> `APP_KEY` だけは例外で、`.env.example` では空のままにする（秘密情報をコミットしないため）。
-> それ以外の行は `diff .env .env.example` の差分が `APP_KEY` の 1 行だけになる状態を正とする。
+> **注意: `APP_URL` も同期対象。** `laravel new` のバージョンによっては `.env` だけが
+> `http://localhost:8000` になり、`.env.example` が `http://localhost`（80 番）のまま残る。
+> ずれたままクローンした利用者は `url()` / `route()` が 8000 番以外を指し、パスワード
+> 再発行メールのリンクが到達しなくなる。`APP_KEY` だけは `.env.example` を空のままにし、
+> **`diff .env .env.example` の差分が `APP_KEY` の 1 行だけ**になる状態を正とする
+> （`bin/check-repo.sh` が検査する）。
 
 > **注意: `DB_URL`（接続文字列方式）を `.env` に追加しないこと**
 >
