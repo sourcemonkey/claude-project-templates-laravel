@@ -460,7 +460,15 @@ composer require --dev "laravel/pao:^1.1.3" --no-interaction
       （`grep -n "^## Project Rules" docs/boost-guidelines.md` が無出力）
 - [ ] `CLAUDE.md` が `boost:install` に書き換えられていない（`git status` に現れないこと）
 - [ ] `composer.json` の `laravel/framework` が `^13.`（Step 3 の検証を通過している）
-- [ ] `composer.lock` がコミット対象に入っている
+- [ ] `composer.lock` が `.gitignore` で除外されていない（`git status --short -- composer.lock` が
+      `?? composer.lock` を返す）
+
+  > **「コミット済みであること」を基準にしない。** `team-rules/security.md` は
+  > `composer.lock` をコミットする方針だが、**本テンプレートのトライアルはフェーズ成果物を
+  > コミットしない**（`bin/reset-phase.sh` が git 管理外であることを前提に巻き戻すため）。
+  > ここで確かめるのは「追跡できる状態にあるか」＝ `.gitignore` の網羅漏れで
+  > 誤って除外されていないか、である。実際にコミットするのは、テンプレートから
+  > 起こした利用者のプロジェクト側の作業になる。
 - [ ] `composer.json` に `docs/stack.md` の「手動追加 ✅」パッケージがすべて記載
 - [ ] Laravel Breeze（Livewire スタック）/ laravel-lang / larastan / Dusk の初期化済み
 - [ ] `php artisan dusk:chrome-driver --detect` を実行済み（ホストの Chrome とバージョンが一致）
