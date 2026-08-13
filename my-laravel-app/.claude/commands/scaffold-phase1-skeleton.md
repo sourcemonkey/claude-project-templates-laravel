@@ -79,8 +79,7 @@ composer create-project laravel/laravel:^13.0 tmp-skeleton --remove-vcs --prefer
 
 > **`--no-scripts` を省略しないこと。** `laravel/laravel` の `post-create-project-cmd` は
 > `database/database.sqlite` を作って `migrate --graceful` を **SQLite に対して**実行する。
-> 本プロジェクトは MySQL なのでどちらも不要（`laravel new` も内部で `--no-scripts` を付け、
-> 必要な初期化だけを自分で実行している。後述の手順はそれを展開したもの）。
+> 本プロジェクトは MySQL なのでどちらも不要。
 
 生成完了後、`rsync` で全生成物（ドットファイル含む）を `my-laravel-app/` 直下へ配置し、一時ディレクトリを削除する:
 
@@ -144,9 +143,8 @@ composer remove pestphp/pest-plugin-drift --dev
 > `./` を付けた形や環境変数を前置した形（`PEST_NO_SUPPORT=true ./vendor/bin/pest ...`）は一致せず、
 > ヘッドレスでは承認待ちで止まる。
 
-> **`APP_URL` は自動では設定されない。** `laravel new` は生成後に `.env` の `APP_URL` を
-> `http://localhost:8000` へ書き換えていたが、`composer create-project` にその処理は無い。
-> Step 7 で `.env` / `.env.example` の両方を揃えること。
+> **`APP_URL` は自動では設定されない。** Step 7 で `.env` / `.env.example` の両方を
+> `http://localhost:8000` に揃えること。
 
 ### 4. config/database.php の調整
 
