@@ -121,6 +121,13 @@ while [ "$phase" -le "$TO" ]; do
             echo "  報告より前に出力したため、報告作成分の消費が計測から漏れています" >&2
             echo "  （prompts/trial-phase.md「フェーズごとのトークン計測」参照）。" >&2
         fi
+        # トークン表は bin/phase-tokens.sh の出力をそのまま貼る決まり。合計行が無ければ
+        # 途中で切って貼っている（フェーズ以外の区間が報告から消える）。
+        if grep -q "^| 区間 | API 呼び出し" "$log" && ! grep -q "^| \*\*合計\*\* |" "$log"; then
+            echo "⚠ Phase $phase: トークン表に合計行がありません（加工して貼っています）。" >&2
+            echo "  bin/phase-tokens.sh の出力はそのまま貼ってください" >&2
+            echo "  （prompts/trial-phase.md 手順 8 の「フェーズ別のトークン消費」）。" >&2
+        fi
         echo "===== Phase $phase 完了 $(date '+%H:%M:%S') ====="
         echo
         phase=$((phase + 1))
