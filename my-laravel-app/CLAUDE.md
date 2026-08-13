@@ -6,25 +6,20 @@
 ## 仕様ドキュメント
 
 @docs/stack.md  
-@docs/architecture.md  
 @docs/db-schema.md  
 @docs/screens.md  
 @docs/api-spec.md  
 
-次の 2 つは**意図的に `@` 参照していない**。読む場面が限られる一方、`@` を付けると
+**次のものは意図的に `@` 参照していない。** 読む場面が限られる一方、`@` を付けると
 全セッションの文脈に常時載り、以降のすべての API 呼び出しで再送されるため。
-**必要になった時点で Read すること。**
+**下表の場面に当たったら、その時点で Read すること。**
 
 | ファイル | 読むべき場面 |
 |---|---|
-| `docs/seeds.md` | Seeder の実装（Phase 5）と、投入済みサンプルデータの件数・値を前提にする作業 |
+| `docs/architecture.md` | **Controller / Action / Policy / Livewire を追加・変更するとき**（レイヤの責務・トランザクション境界・認可エラーの挙動が一次情報） |
+| `docs/seeds.md` | Seeder の実装と、投入済みサンプルデータの件数・値を前提にする作業 |
+| `docs/boost-guidelines.md` | Laravel エコシステムの一般規約を確かめたいとき。**上記 `docs/*.md` と `team-rules/` が優先し、Boost のガイドラインはそれらが触れていない領域を補完する位置づけ**（Laravel Boost が Phase 1 で生成するため、それ以前は存在しない） |
 | `docs/decisions.md` | 技術選定の理由を確かめるとき、採用しなかった選択肢へ変更を検討するとき |
-
-Laravel エコシステムの一般的な規約は Laravel Boost が生成する次のファイルにある（Phase 1 で
-生成されるため、それ以前は存在しない）。**上記 `docs/*.md` と `team-rules/` が優先し、Boost の
-ガイドラインはそれらが触れていない領域を補完する位置づけ**とする。
-
-@docs/boost-guidelines.md  
 
 ## このプロジェクトでの作業方針
 

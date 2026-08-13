@@ -58,12 +58,13 @@ PHP 8.4.23 / Laravel 13 向けに移植したものです。フェーズ分割�
     │       └── initdb/          ← 初回起動時に bookkeeper / bookkeeper_test を作成
     ├── docs/                    ← 仕様ドキュメント
     │   ├── stack.md             ← 技術スタック
-    │   ├── architecture.md      ← レイヤ設計
+    │   ├── architecture.md      ← レイヤ設計（CLAUDE.md から @ 参照しない。Phase 3・4 で読む）
     │   ├── db-schema.md         ← DB スキーマ
     │   ├── screens.md           ← 画面構成
     │   ├── api-spec.md          ← ルーティング・認可
     │   ├── seeds.md             ← 初期データ（CLAUDE.md から @ 参照しない。Phase 5 で読む）
-    │   └── decisions.md         ← 技術選定の経緯（CLAUDE.md から @ 参照しない。必要時のみ読む）
+    │   ├── decisions.md         ← 技術選定の経緯（CLAUDE.md から @ 参照しない。必要時のみ読む）
+    │   └── boost-guidelines.md  ← Boost が生成（Phase 1 の生成物・.gitignore 済み。@ 参照しない）
     └── .claude/
         ├── settings.json        ← Claude Code の権限設定（共有用）
         └── commands/            ← フェーズ別スラッシュコマンド

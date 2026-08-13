@@ -6,6 +6,10 @@ description: フェーズ3 - Controller / View / Policy を生成し UI を完�
 
 `docs/screens.md` と `docs/api-spec.md` に従って画面と認可を構築する。ルーティング・エンドポイント・認可マトリクスは `docs/api-spec.md`、画面構成は `docs/screens.md` が一次情報。
 
+> **着手前に `docs/architecture.md` を Read すること。** レイヤの責務・`ActionResult` の形・
+> 認可エラーの挙動・Policy の書き方が一次情報だが、`CLAUDE.md` から `@` 参照していないため
+> 自動では文脈に入っていない。
+
 > **実行場所**: 本手順書のコマンドは、断りが無い限りすべて **`my-laravel-app/` をカレント**として
 > 書かれている。Bash ツールのカレントは呼び出しをまたいで持続するので、**最初に一度だけ**
 > `cd my-laravel-app` し、以降は移動しない（ルートにも別物の `bin/` があり、そこから

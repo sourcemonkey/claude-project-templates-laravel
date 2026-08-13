@@ -8,6 +8,10 @@ Phase 3 で実装した画面・認可・Action が `docs/` の定めどおり�
 検証すべき振る舞いの一次情報は `docs/screens.md` / `docs/api-spec.md` / `docs/architecture.md`、
 実装側の設計判断は Phase 3 手順書（`.claude/commands/scaffold-phase3-ui.md`）にある。
 
+> **着手前に `docs/architecture.md` を Read すること。** レイヤの責務・`ActionResult` の形・
+> 認可エラーの挙動・Policy の書き方が一次情報だが、`CLAUDE.md` から `@` 参照していないため
+> 自動では文脈に入っていない。
+
 > **実行場所**: 本手順書のコマンドは、断りが無い限りすべて **`my-laravel-app/` をカレント**として
 > 書かれている。Bash ツールのカレントは呼び出しをまたいで持続するので、**最初に一度だけ**
 > `cd my-laravel-app` し、以降は移動しない（ルートにも別物の `bin/` があり、そこから

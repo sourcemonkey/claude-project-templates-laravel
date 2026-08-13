@@ -250,7 +250,7 @@ composer require --dev larastan/larastan laravel/dusk laravel-lang/lang laravel/
   ```
   生成物は 3 つ。いずれも `.gitignore` 済みで、`git status` には現れない:
   - `.mcp.json` — MCP サーバーの登録（`php artisan boost:mcp`）
-  - `docs/boost-guidelines.md` — AI ガイドライン。`CLAUDE.md` から `@` 参照で読み込まれる
+  - `docs/boost-guidelines.md` — AI ガイドライン。**`CLAUDE.md` から `@` 参照はしていない**（読む場面が限られるため。必要時に Read する）
   - `boost.json` — 導入状態の記録
 
   > **`--mcp --guidelines` を明示し、`--skills` は付けないこと。** Skills の出力先は
