@@ -127,11 +127,18 @@ composer require pestphp/pest pestphp/pest-plugin-laravel --no-update --dev
 composer update
 vendor/bin/pest --init
 composer require pestphp/pest-plugin-drift --dev
-vendor/bin/pest --drift
+vendor/bin/pest --no-output --no-progress --drift
 composer remove pestphp/pest-plugin-drift --dev
 ```
 
 `--drift` は `laravel/laravel` 同梱の PHPUnit 形式のテストを Pest 記法へ変換する。変換が済めば plugin は不要なので外す。
+
+> **`--no-output --no-progress` を省略しないこと。** `laravel/pao` は `CLAUDECODE` 等の
+> 環境変数でエージェント実行と判定すると、**すべての Pest 実行にこの 2 つを無条件で追記する**
+> （`vendor/laravel/pao/src/Drivers/Pest/Plugin.php`）。一方 `pest-plugin-drift` は `--drift` の
+> 後続引数を 0〜1 個しか許さないため、追記された 2 個と衝突して
+> `The [--drift] argument only accepts the directory to convert as argument.` で必ず失敗する。
+> **先に明示しておけば pao 側は追記しない**（`in_array` で重複を避けるため）。
 
 > **`./vendor/bin/pest` と書かないこと。** 許可リストは `Bash(vendor/bin/pest*)` の前置一致なので、
 > `./` を付けた形や環境変数を前置した形（`PEST_NO_SUPPORT=true ./vendor/bin/pest ...`）は一致せず、
