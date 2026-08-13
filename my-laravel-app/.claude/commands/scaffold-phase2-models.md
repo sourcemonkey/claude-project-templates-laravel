@@ -261,6 +261,8 @@ php artisan migrate
 - `books` の CHECK 制約（`available_copies` の範囲違反で `QueryException`）
 - 削除時の挙動（`restrictOnDelete` で `QueryException`、`cascadeOnDelete` で連動削除されること）
 - `role` が Mass assignment されないこと（`User::create()` に `role` を渡しても `Member` のままであること）
+  - **`create()` 直後のインスタンスから `role` を読まない。** fillable が `role` を捨てるため属性が載らず、
+    DB 側の `default(0)` も再取得するまで反映されないので `null` が返る。`->fresh()` を挟んでから確認する
 - **`Lending` の遷移メソッド**（`approve()` / `reject()` / `returnBook()`）の正常系と、不正な遷移元で `DomainException` が送出されること（Phase 3 の Action がこれらに直接依存する）
 
 **各観点につき、該当するモデルごとに最低 1 件書く**（観点が当てはまらないモデルは飛ばす）。上限は設けない。
