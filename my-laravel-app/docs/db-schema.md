@@ -132,7 +132,7 @@ audit_logs (独立、polymorphic 相当のカラム構成)
 | target_type | string | NOT NULL |
 | target_id | bigint | NOT NULL |
 | action | string | NOT NULL（例: `create`, `update`, `delete`, `approve`） |
-| changes_json | json | nullable |
+| changes_json | json | nullable。`{カラム名: [変更前, 変更後]}` の形で書く（値が無かった側は `null`）。サンプルは `docs/seeds.md` の監査ログ 3 件 |
 | created_at | timestamp | NOT NULL |
 
 > 監査ログは不変レコードのため `updated_at` を持たない。マイグレーションでは `$table->timestamps()` を使わず `$table->timestamp('created_at')->useCurrent();` と明示すること。

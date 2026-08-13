@@ -30,7 +30,10 @@ Laravel 本体はホスト側で動き、`127.0.0.1:3306` 経由でコンテナ�
 
 - HTTP リクエストの受付と Response 返却のみ。
 - Form Request（`app/Http/Requests/`）で入力をバリデーション・ホワイトリスト化。
-- Policy で認可チェック（`$this->authorize($ability, $model)`）。Laravel 11 以降の
+- Policy で認可チェック（`$this->authorize($ability, $model)`）。**ただし `admin`
+  ミドルウェアで守られ、対応する Policy を持たないアクションでは呼ばない**
+  （`Admin\DashboardController::index()` が該当。単一モデルに紐づかないため
+  アビリティを定義できない）。Laravel 11 以降の
   `app/Http/Controllers/Controller.php` は `AuthorizesRequests` トレイトを持たないため、
   基底 Controller に `use Illuminate\Foundation\Auth\Access\AuthorizesRequests;` を
   取り込んでおく（無いと `$this->authorize()` が「未定義メソッド」で落ちる）。
@@ -102,7 +105,10 @@ Laravel 本体はホスト側で動き、`127.0.0.1:3306` 経由でコンテナ�
 
 ### Policy (`app/Policies/`)
 
-- リソースごとに `XxxPolicy` を 1 ファイル。
+- リソースごとに `XxxPolicy` を 1 ファイル。**作成するのは次の 7 つ**:
+  `BookPolicy` / `CategoryPolicy` / `TagPolicy` / `LendingPolicy` / `UserPolicy` /
+  `NotificationPolicy` / `AuditLogPolicy`。`NotificationPolicy` は `docs/api-spec.md` の
+  「通知の閲覧・既読化は本人のみ」を表現するために要る（`update` で `user_id` の一致を見る）。
 - `viewAny`, `view`, `create`, `update`, `delete` を定義。
 - 一覧の絞り込み（例: 一般ユーザーは自分の貸出のみ閲覧）は Policy ではなく**クエリ側**で表現する（Laravel の Policy には Pundit の `Scope` 相当の仕組みがないため）。
 
