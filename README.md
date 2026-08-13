@@ -104,7 +104,6 @@ Laravel の生成物（`app/`・`composer.json`・`.env.example` など）が加
 |---|---|---|
 | PHP | 8.4.23 | `.tool-versions`（asdf / mise）で固定 |
 | Composer | 2.x | PHP パッケージ管理 |
-| Laravel Installer | 5.x | `laravel new` コマンド用（後述の「Laravel のバージョン方針」参照） |
 | Node.js | 24.x (Active LTS) | Vite ビルド用 |
 | Docker | 24.x 以上 | 開発用 MySQL の起動 |
 | Docker Compose | v2 (`docker compose`) | 同上 |
@@ -127,7 +126,7 @@ cd my-laravel-app && bin/doctor.sh
 
 検査するのは、PHP のバージョンと `zip` / `pcov` 拡張、Composer 2 系、Node.js のバージョンと
 バージョンマネージャの併存（`nodenv` / `nvm` が `.tool-versions` を無視する問題）、
-Laravel Installer、Docker デーモンと Compose v2、DB ポートの空き、DB ボリュームの衝突です。
+Docker デーモンと Compose v2、DB ポートの空き、DB ボリュームの衝突です。
 
 - **何も変更しません**（読み取りのみ）。ホストの PHP へ拡張を追加するような変更は、
   対処として案内するだけで実行はしません。何度実行しても結果が変わらないので、
@@ -162,33 +161,16 @@ cd my-laravel-app && bin/check-repo.sh
 の既定値に関する記述）も、`.claude/commands/` の手順書も、すべて 13 系の生成物に
 合わせています。
 
-一方 `laravel new` には**バージョン指定オプションがありません**。内部で
-`composer create-project laravel/laravel ...` を実行するため、取得されるのは
-**その時点の最新安定版**です。つまり「Installer が最新版であること」と
-「Laravel 13 が入ること」は本質的に別の話で、両者が一致しているのは
-Laravel 13 が最新である期間だけです。
+そのため Phase 1 はアプリの生成に **`composer create-project laravel/laravel:^13.0`** を使い、
+`laravel new`（Laravel Installer）は使いません。Installer にはバージョン指定オプションが無く、
+常にその時点の最新安定版を取得するため、Laravel 14 のリリース後は 14 が入ってしまうためです。
 
-Laravel はメジャーリリースを**毎年 ~Q1** に出します（公式の
-[Release Notes](https://laravel.com/docs/13.x/releases) に明記）。
-
-| バージョン | リリース日 | バグ修正終了 | セキュリティ修正終了 |
-|---|---|---|---|
-| 12 | 2025-02-24 | 2026-08-13 | 2027-02-24 |
-| **13**（本テンプレートの前提） | **2026-03-17** | Q3 2027 | 2028-03-17 |
-| 14 | **2027 Q1 見込み** | — | — |
-
-このため Phase 1（`/scaffold-phase1-skeleton`）は、`laravel new` の直後に
-`composer.json` の `laravel/framework` が `^13.` であることを検証し、
-異なる場合はその場で手順を中断します。**Laravel 14 のリリース後にこのテンプレートを
-実行すると、Phase 1 の Step 3 で停止します**。その時点で、13 にピン留めして
-使い続けるか（`composer create-project laravel/laravel:^13.0` へ切り替え）、
-テンプレート側を 14 対応へ更新するかを判断してください。手順は
-`my-laravel-app/.claude/commands/scaffold-phase1-skeleton.md` の Step 3 に記載しています。
+14 系へ移行する場合は、この制約と `my-laravel-app/docs/` の記述をあわせて更新してください。
 
 ### PHP バージョンを 2 箇所で固定している理由
 
 リポジトリ直下と `my-laravel-app/` 配下の両方に `.tool-versions` を置いています。
-Claude Code が `laravel new` や `composer require` などのコマンドを実行する際、
+Claude Code が `composer create-project` や `composer require` などのコマンドを実行する際、
 カレントディレクトリが `my-laravel-app/` の外側になるケースがあるためです。両方に
 同じバージョンを書いておけば、どちらのディレクトリで asdf / mise が動いても
 同じ PHP / Node.js が選ばれます。
@@ -318,7 +300,7 @@ Laravel アプリそのものなので、次のように再配置されます。
 | Pundit | Laravel Policy（標準機能） | 追加パッケージ不要 |
 | Ransack | Spatie Laravel Query Builder | クエリパラメータでの宣言的フィルタ・ソート |
 | Kaminari | Laravel 標準 `paginate()` | 追加パッケージ不要 |
-| RuboCop | Laravel Pint | `laravel new` の既定に含まれる |
+| RuboCop | Laravel Pint | `laravel/laravel` の既定に含まれる |
 | Brakeman | larastan/larastan | 静的解析（PHPStan の Laravel 版。Enlightn は Laravel 13.x 未対応のため不採用） |
 | Minitest + Capybara/Selenium | Pest + Laravel Dusk | システムテスト |
 | SimpleCov | PHPUnit/Pest の `--coverage-html`（PCOV ドライバ） | |

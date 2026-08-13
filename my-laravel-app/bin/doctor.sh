@@ -117,7 +117,7 @@ fi
 
 # ---- Composer ------------------------------------------------------------
 if ! command -v composer >/dev/null 2>&1; then
-    ng "Composer: 未インストール（laravel new が内部で composer create-project を呼ぶため必須）"
+    ng "Composer: 未インストール（アプリ生成の composer create-project に必須）"
     hint "https://getcomposer.org/download/ から 2 系を導入してください"
 else
     composer_ver="$(composer --version 2>/dev/null | awk '{ for (i = 1; i <= NF; i++) if ($i ~ /^[0-9]+\.[0-9]+/) { print $i; exit } }')"
@@ -157,15 +157,6 @@ else
                 hint "代替: 優先されているマネージャ側で $want_node を入れ、プロジェクトにローカルピン留めする" ;;
         esac
     fi
-fi
-
-# ---- Laravel Installer ---------------------------------------------------
-if command -v laravel >/dev/null 2>&1; then
-    ok "Laravel Installer（$(laravel --version 2>/dev/null | head -1)）"
-else
-    ng "Laravel Installer: 未インストール"
-    hint "composer global require laravel/installer"
-    hint "導入後 ~/.composer/vendor/bin（または ~/.config/composer/vendor/bin）に PATH を通してください"
 fi
 
 # ---- Docker --------------------------------------------------------------

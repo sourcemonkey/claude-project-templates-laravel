@@ -5,7 +5,7 @@
 | 項目 | バージョン | 備考 |
 |---|---|---|
 | PHP | 8.4.23 | `.tool-versions`（asdf / mise）で固定 |
-| Composer | 2.x 以上 | `laravel new` が内部で `composer create-project` を呼ぶため必須。バージョン差で成果物が変わらないため `.tool-versions` では固定しない |
+| Composer | 2.x 以上 | アプリの生成（`composer create-project`）と依存管理に使う。バージョン差で成果物が変わらないため `.tool-versions` では固定しない |
 | Laravel | 13.x | フルスタック構成 |
 | Node.js | 24.x (Active LTS) | `.tool-versions`（asdf / mise）で固定。Vite ビルド用 |
 | MySQL | 8.x | 開発は Docker (`compose.yaml`)、本番はマネージド |
@@ -21,7 +21,9 @@
 
 ## フレームワーク・主要パッケージ
 
-「手動追加」列が ✅ のパッケージは `laravel new` で自動追加されないため手動で `composer require` する。— は `laravel new`（Phase 1 の実行形は一時ディレクトリへの `laravel new tmp-skeleton --no-interaction --pest`。Laravel Installer 5.x はカレントディレクトリ指定と `--force` の併用を拒否するため、一時ディレクトリに生成して直下へ移動する。手順の詳細は `.claude/commands/scaffold-phase1-skeleton.md` 参照）で自動追加される、または PHP 標準拡張として利用する。
+「手動追加」列が ✅ のパッケージは手動で `composer require` する。— は `laravel/laravel` に既定で含まれる、または PHP 標準拡張として利用する。
+
+**アプリの生成は `composer create-project laravel/laravel:^13.0` で行う（`laravel new` は使わない）。** Installer にはバージョン指定オプションが無く、常に最新安定版を取得するため 13 系に固定できないことによる。一時ディレクトリへ生成して直下へ配置する手順の詳細は `.claude/commands/scaffold-phase1-skeleton.md` の Step 3 参照。
 
 | パッケージ | 用途 | 手動追加 | 種別 |
 |---|---|---|---|
@@ -44,7 +46,7 @@ Alpine.js は Livewire に同梱されるため、別途 npm パッケージと�
 > **エラーも出さずに無効化される**。削除確認（`x-on:submit="confirm(...) || ..."`）が
 > 効かなくなり、確認なしで削除が実行される。
 >
-> `resources/js/app.js` は `laravel new` の生成物では実質空で Alpine を import して
+> `resources/js/app.js` は生成物では実質空で Alpine を import して
 > いないため、この経路での補完も効かない。**Livewire コンポーネントを持たない画面が
 > ありうるレイアウトには `@livewireScripts` を明示的に書くこと**（本プロジェクトでは
 > `resources/views/layouts/admin.blade.php` が該当する。`layouts/app.blade.php` は
@@ -77,28 +79,28 @@ Alpine.js は Livewire に同梱されるため、別途 npm パッケージと�
 ### 公式スターターキット・公式プレイブックとの関係
 
 **本プロジェクトは公式スターターキット（Livewire / React / Vue）を採用せず、素の Laravel に
-Breeze を後入れする**（Phase 1 の `--no-interaction` がキット選択をスキップするのは意図した挙動）。
+Breeze を後入れする**（`composer create-project laravel/laravel` はキットを含まない素の構成を生成する）。
 また Laravel 公式がエージェント向けに配布するインストール手順（[laravel.com/for/agents](https://laravel.com/for/agents)）の
 プロンプトも使わない。
 
 **`composer.json` に Breeze があるのを「メンテナンスが止まったパッケージ」と判断して
-公式スターターキットへ差し替えないこと。** 判断の根拠、公式プレイブックとの項目別の差分、
-Laravel 14 以降で 13 系を生成する手順は `docs/decisions.md` にまとめてある。
+公式スターターキットへ差し替えないこと。** 判断の根拠と、公式プレイブックとの項目別の差分は
+`docs/decisions.md` にまとめてある。
 
 ### 開発・テスト用
 
 | パッケージ | 用途 | 手動追加 | 種別 |
 |---|---|---|---|
-| `laravel/pint` | Lint（コードスタイル） | — | `laravel new` の既定に含まれる |
-| `laravel/pao` | テストツール（pint / pest / phpstan）の実行結果を Agent 向けの JSON 1 行で出力する | — | `laravel new` の既定に含まれる |
+| `laravel/pint` | Lint（コードスタイル） | — | `laravel/laravel` の既定に含まれる |
+| `laravel/pao` | テストツール（pint / pest / phpstan）の実行結果を Agent 向けの JSON 1 行で出力する | — | `laravel/laravel` の既定に含まれる |
 | `larastan/larastan` | 静的解析（PHPStan の Laravel 版） | ✅ | `require-dev` |
-| `pestphp/pest` | テストフレームワーク | ✅（`--pest` オプションで導入） | `require-dev` |
-| `pestphp/pest-plugin-laravel` | Pest の Laravel 統合 | ✅（`--pest` に同梱） | `require-dev` |
-| `pestphp/pest-plugin-drift` | PHPUnit 記法から Pest 記法への変換 | ✅（`--pest` に同梱。Installer が変換に使う） | `require-dev` |
+| `pestphp/pest` | テストフレームワーク | ✅（Phase 1 で PHPUnit と入れ替える） | `require-dev` |
+| `pestphp/pest-plugin-laravel` | Pest の Laravel 統合 | ✅（Pest と同時に導入） | `require-dev` |
+| `pestphp/pest-plugin-drift` | PHPUnit 記法から Pest 記法への変換 | ✅（変換後に取り除く一時的な依存） | `require-dev` |
 | `laravel/dusk` | システムテスト（Capybara + Selenium 相当） | ✅ | `require-dev` |
 | `laravel/boost` | AI エージェント向けの MCP サーバー（DB スキーマ・ログ・ドキュメント検索）と AI ガイドライン生成 | ✅ | `require-dev` |
 
-> **`laravel/pao` は `^1.1.3` 以上に固定する**（Phase 1 の Step 8 で引き上げる）。`laravel new` の
+> **`laravel/pao` は `^1.1.3` 以上に固定する**（Phase 1 の Step 8 で引き上げる）。`laravel/laravel` の
 > 既定は `^1.0.6` だが、**v1.1.2 以前は全件パスでも `php artisan test` の終了コードが 1 になる**
 > （v1.1.3 / 2026-07-29 で解消）。本プロジェクトは完了基準をすべて終了コードで判定するため、
 > 下限を上げないと **green のテストを失敗と誤認する**。この制約を下げないこと。
@@ -130,11 +132,11 @@ Laravel 14 以降で 13 系を生成する手順は `docs/decisions.md` にま�
 
 ## ジョブ・キャッシュ・ブロードキャスト
 
-Laravel 標準の Queue（database ドライバ）・Cache（database/file ドライバ）・Broadcasting（Reverb）が
-`laravel new` で選択可能だが、**本プロジェクトでは現時点で利用しない**。
+Laravel 標準の Queue（database ドライバ）・Cache（database/file ドライバ）・Broadcasting（Reverb）は
+**本プロジェクトでは現時点で利用しない**。
 
 - 非同期ジョブ・キャッシュ・リアルタイム通信を必要とする機能は本フェーズでは作らない
-- ただし将来の拡張に備えて、`laravel new` が生成した Queue 関連のファイル・
+- ただし将来の拡張に備えて、生成された Queue 関連のファイル・
   マイグレーション（`jobs`, `job_batches`, `failed_jobs` テーブル）は**削除せずそのまま残す**
 - `CACHE_STORE` は development では `database`、test では `array` を使う（Laravel の既定に準拠）
 - メール送信（Breeze のパスワード再発行等）は同期送信で良い。
@@ -167,7 +169,7 @@ Laravel 標準の Queue（database ドライバ）・Cache（database/file ド�
 
 ## 開発サーバー起動（正規形）
 
-開発サーバーは `laravel new` 既定の `composer.json` の `dev` スクリプト（`composer run dev`）で起動する。**同内容の自前スクリプト（`bin/dev` 等）は作らない**（`composer.json` 側との二重管理になるため）。
+開発サーバーは `laravel/laravel` 既定の `composer.json` の `dev` スクリプト（`composer run dev`）で起動する。**同内容の自前スクリプト（`bin/dev` 等）は作らない**（`composer.json` 側との二重管理になるため）。
 
 **Laravel 13.17 以降、`dev` スクリプトは `@php artisan dev` への委譲になっている。** 起動するプロセスは `Illuminate\Foundation\DevCommands::registerDefaults()` が登録する 4 つ — `server`（`artisan serve`）/ `queue`（`queue:listen`）/ `logs`（`pail`）/ `vite`（`npm run dev`）。
 
@@ -182,12 +184,12 @@ DevCommands::except('queue');
 対象は `php artisan dev:list` で確認できる（除外後は `server` / `logs` / `vite` の 3 つ）。
 
 > **`composer.json` の `dev` を `concurrently` 直書きへ書き換えないこと。** 上流の既定から意図的に
-> 逸脱することになり、`php artisan dev` が持つ機能を手放したうえ、`laravel new` の既定が次に
+> 逸脱することになり、`php artisan dev` が持つ機能を手放したうえ、上流の既定が次に
 > 変わったときに再び陳腐化する。
 
 ## 初回セットアップ（正規形）
 
-初回セットアップも `laravel new` 既定の `composer.json` の `setup` スクリプト（`composer run setup`）を使う。**同内容の自前スクリプト（`bin/setup` 等）は作らない**（開発サーバー起動と同じ理由で、`composer.json` 側との二重管理になるため）。
+初回セットアップも `laravel/laravel` 既定の `composer.json` の `setup` スクリプト（`composer run setup`）を使う。**同内容の自前スクリプト（`bin/setup` 等）は作らない**（開発サーバー起動と同じ理由で、`composer.json` 側との二重管理になるため）。
 
 既定の生成物に対して本プロジェクトが加える変更は 2 点:
 
@@ -270,9 +272,9 @@ Laravel の `migrate` はデータベース自体の作成を行わないため�
 
 ### `config/database.php`
 
-`mysql` 接続は **`laravel new`（Laravel 13.x）が生成する構造をそのまま使い、`env()` の第 2 引数（既定値）だけを本プロジェクトの値に揃える**。接続情報はすべて `env()` 経由で統一し、一部だけハードコードにはしない（どれが環境変数で上書きできるのかを読み手が推測せずに済むため）。
+`mysql` 接続は **`laravel/laravel` が生成する構造をそのまま使い、`env()` の第 2 引数（既定値）だけを本プロジェクトの値に揃える**。接続情報はすべて `env()` 経由で統一し、一部だけハードコードにはしない（どれが環境変数で上書きできるのかを読み手が推測せずに済むため）。
 
-下記が調整後の正規形。`laravel new` の生成物との差分は `database` / `username` / `password` / `collation` の既定値 4 つだけである:
+下記が調整後の正規形。生成物との差分は `database` / `username` / `password` / `collation` の既定値 4 つだけである:
 
 ```php
 'mysql' => [

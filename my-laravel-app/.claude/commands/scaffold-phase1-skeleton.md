@@ -40,7 +40,7 @@ bin/doctor.sh
 **ユーザーに提示して解消を依頼し、解消後に再実行する**。`[WARN]` は続行してよい。
 
 検査項目は、PHP のバージョンと `zip` / `pcov` 拡張、Composer 2 系、Node.js のバージョンと
-バージョンマネージャの併存、Laravel Installer、Docker デーモンと Compose v2、DB ポートの空き、
+バージョンマネージャの併存、Docker デーモンと Compose v2、DB ポートの空き、
 DB ボリュームの衝突。バージョンの一次情報は `.tool-versions` で、スクリプトがそこから読む
 （**この手順書にもスクリプトにも数値を書かない**）。
 
@@ -69,48 +69,34 @@ DB ボリュームの衝突。バージョンの一次情報は `.tool-versions`
 
 ### 3. Laravel アプリ生成
 
-`my-laravel-app/` は既にテンプレート同梱ファイル（`CLAUDE.md`, `docs/`, `.claude/`, `compose.yaml`, `docker/`, `.gitignore`, `.npmrc` 等）で空でない。Laravel Installer はカレントディレクトリ指定（`laravel new .`）では空でないディレクトリへの生成を `Application already exists!` で拒否し、`--force` との併用も `Cannot use --force option when using current directory for installation!` で拒否する（Installer 5.30.0 で確認）。そのため、一時サブディレクトリに生成してから直下へ配置する:
+`my-laravel-app/` は既にテンプレート同梱ファイル（`CLAUDE.md`, `docs/`, `.claude/`, `compose.yaml`, `docker/`, `.gitignore`, `.npmrc` 等）で空でないため、一時サブディレクトリに生成してから直下へ配置する:
 
 ```sh
-laravel new tmp-skeleton --no-interaction --pest
+composer create-project laravel/laravel:^13.0 tmp-skeleton --remove-vcs --prefer-dist --no-scripts
 ```
 
-`--pest` でテストフレームワークに Pest を選択する。スターターキット選択のプロンプトは `--no-interaction` によりスキップされ、認証機能なしの素の Laravel が生成される（認証は Step 6 で Breeze を個別に導入する）。`--no-interaction` かつ非 TTY で実行すると、進捗ログの代わりに `{"success":true,"name":"tmp-skeleton",...}` の JSON 1 行だけが出力される。これは正常。
+**`laravel new` は使わない。** Installer にはバージョン指定オプションが無く、常にその時点の最新安定版を取得するため、Laravel 14 のリリース以降は 14 が入る。本テンプレートの `docs/` 一式は 13 系を前提に書かれている。`composer create-project` なら制約（`:^13.0`）で固定でき、Installer 自体のバージョン差による挙動の揺れも受けない。
 
-#### 生成された Laravel のメジャーバージョンを検証する（必須）
-
-生成直後に、`laravel/framework` が **`^13.`** であることを確認する:
-
-```sh
-grep '"laravel/framework"' tmp-skeleton/composer.json
-```
-
-`^13.` 以外だった場合は**ここで手順を中断し、ユーザーに報告する**。以降のステップへ進んではならない。
-
-> **なぜ確認が要るか**: `laravel new` には**バージョン指定オプションが無く**、常にその時点の
-> `laravel/laravel` の最新安定版を取得する。Laravel はメジャーリリースを毎年 ~Q1 に出すため
-> 14 のリリース以降は同じコマンドが 14 を生成する。
-> 本テンプレートの `docs/` 一式は Laravel 13 系を前提に書かれており、検証せずに進むと記述と
-> 生成物がずれたまま後段が失敗して原因の特定に時間がかかる。
->
-> **14 以降で 13 系を生成する代替手順は `docs/decisions.md` の「Laravel 14 以降で 13 系を生成する」節。**
-> どちらを採るかの判断はユーザーに委ねること。
+> **`--no-scripts` を省略しないこと。** `laravel/laravel` の `post-create-project-cmd` は
+> `database/database.sqlite` を作って `migrate --graceful` を **SQLite に対して**実行する。
+> 本プロジェクトは MySQL なのでどちらも不要（`laravel new` も内部で `--no-scripts` を付け、
+> 必要な初期化だけを自分で実行している。後述の手順はそれを展開したもの）。
 
 生成完了後、`rsync` で全生成物（ドットファイル含む）を `my-laravel-app/` 直下へ配置し、一時ディレクトリを削除する:
 
 ```sh
 rsync -a --exclude=/.gitignore --exclude=/.npmrc tmp-skeleton/ .
 git clean -fdxq tmp-skeleton
-ls -a .env .env.example artisan composer.json composer.lock phpunit.xml
+ls -a .env.example artisan composer.json composer.lock phpunit.xml
 ```
 
-最後の `ls` は配置が成功したことの確認。1 つでも「No such file」になる場合は先に進まず、原因を調べること。
+最後の `ls` は配置が成功したことの確認。1 つでも「No such file」になる場合は先に進まず、原因を調べること（`.env` はまだ存在しない。次の初期化で作る）。
 
 > **注意（配置手段の選定理由）**: この配置を **`mv` と glob で書かないこと**。`mv tmp-skeleton/* .` はドットファイル（`.env` 等）を含まないため `.env` を欠いたまま以降の `key:generate` / `migrate` が全滅し、しかもエラーはフェーズ後半まで表面化しない。加えて Bash ツールが**書き込み系コマンドの glob を拒否**する（`find ... -exec mv` も同様に拒否される）。
 >
 > `rsync -a` は末尾スラッシュ付きのディレクトリ指定でドットファイルを含めて再帰コピーするため、シェルの glob 展開に依存しない。コピー後に残る `tmp-skeleton` は未追跡なので `git clean -fdxq` で除去する。
 
-`laravel new` は `.gitignore` / `.npmrc` を独自に生成するが、上記の `--exclude` により**テンプレート同梱版がそのまま残る**。テンプレート側を正とするため、除外は必ず指定すること（`--exclude=/.gitignore` の先頭 `/` は転送元ルート直下のみを対象にする指定で、`storage/framework/*/.gitignore` 等の下位ディレクトリの `.gitignore` は除外されない）。
+`laravel/laravel` は `.gitignore` / `.npmrc` を同梱するが、上記の `--exclude` により**テンプレート同梱版がそのまま残る**。テンプレート側を正とするため、除外は必ず指定すること（`--exclude=/.gitignore` の先頭 `/` は転送元ルート直下のみを対象にする指定で、`storage/framework/*/.gitignore` 等の下位ディレクトリの `.gitignore` は除外されない）。
 
 > **補足**: `.npmrc` を `--exclude` するのは内容が同一（`ignore-scripts=true` / `audit=true`）だからだけでなく、Claude Code のセンシティブファイル保護により `.npmrc` への書き込みがヘッドレス実行で承認できないため。除外しておけば保護に抵触せず処理が止まらない。
 
@@ -122,13 +108,46 @@ git status --short -- .gitignore .npmrc .claude compose.yaml docker .tool-versio
 
 何も出力されなければ正常。差分が出た場合は `git checkout -- <path>` で戻す。
 
+#### 初期化とテストフレームワークの導入
+
+`--no-scripts` で飛ばした初期化を実行する:
+
+```sh
+composer run post-root-package-install
+php artisan key:generate --ansi
+```
+
+前者が `.env.example` を `.env` へコピーし、後者が `APP_KEY` を生成する。
+
+続いてテストフレームワークを PHPUnit から Pest へ入れ替える:
+
+```sh
+composer remove phpunit/phpunit --dev --no-update
+composer require pestphp/pest pestphp/pest-plugin-laravel --no-update --dev
+composer update
+vendor/bin/pest --init
+composer require pestphp/pest-plugin-drift --dev
+vendor/bin/pest --drift
+composer remove pestphp/pest-plugin-drift --dev
+```
+
+`--drift` は `laravel/laravel` 同梱の PHPUnit 形式のテストを Pest 記法へ変換する。変換が済めば plugin は不要なので外す。
+
+> **`./vendor/bin/pest` と書かないこと。** 許可リストは `Bash(vendor/bin/pest*)` の前置一致なので、
+> `./` を付けた形や環境変数を前置した形（`PEST_NO_SUPPORT=true ./vendor/bin/pest ...`）は一致せず、
+> ヘッドレスでは承認待ちで止まる。
+
+> **`APP_URL` は自動では設定されない。** `laravel new` は生成後に `.env` の `APP_URL` を
+> `http://localhost:8000` へ書き換えていたが、`composer create-project` にその処理は無い。
+> Step 7 で `.env` / `.env.example` の両方を揃えること。
+
 ### 4. config/database.php の調整
 
 `docs/stack.md` の「MySQL 設定の規約」セクションに記載の正規形に合わせて `mysql` 接続設定を修正する。
 
-**構造には手を入れない。`env()` の第 2 引数（既定値）を 4 か所書き換えるだけである**（`laravel new` の生成物は既に `charset` / `collation` も `env()` 経由になっている）:
+**構造には手を入れない。`env()` の第 2 引数（既定値）を 4 か所書き換えるだけである**（`laravel/laravel` の生成物は既に `charset` / `collation` も `env()` 経由になっている）:
 
-| キー | `laravel new` の既定値 | 書き換え後 |
+| キー | `laravel/laravel` の既定値 | 書き換え後 |
 |---|---|---|
 | `database` | `'laravel'` | `'bookkeeper'` |
 | `username` | `'root'` | `'app'` |
@@ -241,7 +260,7 @@ composer require --dev larastan/larastan laravel/dusk laravel-lang/lang laravel/
   ```
 
   > **注意**: `phpstan analyse` の出力には「ベースラインで抑制するな、根本原因を直せ」という PHPStan 一般の指示文が含まれるが、**この 1 件に限っては上記の判断（ベースライン化）を優先する**。エラー元が Breeze の scaffold 出力であり、`docs/` にもチームのコード規約にも属さないため。アプリケーションコード由来のエラーをベースラインに追加してはならない。
-- **Laravel Pint**: `laravel new` で既定導入済み。確認のみ（`vendor/bin/pint --version`）。
+- **Laravel Pint**: `laravel/laravel` に既定で含まれる。確認のみ（`vendor/bin/pint --version`）。
 - **Laravel Boost**:
   ```sh
   php artisan boost:install --mcp --guidelines --no-interaction
@@ -274,7 +293,7 @@ composer require --dev larastan/larastan laravel/dusk laravel-lang/lang laravel/
 
 ### 7. .env の準備
 
-`laravel new` が生成した `.env` / `.env.example` に、ルート同梱の `env.example` の内容（`DB_USERNAME`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `MAIL_FROM_ADDRESS`）をマージする。あわせて `DB_CONNECTION` を `sqlite` から `mysql` に変更する。`APP_KEY` は上書きしない（Laravel が生成した値をそのまま使う。未設定なら次のコマンドで生成する）:
+生成された `.env` / `.env.example` に、ルート同梱の `env.example` の内容（`DB_USERNAME`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `MAIL_FROM_ADDRESS`）をマージする。あわせて `DB_CONNECTION` を `sqlite` から `mysql` に変更する。`APP_KEY` は上書きしない（Laravel が生成した値をそのまま使う。未設定なら次のコマンドで生成する）:
 
 また、`APP_LOCALE=en` / `APP_FAKER_LOCALE=en_US` を `APP_LOCALE=ja` / `APP_FAKER_LOCALE=ja_JP` に変更する（Step 6 の注意参照。`config/app.php` の変更だけでは反映されない）。`APP_FALLBACK_LOCALE` は `en` のまま残す。
 
@@ -297,10 +316,10 @@ DB_PASSWORD=app_password
 
 `.env` はテンプレート同梱の `.gitignore` で除外済み。`.env.example` は git 管理対象に含める（`APP_KEY=` は空のままにしておく）。**`.env` に加えた変更（`DB_*` / `APP_LOCALE` / `APP_FAKER_LOCALE` / `MAIL_FROM_ADDRESS`）は `.env.example` にも同じく反映する**（`team-rules/security.md` の「`.env.example` をリポジトリに含めて同期する」）。
 
-> **注意: `APP_URL` も同期対象。** `laravel new` のバージョンによっては `.env` だけが
-> `http://localhost:8000` になり、`.env.example` が `http://localhost`（80 番）のまま残る。
-> ずれたままクローンした利用者は `url()` / `route()` が 8000 番以外を指し、パスワード
-> 再発行メールのリンクが到達しなくなる。`APP_KEY` だけは `.env.example` を空のままにし、
+> **注意: `APP_URL` も同期対象。** `.env` は `.env.example` のコピーなので値は一致するが、
+> **両方とも `http://localhost:8000` である必要がある**（`laravel/laravel` の版によっては
+> `http://localhost` = 80 番のことがある）。ずれていると `url()` / `route()` が 8000 番以外を
+> 指し、パスワード再発行メールのリンクが到達しない。`APP_KEY` だけは `.env.example` を空のままにし、
 > **`diff .env .env.example` の差分が `APP_KEY` の 1 行だけ**になる状態を正とする
 > （`bin/check-repo.sh` が検査する）。
 
@@ -312,9 +331,9 @@ DB_PASSWORD=app_password
 
 ### 8. composer.json の dev / setup スクリプトの調整
 
-開発サーバーの起動もセットアップも、`laravel new` 既定の `composer.json` のスクリプト（`composer run dev` / `composer run setup`）を使う。**自前のラッパースクリプト（`bin/dev`・`bin/setup` 等）は作らない**（`composer.json` 側との二重管理になるため。`docs/stack.md` の「開発サーバー起動（正規形）」「初回セットアップ（正規形）」参照）。既定の生成物を本プロジェクトの方針に合わせて編集する。
+開発サーバーの起動もセットアップも、`laravel/laravel` 既定の `composer.json` のスクリプト（`composer run dev` / `composer run setup`）を使う。**自前のラッパースクリプト（`bin/dev`・`bin/setup` 等）は作らない**（`composer.json` 側との二重管理になるため。`docs/stack.md` の「開発サーバー起動（正規形）」「初回セットアップ（正規形）」参照）。既定の生成物を本プロジェクトの方針に合わせて編集する。
 
-**`scripts.dev`**: **`composer.json` は書き換えない。** Laravel 13.17 以降の `laravel new` が生成する `dev` は、`concurrently` の直書きではなく Laravel 本体の `php artisan dev` への委譲になっている:
+**`scripts.dev`**: **`composer.json` は書き換えない。** Laravel 13.17 以降の `laravel/laravel` が生成する `dev` は、`concurrently` の直書きではなく Laravel 本体の `php artisan dev` への委譲になっている:
 
 ```json
 "dev": [
@@ -338,9 +357,9 @@ public function boot(): void
 
 `php artisan dev:list` を実行し、`queue` が消えて `server` / `logs` / `vite` の 3 つになることを確認する。
 
-> **`composer.json` の `dev` を `concurrently` 直書きへ戻さないこと。** 上流の既定へ書き戻す形にすると、次に `laravel new` の既定が変わったときに同じ陳腐化を繰り返す。
+> **`composer.json` の `dev` を `concurrently` 直書きへ戻さないこと。** 上流の既定へ書き戻す形にすると、次に上流の既定が変わったときに同じ陳腐化を繰り返す。
 
-**`scripts.setup`**: 本プロジェクトは DB を Docker で動かし、かつ Seeder 込みで「最初から動く状態」にするため、既定の生成物（Laravel Framework 13.20.0 で確認）に次の 3 点を変更する:
+**`scripts.setup`**: 本プロジェクトは DB を Docker で動かし、かつ Seeder 込みで「最初から動く状態」にするため、既定の生成物に次の 3 点を変更する:
 
 1. **先頭に `docker compose up -d --wait db` を足す** — 後続の `migrate` は DB が healthy でないと失敗するため。`--wait` を使う理由は Step 2 と同じ（判定条件を `compose.yaml` の healthcheck に一本化する）
 2. **`@php artisan migrate --force` を `@php artisan migrate --seed --force` にする** — `docs/seeds.md` のサンプルデータ投入まで含めて一発で完了させるため
@@ -375,7 +394,7 @@ public function boot(): void
 composer require --dev "laravel/pao:^1.1.3" --no-interaction
 ```
 
-`laravel new` の既定は `^1.0.6` だが、**v1.1.2 以前は全件パスでも `php artisan test` の
+`laravel/laravel` の既定は `^1.0.6` だが、**v1.1.2 以前は全件パスでも `php artisan test` の
 終了コードが 1 になる**（`--no-output` の二重付与による。詳細は `docs/stack.md`）。
 本プロジェクトは完了基準をすべて終了コードで判定するため、その下限を保証しておく。
 引き上げないと、将来 `composer install` が 1.1.2 以前を解決したときに **green のテストを
@@ -395,7 +414,7 @@ composer require --dev "laravel/pao:^1.1.3" --no-interaction
    > `docker compose up -d --wait db` し直すこと（開発用 DB のデータも消えるが、Phase 1 時点では
    > 失うものが無い）。
 
-   > **重要（phpunit.xml のテスト DB 設定）**: `laravel new`（Laravel 13.x）が生成する `phpunit.xml` は既定で `DB_CONNECTION=sqlite` / `DB_DATABASE=:memory:` を設定しており、**このままだとテストが MySQL の `bookkeeper_test` ではなく SQLite で走る**。本プロジェクトは MySQL 固有の DDL（`docs/db-schema.md` の `books` テーブルの `ALTER TABLE ... ADD CONSTRAINT ... CHECK`）を使うため、SQLite ではマイグレーションが構文エラーで失敗する（Phase 1 時点では該当マイグレーションが無いため表面化しないが、Phase 2 で必ず壊れる）。`docs/stack.md` の規約通りテストは `bookkeeper_test`（MySQL）で実行するため、`phpunit.xml` の該当 env を次のように書き換える:
+   > **重要（phpunit.xml のテスト DB 設定）**: `laravel/laravel` が生成する `phpunit.xml` は既定で `DB_CONNECTION=sqlite` / `DB_DATABASE=:memory:` を設定しており、**このままだとテストが MySQL の `bookkeeper_test` ではなく SQLite で走る**。本プロジェクトは MySQL 固有の DDL（`docs/db-schema.md` の `books` テーブルの `ALTER TABLE ... ADD CONSTRAINT ... CHECK`）を使うため、SQLite ではマイグレーションが構文エラーで失敗する（Phase 1 時点では該当マイグレーションが無いため表面化しないが、Phase 2 で必ず壊れる）。`docs/stack.md` の規約通りテストは `bookkeeper_test`（MySQL）で実行するため、`phpunit.xml` の該当 env を次のように書き換える:
    > ```xml
    > <env name="DB_CONNECTION" value="mysql"/>
    > <env name="DB_DATABASE" value="bookkeeper_test"/>
@@ -404,7 +423,7 @@ composer require --dev "laravel/pao:^1.1.3" --no-interaction
 2. `php artisan migrate`
    - 失敗時の典型原因: コンテナ未起動 / `.env` の認証情報不一致 / Step 2 で触れた Docker named volume の衝突（`Access denied for user 'app'@'%' to database 'bookkeeper'` のようなエラーが出る場合はこれを疑う）
    - エラー時は勝手に MySQL のユーザー権限をいじらず、状況を報告して指示を仰ぐ
-3. **Pint による自動修正**: `vendor/bin/pint` を実行する。`laravel new` / `breeze:install` / `lang:add` が生成するファイル（`bootstrap/providers.php`, `lang/ja/*.php` 等）はデフォルトで Pint の規約に違反しているため自動修正が入る。その後 `vendor/bin/pint --test` が 0 件になることを確認する。
+3. **Pint による自動修正**: `vendor/bin/pint` を実行する。アプリ生成 / `breeze:install` / `lang:add` が生成するファイル（`bootstrap/providers.php`, `lang/ja/*.php` 等）はデフォルトで Pint の規約に違反しているため自動修正が入る。その後 `vendor/bin/pint --test` が 0 件になることを確認する。
    - Step 6 の指示どおり `tests/Pest.php` を先に並べ替えてあれば、Pint はこのファイルを書き換えない。書き換えられた場合は並べ替えが漏れているので Step 6 に戻ること
 4. `php artisan test` が green であることを確認する。
 
@@ -414,12 +433,12 @@ composer require --dev "laravel/pao:^1.1.3" --no-interaction
 5. **起動確認**: `composer run dev` をバックグラウンドで立ち上げ、`curl -sS --retry 15 --retry-all-errors --retry-delay 1 -o /dev/null -w "%{http_code}" http://localhost:8000` が 200 を返すことを確認する。`/login` `/register` も 200 になること。確認後サーバを停止する（`pkill -f "php artisan serve"`、`pkill -f "artisan pail"`、`pkill -f vite`。最初の 1 つで残りも終了するが、3 つとも実行して確実に止める）。
    - `--retry` を付けるのは、`composer run dev` の起動直後は `php artisan serve` がまだ listen していないため。Bash ツールでは `sleep` を伴う待機ループが書けないので `curl` 側のリトライで吸収する
    - **停止まわりの終了コード 1 はすべて正常。フェーズの失敗として扱わず、原因を追わないこと。** 1 つ目の `pkill` で残りのプロセスも終了するため 2 つ目以降は「該当プロセス無し」で 1 を返し、同じ理由でバックグラウンド実行の完了通知も `failed`（`php artisan dev` 自体の非 0 終了）になる
-6. **既定 `DatabaseSeeder` の空化**: `laravel new` が生成する `database/seeders/DatabaseSeeder.php` は、固定メール（`test@example.com`）の Test User を `User::factory()->create([...])` で 1 件作る内容になっている。これは `firstOrCreate` ではないため、**`composer run setup`（内部で `migrate --seed --force`）を 2 回目に実行すると `users.email` の UNIQUE 制約違反で落ちる**（「クローンして 1 コマンドで動く」が崩れる）。`run()` の本体をコメント化して空にすること（Seeder 本体は Phase 5 で `docs/seeds.md` に沿って実装する）:
+6. **既定 `DatabaseSeeder` の空化**: `laravel/laravel` の `database/seeders/DatabaseSeeder.php` は、固定メール（`test@example.com`）の Test User を `User::factory()->create([...])` で 1 件作る内容になっている。これは `firstOrCreate` ではないため、**`composer run setup`（内部で `migrate --seed --force`）を 2 回目に実行すると `users.email` の UNIQUE 制約違反で落ちる**（「クローンして 1 コマンドで動く」が崩れる）。`run()` の本体をコメント化して空にすること（Seeder 本体は Phase 5 で `docs/seeds.md` に沿って実装する）:
    ```php
    public function run(): void
    {
        // Seeder は Phase 5 で docs/seeds.md に沿って実装する。
-       // laravel new 既定の Test User 生成は、setup 再実行時に
+       // laravel/laravel 既定の Test User 生成は、setup 再実行時に
        // users.email の UNIQUE 制約へ衝突するため空にしておく。
    }
    ```

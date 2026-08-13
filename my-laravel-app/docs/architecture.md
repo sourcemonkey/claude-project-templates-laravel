@@ -190,7 +190,7 @@ Laravel 本体はホスト側で動き、`127.0.0.1:3306` 経由でコンテナ�
 - Breeze のパスワード再発行などのメール送信は **同期送信** で良い。
   development では `MAIL_MAILER=log`（`storage/logs/laravel.log`）で確認する。
 - Laravel 標準で選択可能な Queue（database ドライバ）は
-  `laravel new` の生成物として残すが、ワーカー（`php artisan queue:work` / `queue:listen`）は起動しない。
+  生成物として残すが、ワーカー（`php artisan queue:work` / `queue:listen`）は起動しない。
 - Redis / Laravel Horizon / Reverb などの追加導入もしない。
 - 将来「返却期限リマインドメールの定期配信」等を実装することになった時点で
   Queue を有効化する想定。詳細方針は `docs/stack.md` の

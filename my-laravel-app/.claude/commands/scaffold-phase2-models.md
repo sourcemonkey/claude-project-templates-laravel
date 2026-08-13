@@ -48,7 +48,7 @@ php artisan make:migration add_role_to_users_table --table=users
 > （手順書は当該フェーズのセッションしか読まないため、ここには書かない）。Model Factory は
 > fillable を経由しないため、`User::factory()->admin()` は問題なく機能する。
 
-> **注意2（Laravel 13 の User モデルは属性ベース）**: `laravel new`（Laravel 13.x）が生成する `User` モデルは、`protected $fillable` / `protected $hidden` プロパティではなく PHP 属性 `#[Fillable([...])]` / `#[Hidden([...])]` を使う。上記の通り `role` は fillable に足さないので、`#[Fillable(['name', 'email', 'password'])]` はそのままでよい。
+> **注意2（Laravel 13 の User モデルは属性ベース）**: `laravel/laravel` が生成する `User` モデルは、`protected $fillable` / `protected $hidden` プロパティではなく PHP 属性 `#[Fillable([...])]` / `#[Hidden([...])]` を使う。上記の通り `role` は fillable に足さないので、`#[Fillable(['name', 'email', 'password'])]` はそのままでよい。
 
 `casts()` に `'role' => UserRole::class` を追加する（`UserRole` Enum は次のステップで作成）。`app/Enums/UserRole.php`:
 
@@ -97,7 +97,7 @@ enum UserRole: int
 
 **生成の順序を FK 依存に合わせること**（`make:model` はタイムスタンプ順でマイグレーションを並べるため、生成順がそのまま実行順になる）: `Category` → `Tag` → `Book` → `book_tags` → `Lending` → `Notification` → `AuditLog`。
 
-> `App\Models\Notification` は Laravel 標準の `Illuminate\Notifications\Facades\Notification` ファサードと名前が衝突しないよう、Controller / Action での `use` 文に注意する（完全修飾名かエイリアスで区別する）。なお Laravel 13 の `laravel new` は標準の `notifications` テーブルのマイグレーションを生成しないため、`create_notifications_table` を新規作成してもテーブル名は衝突しない。
+> `App\Models\Notification` は Laravel 標準の `Illuminate\Notifications\Facades\Notification` ファサードと名前が衝突しないよう、Controller / Action での `use` 文に注意する（完全修飾名かエイリアスで区別する）。なお Laravel 13 は標準の `notifications` テーブルのマイグレーションを生成しないため、`create_notifications_table` を新規作成してもテーブル名は衝突しない。
 
 各モデルの `$fillable`（`User` 以外は従来どおり `protected $fillable` プロパティで可）・`casts()`・リレーションを定義する。enum キャスト（`Lending::$state` → `LendingState`, `Notification::$kind` → `NotificationKind`）を持つモデルには前述の `@property` 注釈を付ける。
 
@@ -208,7 +208,7 @@ php artisan migrate
 
 `make:model -f` が生成するファクトリは中身が空（`return [];`）なので、`docs/db-schema.md` の定義に合わせて書くこと（ファイルが既に存在するため Read してから編集する）。
 
-> **`UserFactory` だけは前提が違う。** `laravel new` / Breeze が既に生成済みで
+> **`UserFactory` だけは前提が違う。** `laravel/laravel` / Breeze が既に生成済みで
 > 中身も空でないため「**残りの**ファクトリ」に含まれない。**実行順序 1（users
 > テーブルの補正）の一部として、`User` を触る時点で下の `User` の項まで読み、
 > モデルと同時に直すこと**（後回しにすると `role` が `null` のままモデルテストが

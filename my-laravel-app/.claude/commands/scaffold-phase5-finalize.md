@@ -60,7 +60,7 @@ description: フェーズ5 - Seeder、テスト、README、起動確認で完成
 
 ドライバを確認できたら、`docs/stack.md` の「テストカバレッジ設定（正規形）」の通りに `phpunit.xml` を設定する。設定後、`php artisan test --coverage-html coverage` を一度実行して `coverage/index.html` が生成され、かつカバレッジが 0% でないことを確認してから次のステップへ進む。
 
-> `laravel new` が生成する `phpunit.xml` には `<source><include>` が既にある（`<directory>app</directory>`）。
+> 生成された `phpunit.xml` には `<source><include>` が既にある（`<directory>app</directory>`）。
 > `<coverage>` ブロックを新規に足し、`<directory>` には `suffix=".php"` を付ける。
 
 #### 2-1. テストシナリオの実装
@@ -174,7 +174,7 @@ Phase 5 では Seeder が実装済みのため、`docs/seeds.md` のサンプル
 
 ### 4. README.md の作成
 
-`my-laravel-app/README.md` を書く。**`laravel new` が生成した Laravel 既定の README
+`my-laravel-app/README.md` を書く。**`laravel/laravel` 既定の README
 （フレームワークの紹介・スポンサー一覧）が既に存在するので、新規作成ではなく
 全文の置き換えになる。** Write ツールを使う場合は先に Read が必要。
 

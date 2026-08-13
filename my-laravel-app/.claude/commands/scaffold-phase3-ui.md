@@ -87,7 +87,7 @@ Feature テストが壊れる**。次を必ず行うこと。
    画面から外れて未使用になるため。`resources/views/livewire/profile/` にはパスワード変更・
    退会の 2 つだけが残る）
 
-   > 削除は `git clean -fdxq <path>` で行う（いずれも `laravel new` / `breeze:install` が
+   > 削除は `git clean -fdxq <path>` で行う（いずれもアプリ生成 / `breeze:install` が
    > 生成した git 未追跡ファイルであり、追跡ファイルを巻き込む事故が起きない）。
    >
    > **パスはセッションのカレントディレクトリ基準で書くこと。** `my-laravel-app/` に
