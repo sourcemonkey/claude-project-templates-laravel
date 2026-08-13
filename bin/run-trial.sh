@@ -1,12 +1,7 @@
 #!/usr/bin/env bash
 #
 # フェーズトライアルを**フェーズごとに別セッション**で順に実行する。
-#
-# 使い方:
-#   bin/run-trial.sh                 Phase 1〜5 を順に実行
-#   bin/run-trial.sh 1 3             Phase 1〜3 を実行
-#   bin/run-trial.sh 2 5             Phase 2〜5 を実行（Phase 1 完走済みの状態から）
-#   CC_TRIAL_MODEL=opus bin/run-trial.sh     モデルを変える（既定: sonnet）
+# 使い方は usage() を参照（引数なしで実行すると表示される）。
 #
 # なぜ 1 セッションで通さないか:
 #   API はステートレスで毎回全履歴を再送するため、コストは「呼び出し数 × その時点の
@@ -28,21 +23,77 @@ PROMPT_FILE="$ROOT/prompts/trial-phase.md"
 MODEL="${CC_TRIAL_MODEL:-sonnet}"
 LOG_DIR="${CC_TRIAL_LOG_DIR:-$HOME/claude-trial-logs}"
 
-FROM="${1:-1}"
-TO="${2:-5}"
+# フェーズを増減したら、この上限と bin/reset-phase.sh の PHASE_COMMANDS / case を直すこと。
+PHASE_MAX=5
+
+usage() {
+    cat <<USAGE
+フェーズトライアルをフェーズごとに別セッションで実行する。
+
+使い方:
+  bin/run-trial.sh <フェーズ>          そのフェーズだけ実行（例: bin/run-trial.sh 3）
+  bin/run-trial.sh <開始> <終了>       開始〜終了を順に実行（例: bin/run-trial.sh 1 ${PHASE_MAX}）
+
+フェーズ番号は 1〜${PHASE_MAX}:
+  1 スケルトン生成 / 2 モデル / 3 UI 実装 / 4 UI テスト / 5 仕上げ
+
+環境変数:
+  CC_TRIAL_MODEL     使うモデル（既定: sonnet）
+  CC_TRIAL_LOG_DIR   ログの出力先（既定: \$HOME/claude-trial-logs）
+
+前提:
+  Phase 1 から始める場合、起動前に bin/reset-phase.sh 1 を DB 破棄あり（y）で
+  実行しておくこと。本スクリプトは破壊的操作を行わない。
+
+**引数なしでは実行しない。** 通しの実行は数時間・数千万トークンを要するため、
+確認のつもりの起動で走り出さないよう対象を必ず明示させる。
+USAGE
+}
+
+if [ "$#" -eq 0 ]; then
+    usage
+    exit 0
+fi
+
+if [ "$#" -gt 2 ]; then
+    echo "引数は 1 つか 2 つです（指定: $# 個）。" >&2
+    echo >&2
+    usage >&2
+    exit 1
+fi
+
+FROM="$1"
+TO="${2:-$1}"
+
+for n in "$FROM" "$TO"; do
+    case "$n" in
+        ''|*[!0-9]*)
+            echo "フェーズ番号は数字で指定してください（指定: '$n'）。" >&2; exit 1 ;;
+    esac
+    if [ "$n" -lt 1 ] || [ "$n" -gt "$PHASE_MAX" ]; then
+        echo "フェーズ番号は 1〜${PHASE_MAX} です（指定: $n）。" >&2; exit 1
+    fi
+done
+
+if [ "$FROM" -gt "$TO" ]; then
+    echo "開始フェーズが終了フェーズより後です（$FROM 〜 $TO）。" >&2
+    exit 1
+fi
 
 if [ ! -f "$PROMPT_FILE" ]; then
     echo "プロンプトが見つかりません: $PROMPT_FILE" >&2
     exit 1
 fi
 
-case "$FROM$TO" in
-    *[!0-9]*) echo "フェーズ番号は数字で指定してください（例: bin/run-trial.sh 2 5）" >&2; exit 1 ;;
-esac
-
 mkdir -p "$LOG_DIR"
 
-echo "モデル: $MODEL / 対象: Phase ${FROM}〜$TO / ログ: $LOG_DIR"
+if [ "$FROM" -eq "$TO" ]; then
+    TARGET="Phase ${FROM}"
+else
+    TARGET="Phase ${FROM}〜${TO}"
+fi
+
+echo "モデル: ${MODEL} / 対象: ${TARGET} / ログ: ${LOG_DIR}"
 echo
 
 phase="$FROM"
@@ -80,7 +131,7 @@ while [ "$phase" -le "$TO" ]; do
     exit 1
 done
 
-echo "Phase ${FROM}〜$TO をすべて完了しました。"
+echo "${TARGET} をすべて完了しました。"
 echo
 echo "トークン消費の集計:"
 echo "  bin/phase-tokens.sh --all"

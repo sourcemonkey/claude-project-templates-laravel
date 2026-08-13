@@ -483,10 +483,15 @@ claude -p "$(cat prompts/trial-phase.md)"
 #### フェーズごとに別セッションで回す（`bin/run-trial.sh`）
 
 ```sh
-bin/run-trial.sh          # Phase 1〜4
-bin/run-trial.sh 2 5      # Phase 2〜5（Phase 1 完走済みの状態から）
-CC_TRIAL_MODEL=opus bin/run-trial.sh
+bin/run-trial.sh              # 使い方を表示するだけ（何も実行しない）
+bin/run-trial.sh 3            # Phase 3 だけ実行
+bin/run-trial.sh 1 5          # Phase 1〜5 を順に実行
+bin/run-trial.sh 2 5          # Phase 2〜5（Phase 1 完走済みの状態から）
+CC_TRIAL_MODEL=opus bin/run-trial.sh 1 5
 ```
+
+> **引数なしでは実行しません**（使い方を表示して終了します）。通しの実行は数時間・
+> 数千万トークンを要するため、確認のつもりの起動で走り出さないよう対象を必ず明示させます。
 
 **1 セッションで全フェーズを通すと、後半ほど高くつきます。** API はステートレスで毎回
 全履歴を再送するため、コストは「呼び出し数 × その時点の文脈量」で決まり、文脈は
