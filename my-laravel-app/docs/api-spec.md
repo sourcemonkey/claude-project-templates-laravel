@@ -104,8 +104,7 @@ Route::middleware('auth')->group(function () {
   ```
 
   同じ理由で `docs/seeds.md` の `UserSeeder` も `firstOrCreate()` の第 2 引数に
-  `role` を渡さない。**症状は「更新したのに変わらない」だけで画面上のエラーが無く、
-  認可の実装ミスに見えるため原因にたどり着きにくい**。
+  `role` を渡さない。
 
 ### `PATCH /notifications/{notification}/read`
 
