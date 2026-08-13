@@ -108,7 +108,10 @@ Enum クラスは `app/Enums/` に置く。値は `docs/db-schema.md` の各テ�
 > 書こうとして「Unknown column 'updated_at'」で失敗する）。`created_at` はマイグレーションの
 > `useCurrent()` により DB 側で設定される。この設定に伴い、次の 3 点が要る:
 >
-> - `changes_json` を `'changes_json' => 'array'` でキャストする
+> - `changes_json` を `'changes_json' => 'array'` でキャストする。**モデルテストで再取得した値を
+>   `toBe()` で比較しない。** MySQL の JSON 型はキーの挿入順を保持しないため、
+>   `['before' => ..., 'after' => ...]` を入れても `['after' => ..., 'before' => ...]` で返り、
+>   厳密比較が `Failed asserting that two arrays are identical.` で落ちる。`toMatchArray()` を使う
 > - **`created_at` も `'created_at' => 'datetime'` でキャストする。** `$timestamps = false` の
 >   モデルは `created_at` を**自動ではキャストしない**ため、明示しないと DB から読んだ値が
 >   文字列のままになる。Phase 3 の監査ログ画面で `{{ $log->created_at?->format('Y-m-d H:i') }}`
@@ -265,7 +268,10 @@ php artisan migrate
     DB 側の `default(0)` も再取得するまで反映されないので `null` が返る。`->fresh()` を挟んでから確認する
 - **`Lending` の遷移メソッド**（`approve()` / `reject()` / `returnBook()`）の正常系と、不正な遷移元で `DomainException` が送出されること（Phase 3 の Action がこれらに直接依存する）
 
-**各観点につき、該当するモデルごとに最低 1 件書く**（観点が当てはまらないモデルは飛ばす）。上限は設けない。
+**各観点につき、該当するモデルごとに 1 件書く**（観点が当てはまらないモデルは飛ばす）。
+遷移メソッドのように対象が複数あるものは、メソッドごとに正常系 1 件 + 異常系 1 件。
+**これで全体 35 件前後になる。大きく超える場合は同じ観点を重複して書いている**ので見直すこと
+（網羅性はカバレッジ判定で確かめる。それは Phase 5 の担当）。
 
 ```sh
 php artisan test tests/Unit/Models
