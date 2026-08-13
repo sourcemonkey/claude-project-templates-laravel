@@ -72,7 +72,7 @@ Laravel 本体はホスト側で動き、`127.0.0.1:3306` 経由でコンテナ�
 | クラス名 | 責務 |
 |---|---|
 | `RequestLendingAction` | 借用申請（在庫チェック + Lending 作成） |
-| `ApproveLendingAction` | 承認（state 変更 + 在庫減算 + 通知 + 監査ログ、トランザクション内） |
+| `ApproveLendingAction` | 承認（state 変更 + **`due_on` 設定（14 日後）** + 在庫減算 + 通知 + 監査ログ、トランザクション内） |
 | `ReturnLendingAction` | 返却（state 変更 + 在庫増加） |
 | `RejectLendingAction` | 却下（state 変更 + 通知） |
 
