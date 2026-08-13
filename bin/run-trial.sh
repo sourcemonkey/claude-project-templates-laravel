@@ -113,6 +113,14 @@ while [ "$phase" -le "$TO" ]; do
     # フェーズの結末はマーカーで判定する。終了コードでは判別できない
     # （「前提条件を満たさないので終了します」と報告して正常終了しても 0 になる）。
     if grep -q "^\[phase-result\] phase=${phase} status=ok" "$log"; then
+        # `claude -p` は最終メッセージだけを標準出力へ出す。したがって end マーカーが
+        # ログに無ければ、報告より前のメッセージで出力したことになり、報告作成分の
+        # 消費が「マーカー外」へ落ちる（実測で 0.6M 相当）。失敗ではないので続行する。
+        if ! grep -q "^\[phase-tokens\] phase=${phase} event=end" "$log"; then
+            echo "⚠ Phase $phase: [phase-tokens] event=end がログにありません。" >&2
+            echo "  報告より前に出力したため、報告作成分の消費が計測から漏れています" >&2
+            echo "  （prompts/trial-phase.md「フェーズごとのトークン計測」参照）。" >&2
+        fi
         echo "===== Phase $phase 完了 $(date '+%H:%M:%S') ====="
         echo
         phase=$((phase + 1))
