@@ -37,6 +37,7 @@
       "Bash(composer remove*)",
       "Bash(composer run post-root-package-install)",
       "Bash(composer update)",
+      "Bash(composer update -q)",
       "Bash(composer audit)",
       "Bash(composer dump-autoload*)",
       "Bash(composer show*)",

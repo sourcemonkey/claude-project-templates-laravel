@@ -72,8 +72,17 @@ DB ボリュームの衝突。バージョンの一次情報は `.tool-versions`
 `my-laravel-app/` は既にテンプレート同梱ファイル（`CLAUDE.md`, `docs/`, `.claude/`, `compose.yaml`, `docker/`, `.gitignore`, `.npmrc` 等）で空でないため、一時サブディレクトリに生成してから直下へ配置する:
 
 ```sh
-composer create-project laravel/laravel:^13.0 tmp-skeleton --remove-vcs --prefer-dist --no-scripts
+composer create-project -q laravel/laravel:^13.0 tmp-skeleton --remove-vcs --prefer-dist --no-scripts
 ```
+
+> **`-q` を省略しないこと（本手順書の `composer` 全般）。** 依存の導入ログは 1 回で 12KB を超え、
+> **エージェント実行では以降の全 API 呼び出しで再送され続ける**（実測で Phase 1 の composer 系
+> 出力は計 31KB）。`-q` は成功時のみ無音で、失敗時は例外がそのまま出るため切り分けは失われない。
+> 導入されたバージョンの確認は出力ではなく `composer.json` / `composer.lock` を一次情報とする。
+>
+> **`-q` はサブコマンドの後ろに置くこと**（`composer create-project -q ...`）。許可リストは
+> `Bash(composer create-project*)` の前置一致なので、`composer -q create-project ...` は
+> **一致せずヘッドレスで承認待ちになる**（`git -c` を前置した場合と同じ理由）。
 
 **`laravel new` は使わない。** Installer にはバージョン指定オプションが無く、常にその時点の最新安定版を取得するため、Laravel 14 のリリース以降は 14 が入る。本テンプレートの `docs/` 一式は 13 系を前提に書かれている。`composer create-project` なら制約（`:^13.0`）で固定でき、Installer 自体のバージョン差による挙動の揺れも受けない。
 
@@ -121,13 +130,13 @@ php artisan key:generate --ansi
 続いてテストフレームワークを PHPUnit から Pest へ入れ替える:
 
 ```sh
-composer remove phpunit/phpunit --dev --no-update
-composer require pestphp/pest pestphp/pest-plugin-laravel --no-update --dev
-composer update
+composer remove -q phpunit/phpunit --dev --no-update
+composer require -q pestphp/pest pestphp/pest-plugin-laravel --no-update --dev
+composer update -q
 vendor/bin/pest --init
-composer require pestphp/pest-plugin-drift --dev
+composer require -q pestphp/pest-plugin-drift --dev
 vendor/bin/pest --no-output --no-progress --drift
-composer remove pestphp/pest-plugin-drift --dev
+composer remove -q pestphp/pest-plugin-drift --dev
 ```
 
 `--drift` は `laravel/laravel` 同梱の PHPUnit 形式のテストを Pest 記法へ変換する。変換が済めば plugin は不要なので外す。
@@ -173,8 +182,8 @@ composer remove pestphp/pest-plugin-drift --dev
 `docs/stack.md` の「手動追加」列が ✅ のパッケージを追加する:
 
 ```sh
-composer require spatie/laravel-query-builder blade-ui-kit/blade-heroicons
-composer require --dev larastan/larastan laravel/dusk laravel-lang/lang laravel/boost
+composer require -q spatie/laravel-query-builder blade-ui-kit/blade-heroicons
+composer require -q --dev larastan/larastan laravel/dusk laravel-lang/lang laravel/boost
 ```
 
 > `laravel/boost` は、AI エージェント向けの MCP サーバー（DB スキーマ・ログ・Laravel
@@ -199,7 +208,7 @@ composer require --dev larastan/larastan laravel/dusk laravel-lang/lang laravel/
 
 - **Laravel Breeze（Livewire スタック）**:
   ```sh
-  composer require laravel/breeze --dev
+  composer require -q laravel/breeze --dev
   php artisan breeze:install livewire --no-interaction
   ```
   このコマンドで認証ビュー（ログイン・登録・パスワードリセット等）が Livewire コンポーネントとして生成され、Tailwind CSS と Alpine.js のセットアップも同時に行われる。`npm install` と `npm run build` も内部で実行される。非 TTY 環境では `WARN TTY mode requires /dev/tty to be read/writable.` が出るが処理は継続するので無視してよい。
@@ -396,7 +405,7 @@ public function boot(): void
 **`require-dev` の `laravel/pao` の制約を `^1.1.3` へ引き上げる。**
 
 ```sh
-composer require --dev "laravel/pao:^1.1.3" --no-interaction
+composer require -q --dev "laravel/pao:^1.1.3" --no-interaction
 ```
 
 `laravel/laravel` の既定は `^1.0.6` だが、**v1.1.2 以前は全件パスでも `php artisan test` の
