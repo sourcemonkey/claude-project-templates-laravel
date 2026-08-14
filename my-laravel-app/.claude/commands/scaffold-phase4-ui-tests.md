@@ -63,14 +63,23 @@ Dusk は `.env.dusk.local` があればそれを読む。無いと `.env` がそ
 
 ### Dusk 実行時の前提
 
-- **`php artisan serve --env=dusk.local`** で `APP_URL`（`http://localhost:8000`）が応答して
-  いること。Dusk は自前でサーバーを起動しない
+- **`php artisan serve --env=dusk.local --no-reload`** で `APP_URL`（`http://localhost:8000`）が
+  応答していること。Dusk は自前でサーバーを起動しない。**起動は Bash ツールの
+  `run_in_background` で行い、停止は `TaskStop` で行う**（`kill <pid>` は承認待ちになる）
 
-  > **`--env=dusk.local` を必ず付けること。** 素の `php artisan serve` は `.env`
-  > （開発用の `bookkeeper`）を読むため、`.env.dusk.local`（`bookkeeper_test`）で
-  > truncate / seed する**テストプロセスとブラウザが叩くサーバーとで DB が食い違う**。
-  > テストが用意したデータが画面に出ず、`waitForText` 等が軒並みタイムアウトする
-  > （データが無いだけなので、原因が分かりにくい形で落ちる）。
+  > **`--env=dusk.local` と `--no-reload` は両方とも必須。** どちらが欠けても、ブラウザが
+  > 叩くサーバーが**開発用の `bookkeeper`** を読み、`bookkeeper_test` にデータを作る
+  > テストプロセスと DB が食い違う。テストが用意したデータが画面に出ず、`waitForText` や
+  > ログインが原因の分かりにくい形でタイムアウトする。
+  >
+  > `--env` だけでは足りない理由は `ServeCommand::startProcess()` にある。`--no-reload` が
+  > 無いと、子プロセス（`php -S`）へ渡す環境変数を `$passthroughVariables`（`APP_ENV` /
+  > `PATH` / Herd / Xdebug 系のみ）で絞り、**`DB_DATABASE` を含む残りをすべて削除する**。
+  > 子プロセスは `runningInConsole()` が偽で `--env` 引数を見られないため、`APP_ENV` の値から
+  > `.env.{APP_ENV}` を探すが、`.env.dusk.local` の中身は `APP_ENV=local`（`.env` からの
+  > コピー）なので `.env.local` は見つからず **`.env` へフォールバックする**。
+  > `--no-reload` を付けると全環境変数がそのまま子へ渡り、`.env.dusk.local` の
+  > mtime 変化によるサーバー再起動も起きない。
 - ChromeDriver がホストの Chrome とバージョン一致していること。ずれている場合は
   `php artisan dusk:chrome-driver --detect`（Phase 1 手順書参照）
 - 非 TTY 環境では `Warning: TTY mode requires /dev/tty to be read/writable.` が出るが

@@ -215,7 +215,7 @@ Phase 5 では Seeder が実装済みのため、`docs/seeds.md` のサンプル
   > **`compose.yaml` の `ports` は `127.0.0.1:3306:3306`** とループバックに限定して公開している。同じ PC の GUI クライアントからは繋がるが、LAN 内の別マシンからは繋がらない（意図した設定）。
 - 主要 URL（`/`, `/admin`）
 - テスト実行コマンド。**`php artisan dusk` は別ターミナルで
-  `php artisan serve --env=dusk.local` を先に起動する必要がある**旨も書く
+  `php artisan serve --env=dusk.local --no-reload` を先に起動する必要がある**旨も書く
   （Dusk は自前でサーバーを起動しない。Phase 4 手順書の「Dusk 実行時の前提」参照）
 - **AI エージェント向けの設定**: `composer run setup` が `php artisan boost:install --mcp --guidelines` を実行し、`.mcp.json`（Laravel Boost の MCP サーバー登録）と `docs/boost-guidelines.md`（AI ガイドライン）を生成すること。**どちらも `.gitignore` 済みでリポジトリには含まれない**ため、クローン後に `composer run setup` を実行して初めて有効になる旨を明記する
 - 関連ドキュメントへのリンク（`docs/` 配下）
@@ -291,7 +291,7 @@ vendor/bin/pint
    > レポートでは `Total` のセルと百分率が**別々の行**に出力されるため、行単位で動く
    > `grep` は**何もマッチせず空を返す**（判定できないまま「達成」と誤認しかねない）。
 4. `php artisan dusk` が all green。**別ターミナルで
-   `php artisan serve --env=dusk.local` を起動してから実行する**（Phase 4 手順書参照）
+   `php artisan serve --env=dusk.local --no-reload` を起動してから実行する**（Phase 4 手順書参照）
 5. `vendor/bin/pint --test` が違反 0
 6. `vendor/bin/phpstan analyse --memory-limit=512M` でエラー 0（**`--memory-limit` を省略しない**。この環境の PHP の既定は 128M で、省略すると並列ワーカーが `Child process error (exit code 255): while running parallel worker` で落ちる）
 7. `composer audit` で既知の脆弱性 0
