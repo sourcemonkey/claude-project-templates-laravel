@@ -32,7 +32,9 @@ PHP 8.4.23 / Laravel 13 向けに移植したものです。フェーズ分割�
 │   ├── edit-*.md                ← .claude/ 配下へ適用待ちの修正パッチ（変更点のみ）
 │   └── issue-*.md               ← 判断が必要で自動修正しなかった事項
 ├── prompts/                     ← ヘッドレス実行用プロンプト（.claude/ 外に置き修正可能にする）
-│   └── trial-phase.md           ← フェーズファイルのヘッドレス・トライアル用プロンプト
+│   ├── trial-phase.md           ← フェーズファイルのヘッドレス・トライアル用プロンプト
+│   ├── patch-format.md          ← patches/edit-*.md の書式（必要になった時だけ Read する）
+│   └── issue-format.md          ← patches/issue-*.md の書式（同上）
 ├── README.md                    ← このファイル
 ├── team-rules/                  ← チーム共通ルールの本体
 │   ├── coding-standards.md
