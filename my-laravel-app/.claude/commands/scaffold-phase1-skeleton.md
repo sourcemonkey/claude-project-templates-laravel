@@ -75,10 +75,9 @@ DB ボリュームの衝突。バージョンの一次情報は `.tool-versions`
 composer create-project -q laravel/laravel:^13.0 tmp-skeleton --remove-vcs --prefer-dist --no-scripts
 ```
 
-> **`-q` を省略しないこと（本手順書の `composer` 全般）。** 依存の導入ログは 1 回で 12KB を超え、
-> **エージェント実行では以降の全 API 呼び出しで再送され続ける**（実測で Phase 1 の composer 系
-> 出力は計 31KB）。`-q` は成功時のみ無音で、失敗時は例外がそのまま出るため切り分けは失われない。
-> 導入されたバージョンの確認は出力ではなく `composer.json` / `composer.lock` を一次情報とする。
+> **`-q` を省略しないこと（本手順書の `composer` 全般）。** 成功時のみ無音になり、失敗時は
+> 例外がそのまま出るため切り分けは失われない。導入されたバージョンの確認は、出力ではなく
+> `composer.json` / `composer.lock` を一次情報とする。
 >
 > **`-q` はサブコマンドの後ろに置くこと**（`composer create-project -q ...`）。許可リストは
 > `Bash(composer create-project*)` の前置一致なので、`composer -q create-project ...` は
