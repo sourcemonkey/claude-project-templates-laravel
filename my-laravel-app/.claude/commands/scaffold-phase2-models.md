@@ -97,6 +97,24 @@ enum UserRole: int
 
 **生成の順序を FK 依存に合わせること**（`make:model` はタイムスタンプ順でマイグレーションを並べるため、生成順がそのまま実行順になる）: `Category` → `Tag` → `Book` → `book_tags` → `Lending` → `Notification` → `AuditLog`。
 
+**`&&` で連結し、次の 2 呼び出しにまとめる。** 連結は 1 つのシェルが左から順に実行するので、
+生成順＝タイムスタンプ順が保たれる。
+
+```sh
+php artisan make:model Category -mf && php artisan make:model Tag -mf && php artisan make:model Book -mf && php artisan make:migration create_book_tags_table --create=book_tags
+```
+
+```sh
+php artisan make:model Lending -mf && php artisan make:model Notification -mf && php artisan make:model AuditLog -mf
+```
+
+> **ツールの並列呼び出しでまとめてはいけない。** 実行順が保証されずタイムスタンプが
+> 前後し、FK 依存が壊れる。順序を保ったまま呼び出しを減らせるのは `&&` の連結だけである。
+>
+> 2 つに分けてあるのは、連結が長くなるほどツール側の別のガード
+> （`uses shell operators that require approval for safety`）に当たりやすいため。
+> 呼び出しをまたいでも順序は保たれる。
+
 > `App\Models\Notification` は Laravel 標準の `Illuminate\Notifications\Facades\Notification` ファサードと名前が衝突しないよう、Controller / Action での `use` 文に注意する（完全修飾名かエイリアスで区別する）。なお Laravel 13 は標準の `notifications` テーブルのマイグレーションを生成しないため、`create_notifications_table` を新規作成してもテーブル名は衝突しない。
 
 各モデルの `$fillable`（`User` 以外は従来どおり `protected $fillable` プロパティで可）・`casts()`・リレーションを定義する。enum キャスト（`Lending::$state` → `LendingState`, `Notification::$kind` → `NotificationKind`）を持つモデルには前述の `@property` 注釈を付ける。
@@ -197,11 +215,10 @@ php artisan migrate
 
 エラーが出たら止めて報告。勝手に `migrate:fresh` しない。
 
-実行後、可逆性を確認する（`team-rules/coding-standards.md` の要求）:
+実行後、可逆性を確認する（`team-rules/coding-standards.md` の要求）。**`&&` で連結して 1 呼び出しにする**（`;` だと `rollback` が落ちても `migrate` の終了コードしか返らず、失敗を取りこぼす）:
 
 ```sh
-php artisan migrate:rollback
-php artisan migrate
+php artisan migrate:rollback && php artisan migrate
 ```
 
 ### ファクトリ
@@ -281,17 +298,24 @@ php artisan test tests/Unit/Models
 
 ### Pint 自動修正
 
-モデルテストを書き終えてから実行する:
+モデルテストを書き終えてから実行する。自動修正と検査は `&&` で連結して 1 呼び出しにする
+（修正が先、検査が後という順序に意味があるので `;` ではなく `&&`）:
 
 ```sh
-vendor/bin/pint
+vendor/bin/pint && vendor/bin/pint --test
 ```
 
-その後 `vendor/bin/pint --test` が違反 0 であることを確認する。
+`--test` 側が違反 0 になること。
 
 ## このフェーズの完了基準
 
 まず `bin/check-repo.sh`（読み取りのみ）を実行し、終了コード 0 を確認してから以下を確認する。
+
+コマンドで確かめる 3 項目は `&&` でつないで 1 呼び出しにする。
+
+```sh
+php artisan test && vendor/bin/pint --test && vendor/bin/phpstan analyse --memory-limit=512M
+```
 
 - [ ] `php artisan migrate:status` で全マイグレーションが `Ran`
 - [ ] `php artisan migrate:rollback` → `php artisan migrate` が両方成功する（可逆性）

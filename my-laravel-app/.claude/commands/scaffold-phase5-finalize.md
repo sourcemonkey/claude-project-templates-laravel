@@ -239,7 +239,12 @@ vendor/bin/pint
      `RefreshDatabase` はテスト DB の全テーブルを毎回削除して全マイグレーションを
      適用し直すため、**マイグレーションがゼロから通ることはこれで検証済み**になる
    - `php artisan db:seed` を 2 回連続で実行し、冪等（レコード数が増えない）かつ
-     `docs/seeds.md` の全件が投入されることを確認する
+     `docs/seeds.md` の全件が投入されることを確認する。**`&&` で連結して 1 呼び出しにする**
+     （2 回目が落ちたら非冪等なので、そこで止まるべき）:
+
+     ```sh
+     php artisan db:seed && php artisan db:seed
+     ```
 
    > 件数の確認は SQL で一括して取れる:
    > ```sh
@@ -252,7 +257,8 @@ vendor/bin/pint
    > 確かめるときは `title` ではなく `isbn` で絞ると確実。
    >
    > **貸出の 5 状態が 1 件ずつ揃っていることも確認する**（`docs/seeds.md` の貸出表）。
-   > これが崩れていると admin ダッシュボードの「申請待ち」「延滞」が 0 件になる:
+   > これが崩れていると admin ダッシュボードの「申請待ち」「延滞」が 0 件になる。
+   > 上の件数確認とは独立なので、`;` でつないで 1 呼び出しにする:
    > ```sh
    > docker compose exec -T db mysql -uapp -papp_password bookkeeper -e "SELECT state, COUNT(*) n FROM lendings GROUP BY state ORDER BY state;"
    > ```
@@ -295,9 +301,20 @@ vendor/bin/pint
 5. `vendor/bin/pint --test` が違反 0
 6. `vendor/bin/phpstan analyse --memory-limit=512M` でエラー 0（**`--memory-limit` を省略しない**。この環境の PHP の既定は 128M で、省略すると並列ワーカーが `Child process error (exit code 255): while running parallel worker` で落ちる）
 7. `composer audit` で既知の脆弱性 0
-8. `composer run dev` で起動し、以下を curl で確認:
+
+   > 5〜7 は互いに独立で、いずれも終了コードで判定する。**`&&` で連結して 1 呼び出しにする**:
+   >
+   > ```sh
+   > vendor/bin/pint --test && vendor/bin/phpstan analyse --memory-limit=512M && composer audit
+   > ```
+8. `composer run dev` で起動し、以下を curl で確認する。2 つは独立なので `;` でつないで
+   1 呼び出しにする:
    - `GET /` → 200 または 302（ログインへ）
    - `GET /login` → 200
+
+   ```sh
+   curl -sS --retry 15 --retry-all-errors --retry-delay 1 -o /dev/null -w "/: %{http_code}\n" http://localhost:8000; curl -sS -o /dev/null -w "/login: %{http_code}\n" http://localhost:8000/login
+   ```
 9. **（完了基準ではない・任意）** ブラウザで目視確認する。コマンドでは見えない部分
    （レイアウト崩れ・配色）の確認であり、機能面は Dusk が主要動線を押さえている:
    - 管理者でログインしてダッシュボード
