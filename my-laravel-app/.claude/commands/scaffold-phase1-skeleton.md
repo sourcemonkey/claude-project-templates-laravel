@@ -306,11 +306,6 @@ composer require -q --dev larastan/larastan laravel/dusk laravel-lang/lang larav
 
 ### 7. .env の準備
 
-> **呼び出しをまとめる**: 値の参照に要る 3 ファイル（ルートの `env.example` /
-> `.env.example` / `.env`）の Read は**まとめて 1 呼び出し**で行う。編集も `.env` と
-> `.env.example` は別ファイルなので、**同じ項目の 2 ファイル分を 1 呼び出しで Edit する**
-> （同一ファイル内の複数箇所だけは競合するため分ける）。
-
 生成された `.env` / `.env.example` に、ルート同梱の `env.example` の内容（`DB_USERNAME`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `MAIL_FROM_ADDRESS`）をマージする。あわせて `DB_CONNECTION` を `sqlite` から `mysql` に変更する。`APP_KEY` は上書きしない（Laravel が生成した値をそのまま使う。未設定なら次のコマンドで生成する）:
 
 また、`APP_LOCALE=en` / `APP_FAKER_LOCALE=en_US` を `APP_LOCALE=ja` / `APP_FAKER_LOCALE=ja_JP` に変更する（Step 6 の注意参照。`config/app.php` の変更だけでは反映されない）。`APP_FALLBACK_LOCALE` は `en` のまま残す。
@@ -450,9 +445,6 @@ composer require -q --dev "laravel/pao:^1.1.3" --no-interaction
    > （全件パスでも 1 が返る）はもう起きない。
 5. **起動確認**: `composer run dev` をバックグラウンドで立ち上げ、`curl -sS --retry 15 --retry-all-errors --retry-delay 1 -o /dev/null -w "%{http_code}" http://localhost:8000` が 200 を返すことを確認する。`/login` `/register` も 200 になること。確認後サーバを停止する（`pkill -f "php artisan serve"`、`pkill -f "artisan pail"`、`pkill -f vite`。最初の 1 つで残りも終了するが、3 つとも実行して確実に止める）。
    - `--retry` を付けるのは、`composer run dev` の起動直後は `php artisan serve` がまだ listen していないため。Bash ツールでは `sleep` を伴う待機ループが書けないので `curl` 側のリトライで吸収する
-   - **`/` `/login` `/register` の 3 つの `curl` は 1 呼び出しにまとめる。停止の `pkill` 3 つも
-     同様にまとめる**（いずれも互いに独立しているため。`;` で繋ぐのではなく、同一ブロックで
-     3 つのツールを同時に呼ぶ）
    - **停止まわりの終了コード 1 はすべて正常。フェーズの失敗として扱わず、原因を追わないこと。** 1 つ目の `pkill` で残りのプロセスも終了するため 2 つ目以降は「該当プロセス無し」で 1 を返し、同じ理由でバックグラウンド実行の完了通知も `failed`（`php artisan dev` 自体の非 0 終了）になる
 6. **既定 `DatabaseSeeder` の空化**: `laravel/laravel` の `database/seeders/DatabaseSeeder.php` は、固定メール（`test@example.com`）の Test User を `User::factory()->create([...])` で 1 件作る内容になっている。これは `firstOrCreate` ではないため、**`composer run setup`（内部で `migrate --seed --force`）を 2 回目に実行すると `users.email` の UNIQUE 制約違反で落ちる**（「クローンして 1 コマンドで動く」が崩れる）。`run()` の本体をコメント化して空にすること（Seeder 本体は Phase 5 で `docs/seeds.md` に沿って実装する）:
    ```php
@@ -471,18 +463,10 @@ composer require -q --dev "laravel/pao:^1.1.3" --no-interaction
    - 確認は `diff .env .env.example` で行う。**差分が `APP_KEY` の 1 行だけ**になっていれば正しい（`APP_URL` が差分に出た場合は Step 7 の注意を参照）
 8. **git status の確認**: `git status --short` に、`.gitignore` で除外されるべき生成物（`public/hot`, `storage/pail`, `.phpunit.result.cache` 等）が現れていないことを確認する。現れた場合はテンプレートの `.gitignore` 側を補うこと。
    - この時点では Laravel の生成物一式（`app/`, `config/`, `public/` 等）がすべて未追跡として並ぶため、`git status` の表示はディレクトリ単位に畳まれる。個別の生成物が除外されているかは `git check-ignore -v <path>...` で確かめる
-   - **ここの確認（`git status` / `git check-ignore` / `.gitignore` の grep / `ls`）は
-     互いに独立しているので 1 呼び出しにまとめる**
 
 ## このフェーズの完了基準
 
 まず `bin/check-repo.sh`（読み取りのみ）を実行し、終了コード 0 を確認してから以下を確認する。
-
-> **検証コマンドは 1 呼び出しにまとめる。** `php artisan test` / `vendor/bin/pint --test` /
-> `vendor/bin/phpstan analyse --memory-limit=512M` / `composer.json` に対する `grep` /
-> `git status` は互いに独立しており、**どれが落ちたかはツールごとの結果で分かる**ので、
-> 1 個ずつ確かめる必要はない。前段の修正結果を見てから内容を決めるもの（Pint を掛けた後の
-> `pint --test` 等）だけを分ける。
 
 - [ ] `docker compose up -d --wait db` で DB が healthy になる
 - [ ] `composer run setup` で DB 起動 → セットアップ完了まで一気通貫で動く
