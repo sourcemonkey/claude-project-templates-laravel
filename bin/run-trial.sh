@@ -116,10 +116,31 @@ while [ "$phase" -le "$TO" ]; do
         # `claude -p` は最終メッセージだけを標準出力へ出す。したがって end マーカーが
         # ログに無ければ、報告より前のメッセージで出力したことになり、報告作成分の
         # 消費が「マーカー外」へ落ちる（実測で 0.6M 相当）。失敗ではないので続行する。
-        if ! grep -q "^\[phase-tokens\] phase=${phase} event=end" "$log"; then
+        #
+        # 存在だけでは足りない。end は [phase-result] の直前に置く決まりで、報告より前に
+        # 出ていると同じく報告分が計測から漏れる（2026-08-15 の Phase 1 で 0.10M 相当が
+        # 漏れた）。位置まで見ないとこの形を取りこぼす。
+        end_line="$(grep -n "^\[phase-tokens\] phase=${phase} event=end" "$log" | tail -1 | cut -d: -f1)" || true
+        result_line="$(grep -n "^\[phase-result\] phase=${phase} " "$log" | tail -1 | cut -d: -f1)" || true
+        if [ -z "$end_line" ]; then
             echo "⚠ Phase $phase: [phase-tokens] event=end がログにありません。" >&2
             echo "  報告より前に出力したため、報告作成分の消費が計測から漏れています" >&2
             echo "  （prompts/trial-phase.md「フェーズごとのトークン計測」参照）。" >&2
+        elif [ -n "$result_line" ]; then
+            if [ "$end_line" -gt "$result_line" ]; then
+                echo "⚠ Phase $phase: [phase-tokens] event=end が [phase-result] より後にあります。" >&2
+                echo "  マーカーの後には何も書かない決まりです" >&2
+                echo "  （prompts/trial-phase.md「フェーズの結末マーカー」参照）。" >&2
+            else
+                # 2 つのマーカーの間に本文が挟まっていれば、end が報告より前にある。
+                gap="$(awk -v s="$end_line" -v e="$result_line" \
+                    'NR>s && NR<e && NF>0 {c++} END {print c+0}' "$log")"
+                if [ "$gap" -gt 0 ]; then
+                    echo "⚠ Phase $phase: [phase-tokens] event=end が報告より前にあります（間に ${gap} 行）。" >&2
+                    echo "  報告作成分の消費が計測から漏れています。end は [phase-result] の直前へ" >&2
+                    echo "  （prompts/trial-phase.md「フェーズごとのトークン計測」参照）。" >&2
+                fi
+            fi
         fi
         echo "===== Phase $phase 完了 $(date '+%H:%M:%S') ====="
         echo
