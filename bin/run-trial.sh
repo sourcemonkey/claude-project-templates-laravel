@@ -68,15 +68,15 @@ TO="${2:-$1}"
 for n in "$FROM" "$TO"; do
     case "$n" in
         ''|*[!0-9]*)
-            echo "フェーズ番号は数字で指定してください（指定: '$n'）。" >&2; exit 1 ;;
+            echo "フェーズ番号は数字で指定してください（指定: '${n}'）。" >&2; exit 1 ;;
     esac
     if [ "$n" -lt 1 ] || [ "$n" -gt "$PHASE_MAX" ]; then
-        echo "フェーズ番号は 1〜${PHASE_MAX} です（指定: $n）。" >&2; exit 1
+        echo "フェーズ番号は 1〜${PHASE_MAX} です（指定: ${n}）。" >&2; exit 1
     fi
 done
 
 if [ "$FROM" -gt "$TO" ]; then
-    echo "開始フェーズが終了フェーズより後です（$FROM 〜 $TO）。" >&2
+    echo "開始フェーズが終了フェーズより後です（${FROM} 〜 ${TO}）。" >&2
     exit 1
 fi
 
