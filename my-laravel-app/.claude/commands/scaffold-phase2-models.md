@@ -259,6 +259,11 @@ php artisan migrate:rollback && php artisan migrate
     で落ちる。これは Phase 4 の Dusk（返却テストで在庫を指定して書籍を作る）で初めて
     顕在化するため、**Phase 2 の時点でクロージャにしておくこと**。
     `outOfStock()` などの state は definition の解決後に適用されるので影響を受けない。
+  - **`isbn` は `fake()->unique()->isbn13()` とする。`optional()` と繋がないこと**
+    （`optional()` は**後続の呼び出しを確率で `null` に差し替える**ため、
+    `optional()->unique()->isbn13()` は `null` に対するメソッド呼び出しになって落ちる）。
+    null の ISBN は `docs/seeds.md` の「未公開書籍サンプル」を Seeder が作るので、
+    ファクトリ側で混ぜる必要はない。
 - `Lending` ファクトリには state ごとの state メソッド（`approved()`, `overdue()`, `returned()`, `rejected()`）を用意しておくと、モデルテストと Phase 4・5 の Feature / Dusk テストの両方で使える
   - **Seeder では使わない。** Phase 5 の Seeder は `docs/seeds.md` の固定値を `firstOrCreate()` で投入する方式のため、ファクトリを経由しない。`approved()` の `due_on` は `docs/api-spec.md` の承認仕様（14 日後）に従うので、**seeds.md の Approved サンプル（`due_on = 7 日後`）とは一致しない**。Seeder でこの state を使うと seeds.md と食い違うデータが入る
 
