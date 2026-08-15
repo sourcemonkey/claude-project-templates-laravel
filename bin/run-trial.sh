@@ -125,12 +125,12 @@ while [ "$phase" -le "$TO" ]; do
         if [ -z "$end_line" ]; then
             echo "⚠ Phase $phase: [phase-tokens] event=end がログにありません。" >&2
             echo "  報告より前に出力したため、報告作成分の消費が計測から漏れています" >&2
-            echo "  （prompts/trial-phase.md「フェーズごとのトークン計測」参照）。" >&2
+            echo "  （prompts/trial-phase.md「報告の最後の 2 行」参照）。" >&2
         elif [ -n "$result_line" ]; then
             if [ "$end_line" -gt "$result_line" ]; then
                 echo "⚠ Phase $phase: [phase-tokens] event=end が [phase-result] より後にあります。" >&2
                 echo "  マーカーの後には何も書かない決まりです" >&2
-                echo "  （prompts/trial-phase.md「フェーズの結末マーカー」参照）。" >&2
+                echo "  （prompts/trial-phase.md「報告の最後の 2 行」参照）。" >&2
             else
                 # 2 つのマーカーの間に本文が挟まっていれば、end が報告より前にある。
                 gap="$(awk -v s="$end_line" -v e="$result_line" \
@@ -138,7 +138,7 @@ while [ "$phase" -le "$TO" ]; do
                 if [ "$gap" -gt 0 ]; then
                     echo "⚠ Phase $phase: [phase-tokens] event=end が報告より前にあります（間に ${gap} 行）。" >&2
                     echo "  報告作成分の消費が計測から漏れています。end は [phase-result] の直前へ" >&2
-                    echo "  （prompts/trial-phase.md「フェーズごとのトークン計測」参照）。" >&2
+                    echo "  （prompts/trial-phase.md「報告の最後の 2 行」参照）。" >&2
                 fi
             fi
         fi
