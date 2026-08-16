@@ -297,7 +297,9 @@ vendor/bin/pint
    > レポートでは `Total` のセルと百分率が**別々の行**に出力されるため、行単位で動く
    > `grep` は**何もマッチせず空を返す**（判定できないまま「達成」と誤認しかねない）。
 4. `php artisan dusk` が all green。**別ターミナルで
-   `php artisan serve --env=dusk.local --no-reload` を起動してから実行する**（Phase 4 手順書参照）
+   `php artisan serve --env=dusk.local --no-reload` を起動してから実行する**（Phase 4 手順書参照）。
+   **停止は `pkill -f "artisan serve"` で行う。素の `kill <PID>` は使わない**
+   （許可リストは `Bash(pkill -f *)` のみで、`kill` はヘッドレスで承認待ちになる）
 5. `vendor/bin/pint --test` が違反 0
 6. `vendor/bin/phpstan analyse --memory-limit=512M` でエラー 0（**`--memory-limit` を省略しない**。この環境の PHP の既定は 128M で、省略すると並列ワーカーが `Child process error (exit code 255): while running parallel worker` で落ちる）
 7. `composer audit` で既知の脆弱性 0
@@ -314,6 +316,12 @@ vendor/bin/pint
 
    ```sh
    curl -sS --retry 15 --retry-all-errors --retry-delay 1 -o /dev/null -w "/: %{http_code}\n" http://localhost:8000; curl -sS -o /dev/null -w "/login: %{http_code}\n" http://localhost:8000/login
+   ```
+
+   確認後に停止する（Phase 1 Step 9-5 と同じ。2 個目以降の終了コード 1 は正常）。
+
+   ```sh
+   pkill -f "php artisan serve"; pkill -f "artisan pail"; pkill -f vite
    ```
 9. **（完了基準ではない・任意）** ブラウザで目視確認する。コマンドでは見えない部分
    （レイアウト崩れ・配色）の確認であり、機能面は Dusk が主要動線を押さえている:
