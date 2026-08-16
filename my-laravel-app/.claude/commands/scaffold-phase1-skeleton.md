@@ -65,7 +65,7 @@ DB ボリュームの衝突。バージョンの一次情報は `.tool-versions`
 起動失敗時の典型原因:
 - ポート競合（`docker compose logs db` で確認）
 - ボリュームに前回データが残っていてユーザ作成がスキップされた（`docker compose down -v` で初期化）
-- **Docker named volume の衝突**: Compose のプロジェクト名はディレクトリ名（basename）由来のため、`my-laravel-app` という同名ディレクトリが複数ある場合（git worktree・複数クローン）、同じボリューム `my-laravel-app_db-data` を共有してしまう。過去に別ディレクトリで初期化済みのデータが残っていると `MYSQL_DATABASE=bookkeeper` / `MYSQL_USER=app` の初期化がスキップされ、`app` ユーザーが `bookkeeper` にアクセスできない（`SHOW GRANTS FOR 'app'@'%';` で確認できる）。`docker compose down -v` で解消する。worktree で並行して試す場合は `COMPOSE_PROJECT_NAME` を worktree ごとに変える
+- **Docker named volume の衝突**: `my-laravel-app` という同名ディレクトリが複数ある場合（git worktree・複数クローン）、Compose のプロジェクト名が basename 由来のため同じボリュームを共有し、`app` ユーザーの初期化がスキップされる（`SHOW GRANTS FOR 'app'@'%';` で確認できる）。`docker compose down -v` で解消する。worktree で並行して試す場合は `COMPOSE_PROJECT_NAME` を worktree ごとに変える
 
 ### 3. Laravel アプリ生成
 
@@ -83,7 +83,7 @@ composer create-project -q laravel/laravel:^13.0 tmp-skeleton --remove-vcs --pre
 > `Bash(composer create-project*)` の前置一致なので、`composer -q create-project ...` は
 > **一致せずヘッドレスで承認待ちになる**（`git -c` を前置した場合と同じ理由）。
 
-**`laravel new` は使わない。** Installer にはバージョン指定オプションが無く、常にその時点の最新安定版を取得するため、Laravel 14 のリリース以降は 14 が入る。本テンプレートの `docs/` 一式は 13 系を前提に書かれている。`composer create-project` なら制約（`:^13.0`）で固定でき、Installer 自体のバージョン差による挙動の揺れも受けない。
+**`laravel new` は使わない。** バージョン指定オプションが無く、常に最新安定版が入るため 13 系に固定できない。
 
 > **`--no-scripts` を省略しないこと。** `laravel/laravel` の `post-create-project-cmd` は
 > `database/database.sqlite` を作って `migrate --graceful` を **SQLite に対して**実行する。
@@ -99,13 +99,11 @@ ls -a .env.example artisan composer.json composer.lock phpunit.xml
 
 最後の `ls` は配置が成功したことの確認。1 つでも「No such file」になる場合は先に進まず、原因を調べること（`.env` はまだ存在しない。次の初期化で作る）。
 
-> **注意（配置手段の選定理由）**: この配置を **`mv` と glob で書かないこと**。`mv tmp-skeleton/* .` はドットファイル（`.env` 等）を含まないため `.env` を欠いたまま以降の `key:generate` / `migrate` が全滅し、しかもエラーはフェーズ後半まで表面化しない。加えて Bash ツールが**書き込み系コマンドの glob を拒否**する（`find ... -exec mv` も同様に拒否される）。
->
-> `rsync -a` は末尾スラッシュ付きのディレクトリ指定でドットファイルを含めて再帰コピーするため、シェルの glob 展開に依存しない。コピー後に残る `tmp-skeleton` は未追跡なので `git clean -fdxq` で除去する。
+> **この配置を `mv` と glob で書かないこと**（`mv tmp-skeleton/* .` はドットファイルを
+> 含まず `.env` を取りこぼす。Bash ツールも書き込み系の glob を拒否する）。`rsync -a` は
+> 末尾スラッシュ付きの指定でドットファイルごと再帰コピーする。
 
-`laravel/laravel` は `.gitignore` / `.npmrc` を同梱するが、上記の `--exclude` により**テンプレート同梱版がそのまま残る**。テンプレート側を正とするため、除外は必ず指定すること（`--exclude=/.gitignore` の先頭 `/` は転送元ルート直下のみを対象にする指定で、`storage/framework/*/.gitignore` 等の下位ディレクトリの `.gitignore` は除外されない）。
-
-> **補足**: `.npmrc` を `--exclude` するのは内容が同一（`ignore-scripts=true` / `audit=true`）だからだけでなく、Claude Code のセンシティブファイル保護により `.npmrc` への書き込みがヘッドレス実行で承認できないため。除外しておけば保護に抵触せず処理が止まらない。
+**`--exclude` は必ず指定する。** `laravel/laravel` 同梱の `.gitignore` / `.npmrc` ではなく、テンプレート同梱版を正とするため（先頭 `/` は転送元ルート直下のみを対象にする指定で、`storage/framework/*/.gitignore` 等は除外されない）。
 
 配置後、テンプレート同梱ファイルが無傷であることを確認する:
 
@@ -140,12 +138,10 @@ composer remove -q pestphp/pest-plugin-drift --dev
 
 `--drift` は `laravel/laravel` 同梱の PHPUnit 形式のテストを Pest 記法へ変換する。変換が済めば plugin は不要なので外す。
 
-> **`--no-output --no-progress` を省略しないこと。** `laravel/pao` は `CLAUDECODE` 等の
-> 環境変数でエージェント実行と判定すると、**すべての Pest 実行にこの 2 つを無条件で追記する**
-> （`vendor/laravel/pao/src/Drivers/Pest/Plugin.php`）。一方 `pest-plugin-drift` は `--drift` の
-> 後続引数を 0〜1 個しか許さないため、追記された 2 個と衝突して
+> **`--no-output --no-progress` を省略しないこと。** `laravel/pao` がエージェント実行と判定して
+> この 2 つを自動追記するため、省略すると `pest-plugin-drift` の引数数と衝突して
 > `The [--drift] argument only accepts the directory to convert as argument.` で必ず失敗する。
-> **先に明示しておけば pao 側は追記しない**（`in_array` で重複を避けるため）。
+> 先に明示しておけば pao 側は追記しない。
 
 > **`./vendor/bin/pest` と書かないこと。** 許可リストは `Bash(vendor/bin/pest*)` の前置一致なので、
 > `./` を付けた形や環境変数を前置した形（`PEST_NO_SUPPORT=true ./vendor/bin/pest ...`）は一致せず、
@@ -188,20 +184,9 @@ composer require -q --dev larastan/larastan laravel/dusk laravel-lang/lang larav
 > `laravel/boost` は、AI エージェント向けの MCP サーバー（DB スキーマ・ログ・Laravel
 > エコシステムのドキュメント検索）と AI ガイドラインを提供する。導入手順は Step 6 参照。
 
-> **`livewire/livewire` は手動で `composer require` しない。** Step 6 の
-> `php artisan breeze:install livewire` が内部で
-> `composer require livewire/livewire:^3.6.4 livewire/volt:^1.7.0` を実行し
-> （`vendor/laravel/breeze/src/Console/InstallsLivewireStack.php`）、**トップレベルの
-> 依存として `composer.json` に書き込む**ため、別途追加すると重複するうえ、
-> バージョン制約が Breeze と二重管理になる。
->
-> 手動で追加した場合、実行順によって結果が反転するので注意する:
-> - 先に `composer require livewire/livewire`（制約なし）→ 後から Breeze が
->   `^3.6.4` で**上書き**するため結果は v3。無駄な入れ直しが起きるだけ
-> - Breeze の後に `composer require livewire/livewire`（制約なし）→ Breeze が書いた
->   `^3.6.4` を**上書きして v4 系が入り**、`docs/stack.md` の想定から外れる
-
-> **補足（spatie/laravel-query-builder は v7 系で解決される）**: v7 の `allowedFilters()` / `allowedSorts()` は**可変長引数のみ**を受け取り、v6 までの配列渡しは `TypeError` になる。Phase 3 で使うときの書き方は `docs/architecture.md` の Model セクション参照。
+> **`livewire/livewire` / `livewire/volt` は手動で `composer require` しない。**
+> Step 6 の `php artisan breeze:install livewire` が `^3.6.4` / `^1.7.0` の制約付きで
+> `composer.json` へ追加する。手動追加すると Breeze の制約を上書きして v4 系が入る。
 
 ### 6. 各種初期化
 
@@ -214,7 +199,7 @@ composer require -q --dev larastan/larastan laravel/dusk laravel-lang/lang larav
 
   このコマンドは `livewire/livewire:^3.6.4` と `livewire/volt:^1.7.0` を `composer.json` の `require` へ追加する。**どちらも別途 `composer require` しないこと**（Step 5 の注記参照）。導入後に `composer.json` の `livewire/livewire` が `^3.6.4` になっていることを確認する。
 
-  > **注意（Breeze 生成物は `dashboard` / `profile` ルートに依存する）**: `breeze:install` は `routes/web.php` に `dashboard` と `profile` の 2 ルートを追加し、生成したビュー・Controller・Feature テストがそれを参照する。一方 `docs/api-spec.md` の `routes/web.php` にはこの 2 つが無い。Phase 3 でルーティングを仕様通りに置き換える際、参照側の追従が必須になる（詳細は Phase 3 手順書と `docs/api-spec.md` の注記参照）。Phase 1 の時点では Breeze の生成物をそのまま残しておくこと。
+  > **`breeze:install` が追加する `dashboard` / `profile` の 2 ルートは、Phase 1 の時点ではそのまま残す**（`docs/api-spec.md` の仕様には無いが、置き換えと参照側の追従は Phase 3 の担当）。
 - **laravel-lang（日本語化）**:
   ```sh
   php artisan lang:add ja --no-interaction
@@ -231,23 +216,20 @@ composer require -q --dev larastan/larastan laravel/dusk laravel-lang/lang larav
   > `session not created: This version of ChromeDriver only supports Chrome version NNN / Current browser version is MMM ...`
   > で失敗する。`--detect` はホストにインストールされた Chrome のバージョンを検出して対応する ChromeDriver を入れ直すため、Phase 1 の時点で実行しておく（Chrome を更新した場合も同じコマンドで追従する）。
 
-  > **重要（`tests/Pest.php` を先に並べ替える）**: Dusk 8.6 の `dusk:install` は `pest()->extend(Tests\DuskTestCase::class)->in('Browser');` を `tests/Pest.php` の**先頭**（`use` 文より前）に完全修飾名で挿入する。この状態で Step 9 の Pint を掛けると `fully_qualified_strict_types` / `ordered_imports` が短縮名 + `use` 文へ書き換え、`use Tests\DuskTestCase;` が `pest()->extend(DuskTestCase::class)` の**後ろ**に置かれる。Pest は `pest()->extend()` をブートストラップ段階で評価するため、`php artisan test` が `The class DuskTestCase was not found.` で失敗する。
-  >
-  > **`dusk:install` の直後に**、挿入されたブロックを `use` 文の**後ろ**へ移し、短縮名 + `use Tests\DuskTestCase;` の形に直しておくこと。こうしておけば Pint はこのファイルを一切書き換えず、Step 9 での手戻りが発生しない:
+  > **重要（`tests/Pest.php` を先に並べ替える）**: `dusk:install` は
+  > `pest()->extend(Tests\DuskTestCase::class)->in('Browser');` をファイル**先頭**（`use` 文より前）に
+  > 挿入する。**`dusk:install` の直後に** `use` 文の後ろへ移し、短縮名 + `use Tests\DuskTestCase;` の
+  > 形に直しておくこと。放置して Step 9 の Pint を掛けると `php artisan test` が
+  > `The class DuskTestCase was not found.` で失敗する（Pint を掛け直すたびに再発する）。
   > ```php
   > use Illuminate\Foundation\Testing\RefreshDatabase;
   > use Tests\DuskTestCase;
   > use Tests\TestCase;
   >
-  > // dusk:install はこの行をファイル冒頭（use 文より前）に挿入するが、Pint の
-  > // fully_qualified_strict_types が短縮名 + use 文へ書き換えると、import が
-  > // pest()->extend() より後ろに置かれ Pest のブートストラップが解決に失敗する。
-  > // use 文より後ろへ移してあるのはそのため。
   > pest()->extend(DuskTestCase::class)
   > //  ->use(Illuminate\Foundation\Testing\DatabaseMigrations::class)
   >     ->in('Browser');
   > ```
-  > （Pint 適用後に直す運用では、Pint を掛け直すたびに壊れる。並べ替えを先に済ませること。）
 - **larastan/larastan**: `artisan` 経由のインストールコマンドはないため、`phpstan.neon` をリポジトリ直下に手動作成する:
   ```neon
   includes:
@@ -261,7 +243,7 @@ composer require -q --dev larastan/larastan laravel/dusk laravel-lang/lang larav
   ```
   `vendor/bin/phpstan analyse --memory-limit=512M` で動作確認する（既定のメモリ上限 128M では解析中にクラッシュすることがある）。
 
-  Breeze（Livewire スタック）が生成する `app/Http/Controllers/Auth/VerifyEmailController.php` は、`$request->user()` が nullable な型を返す一方 `Illuminate\Auth\Events\Verified` のコンストラクタが non-null を期待するため、level 5 で 1 件のエラーが出る（Breeze 自身の生成コードであり本プロジェクトの実装ミスではない）。この既知の指摘は以下の手順でベースライン化し、以後のアプリケーションコードに対してはエラー 0 を維持する:
+  Breeze が生成する `app/Http/Controllers/Auth/VerifyEmailController.php` に対して level 5 で 1 件エラーが出る。**これはベースライン化する**（以後のアプリケーションコードに対してはエラー 0 を維持する）:
   ```sh
   vendor/bin/phpstan analyse --memory-limit=512M --generate-baseline
   ```
@@ -288,21 +270,13 @@ composer require -q --dev larastan/larastan laravel/dusk laravel-lang/lang larav
   > （`prompts/trial-phase.md` の前提条件 5 参照）。上記 2 つの出力先は `.claude/` の外なので
   > ヘッドレスでも生成できる。
 
-  > **ガイドラインの出力先は `CLAUDE.md` ではなく `docs/boost-guidelines.md`。** Boost の既定は
-  > `CLAUDE.md` への書き込みだが、テンプレート同梱の `config/boost.php`（`agents.claude_code.guidelines_path`）
-  > で退避させている。`CLAUDE.md` は本テンプレートの成果物であり、Boost に再生成させない。
-  > あわせて `.ai/guidelines/` の 2 ファイルが Boost のガイドラインを上書きする。
-  > `volt/core.blade.php` は Volt の方針（新規コンポーネントはクラスベース）へ、
-  > `boost/core.blade.php` は `## Project Rules`（**存在しない `.ai/rules/index.md` を
-  > 開くことを MUST として要求する**）を `team-rules/` と `docs/` への誘導へ差し替える。
-  > **いずれもテンプレート同梱の追跡ファイルなので、リセット後もそのまま残る。**
+  > **出力先の退避と `.ai/guidelines/` による上書きは、テンプレート同梱の設定で済んでいる**
+  > （`config/boost.php` と `.ai/guidelines/` の 2 ファイル。詳細は `docs/stack.md`）。
   >
   > **上書きの成否は `grep -n "^## Project Rules" docs/boost-guidelines.md` が無出力かで判定する**
-  > （上書きファイルのパスが Boost 側のガイドラインキーとずれると、エラーにならず素通りする）。
-  > 効いていれば `## プロジェクトのルール` に置き換わっている。**`grep "\.ai/rules"` で判定しない
-  > こと**——上書きファイル自身が「`.ai/rules/` は使わない」と説明のために言及しているため、
-  > **成功していても必ずヒットする**。`boost:install` の出力でも、上書きが効いたガイドライン名には
-  > `boost*` `volt/core*` のように `*` が付く。
+  > （上書きが効いていなくてもエラーにならず素通りするため）。効いていれば
+  > `## プロジェクトのルール` に置き換わっている。**`grep "\.ai/rules"` で判定しないこと**——
+  > 上書きファイル自身がその語を含むため、**成功していても必ずヒットする**。
 
 ### 7. .env の準備
 
@@ -380,9 +354,9 @@ public function boot(): void
 
 **`scripts.setup`**: 本プロジェクトは DB を Docker で動かし、かつ Seeder 込みで「最初から動く状態」にするため、既定の生成物に次の 3 点を変更する:
 
-1. **先頭に `docker compose up -d --wait db` を足す** — 後続の `migrate` は DB が healthy でないと失敗するため。`--wait` を使う理由は Step 2 と同じ（判定条件を `compose.yaml` の healthcheck に一本化する）
-2. **`@php artisan migrate --force` を `@php artisan migrate --seed --force` にする** — `docs/seeds.md` のサンプルデータ投入まで含めて一発で完了させるため
-3. **`@php artisan boost:install --mcp --guidelines --no-interaction` を足す** — `.mcp.json` と `docs/boost-guidelines.md` は `.gitignore` 済みで**リポジトリをクローンしても存在しない**ため。setup に含めないと、新規クローンした利用者は MCP サーバーが未設定のまま作業を始めることになり、`CLAUDE.md` の `@docs/boost-guidelines.md` も解決できない。Step 6 でも同じコマンドを実行するが、あちらは Phase 1 の生成時、こちらは**クローン後の再現性**のためで役割が異なる（コマンドは冪等なので二重実行しても問題ない）。
+1. **先頭に `docker compose up -d --wait db` を足す**
+2. **`@php artisan migrate --force` を `@php artisan migrate --seed --force` にする**
+3. **`@php artisan boost:install --mcp --guidelines --no-interaction` を足す** — `.mcp.json` と `docs/boost-guidelines.md` は `.gitignore` 済みで、クローンした利用者の手元には存在しないため。Step 6 と重複するが冪等なので問題ない
 
 変更後:
 
@@ -401,11 +375,9 @@ public function boot(): void
 
 `npm install --ignore-scripts` は既定のまま残す（`.npmrc` の `ignore-scripts=true` と方針が一致するため）。
 
-> **`setup` の `key:generate` は既存の `APP_KEY` を毎回作り直す。** `copy('.env.example', '.env')` は
-> `.env` があれば skip されるが、`key:generate` に `--force` 以外のガードは無いため、Step 9-7 で
-> `composer run setup` を 2 回流すと `.env` の `APP_KEY` は 2 回とも別の値に変わる。**これは異常では
-> ない**（ローカル開発 DB にセッション・暗号化データを溜めていないため実害がない）。`diff .env .env.example`
-> の差分が `APP_KEY` の 1 行だけ、という判定には影響しない。
+> **`setup` の `key:generate` は既存の `APP_KEY` を毎回作り直す。** Step 9-7 で 2 回流すと
+> `APP_KEY` は 2 回とも別の値になるが、**これは異常ではない**（`diff .env .env.example` の差分が
+> `APP_KEY` の 1 行だけ、という判定には影響しない）。
 
 **`require-dev` の `laravel/pao` の制約を `^1.1.3` へ引き上げる。**
 
@@ -413,11 +385,8 @@ public function boot(): void
 composer require -q --dev "laravel/pao:^1.1.3" --no-interaction
 ```
 
-`laravel/laravel` の既定は `^1.0.6` だが、**v1.1.2 以前は全件パスでも `php artisan test` の
-終了コードが 1 になる**（`--no-output` の二重付与による。詳細は `docs/stack.md`）。
-本プロジェクトは完了基準をすべて終了コードで判定するため、その下限を保証しておく。
-引き上げないと、将来 `composer install` が 1.1.2 以前を解決したときに **green のテストを
-失敗と誤認する**。
+既定は `^1.0.6` だが、**v1.1.2 以前は全件パスでも `php artisan test` の終了コードが 1 になる**
+（詳細は `docs/stack.md`）。完了基準を終了コードで判定するため、下限を保証しておく。
 
 ### 9. DB の作成と起動確認
 
@@ -433,7 +402,7 @@ composer require -q --dev "laravel/pao:^1.1.3" --no-interaction
    > `docker compose up -d --wait db` し直すこと（開発用 DB のデータも消えるが、Phase 1 時点では
    > 失うものが無い）。
 
-   > **重要（phpunit.xml のテスト DB 設定）**: `laravel/laravel` が生成する `phpunit.xml` は既定で `DB_CONNECTION=sqlite` / `DB_DATABASE=:memory:` を設定しており、**このままだとテストが MySQL の `bookkeeper_test` ではなく SQLite で走る**。本プロジェクトは MySQL 固有の DDL（`docs/db-schema.md` の `books` テーブルの `ALTER TABLE ... ADD CONSTRAINT ... CHECK`）を使うため、SQLite ではマイグレーションが構文エラーで失敗する（Phase 1 時点では該当マイグレーションが無いため表面化しないが、Phase 2 で必ず壊れる）。`docs/stack.md` の規約通りテストは `bookkeeper_test`（MySQL）で実行するため、`phpunit.xml` の該当 env を次のように書き換える:
+   > **重要（phpunit.xml のテスト DB 設定）**: 生成される `phpunit.xml` は既定で `DB_CONNECTION=sqlite` / `DB_DATABASE=:memory:` を設定しており、**このままだとテストが SQLite で走る**。**Phase 1 では表面化しないが、MySQL 固有の DDL を使う Phase 2 で必ず壊れる**ので、ここで書き換える:
    > ```xml
    > <env name="DB_CONNECTION" value="mysql"/>
    > <env name="DB_DATABASE" value="bookkeeper_test"/>
@@ -463,7 +432,7 @@ composer require -q --dev "laravel/pao:^1.1.3" --no-interaction
 
    - `--retry` を付けるのは、`composer run dev` の起動直後は `php artisan serve` がまだ listen していないため。Bash ツールでは `sleep` を伴う待機ループが書けないので `curl` 側のリトライで吸収する
    - **停止まわりの終了コード 1 はすべて正常。フェーズの失敗として扱わず、原因を追わないこと。** 1 つ目の `pkill` で残りのプロセスも終了するため 2 つ目以降は「該当プロセス無し」で 1 を返し、同じ理由でバックグラウンド実行の完了通知も `failed`（`php artisan dev` 自体の非 0 終了）になる
-6. **既定 `DatabaseSeeder` の空化**: `laravel/laravel` の `database/seeders/DatabaseSeeder.php` は、固定メール（`test@example.com`）の Test User を `User::factory()->create([...])` で 1 件作る内容になっている。これは `firstOrCreate` ではないため、**`composer run setup`（内部で `migrate --seed --force`）を 2 回目に実行すると `users.email` の UNIQUE 制約違反で落ちる**（「クローンして 1 コマンドで動く」が崩れる）。`run()` の本体をコメント化して空にすること（Seeder 本体は Phase 5 で `docs/seeds.md` に沿って実装する）:
+6. **既定 `DatabaseSeeder` の空化**: 既定の `run()` は固定メールの Test User を `create()` で 1 件作るため、**`composer run setup` を 2 回目に実行すると `users.email` の UNIQUE 制約違反で落ちる**。`run()` の本体をコメント化して空にすること（Seeder 本体は Phase 5 で `docs/seeds.md` に沿って実装する）:
    ```php
    public function run(): void
    {
