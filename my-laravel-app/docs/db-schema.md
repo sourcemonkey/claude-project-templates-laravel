@@ -57,7 +57,7 @@ audit_logs (独立、polymorphic 相当のカラム構成)
 | published | boolean | NOT NULL, default: false |
 | created_at / updated_at | timestamp | |
 
-インデックス: `category_id`, `isbn`, `title`（`category_id` は `$table->foreignId('category_id')` の外部キー制約が、`isbn` は `->unique()` がそれぞれインデックスを自動生成するため、マイグレーションで個別に `index()` を呼ぶのは `title` のみ）
+インデックス: `category_id`, `isbn`, `title`（**マイグレーションで個別に `index()` を呼ぶのは `title` のみ**。他の 2 つは `foreignId()` と `unique()` が自動生成する）
 
 制約: `available_copies >= 0`, `available_copies <= total_copies`（CHECK 制約）
 
@@ -121,7 +121,7 @@ audit_logs (独立、polymorphic 相当のカラム構成)
 
 インデックス: `user_id`, `(user_id, read_at)`
 
-> Laravel 標準の通知（`Illuminate\Notifications\Notifiable` / `notifications` テーブル）は使わない。`kind` による分類と `read_at` の単純な既読管理のみで十分なため、専用の `Notification` モデル・専用テーブルとして独自実装する。
+> Laravel 標準の通知（`Illuminate\Notifications\Notifiable` / `notifications` テーブル）は使わず、専用の `Notification` モデル・専用テーブルとして独自実装する。
 
 ### audit_logs
 
@@ -135,9 +135,9 @@ audit_logs (独立、polymorphic 相当のカラム構成)
 | changes_json | json | nullable。`{カラム名: [変更前, 変更後]}` の形で書く（値が無かった側は `null`）。サンプルは `docs/seeds.md` の監査ログ 3 件 |
 | created_at | timestamp | NOT NULL |
 
-> 監査ログは不変レコードのため `updated_at` を持たない。マイグレーションでは `$table->timestamps()` を使わず `$table->timestamp('created_at')->useCurrent();` と明示すること。
+> 監査ログは `updated_at` を持たない。マイグレーションでは `$table->timestamps()` を使わず `$table->timestamp('created_at')->useCurrent();` と明示すること。
 
-インデックス: `(target_type, target_id)`（`user_id` は `$table->foreignId('user_id')` で自動生成されるため個別の `index()` 呼び出しは不要）
+インデックス: `(target_type, target_id)`（`user_id` は `foreignId()` が自動生成するため個別の `index()` は不要）
 
 ## リレーション
 
@@ -158,7 +158,7 @@ audit_logs (独立、polymorphic 相当のカラム構成)
 
 > **注意**: v7 の `allowedFilters()` / `allowedSorts()` は**可変長引数のみ**を受け取る。下表の内容は配列ではなく引数の並びとして渡すこと（`->allowedFilters('title', 'author', AllowedFilter::exact('category_id'))`）。詳細は `docs/architecture.md` の Model セクション参照。
 
-> **注意（`published` はメンバー画面では効かない）**: メンバー向けの蔵書一覧・詳細は `published = true` の**強制スコープ**が掛かるため、`published` フィルタが意味を持つのは管理画面だけである（`docs/screens.md` のメンバー領域の注記が一次情報）。メンバー画面のクエリでこのフィルタを許可しても、強制スコープが優先して結果は変わらない。
+> **注意（`published` はメンバー画面では効かない）**: メンバー画面には `published = true` の**強制スコープ**が掛かるため、このフィルタが意味を持つのは管理画面だけである（`docs/screens.md` のメンバー領域の注記が一次情報）。
 
 | モデル | allowedFilters | allowedSorts | 既定順序（ソート未指定時） |
 |---|---|---|---|
@@ -169,10 +169,9 @@ audit_logs (独立、polymorphic 相当のカラム構成)
 | Notification | —（一覧は既読 / 未読の切替のみ） | — | `created_at` 降順 |
 | Category / Tag | —（一覧のみ） | — | `id` 昇順 |
 
-> **既定順序は必ず明示すること（`defaultSort()` か `orderBy()`）。** MySQL は `ORDER BY` の
-> 無いクエリの行順序を保証しないため、指定しないとページネーションが不安定になる。
-> 時系列で見るリソース（貸出・通知・監査ログ）は**新しい順**、マスタ系（書籍・ユーザー・
-> カテゴリ・タグ）は**投入順（`id` 昇順）**に揃える。
+> **既定順序は必ず明示すること（`defaultSort()` か `orderBy()`）。** 指定しないと
+> ページネーションが不安定になる。時系列で見るリソース（貸出・通知・監査ログ）は**新しい順**、
+> マスタ系（書籍・ユーザー・カテゴリ・タグ）は**投入順（`id` 昇順）**に揃える。
 
 ## 削除時の挙動（外部キー制約 / Eloquent イベント）
 
@@ -186,20 +185,17 @@ audit_logs (独立、polymorphic 相当のカラム構成)
 | `Category has many Book` | 書籍が紐づくカテゴリは削除不可 | マイグレーションで `->restrictOnDelete()` |
 | `User has many AuditLog` | 操作者が削除されてもログは残し、`user_id` を NULL にする | マイグレーションで `->nullOnDelete()`（`user_id` は nullable） |
 
-> **「削除不可」の画面挙動（実装ブレ防止のため固定）**: `restrictOnDelete` の関連レコードが
-> ある状態で削除しようとすると DB が `QueryException`（`errno 1451`）を投げる。**Controller の
-> `destroy` では、この例外を `try/catch` で捕まえずに、削除前に関連の有無を `exists()` で
-> 事前チェックする**こと。
+> **「削除不可」の画面挙動（実装ブレ防止のため固定）**: **Controller の `destroy` では
+> `try/catch` を使わず、削除前に関連の有無を `exists()` で事前チェックする**こと。
 > ```php
 > if ($book->lendings()->exists()) {
 >     return back()->with('error', '貸出履歴があるため削除できません。');
 > }
 > $book->delete();
 > ```
-> `try/catch (QueryException)` で書くと、larastan が「例外を投げうる処理が catch 節の外に無い」
-> と見て **Dead catch（`Dead catch - QueryException is never thrown in the try block.`）** で
-> `phpstan analyse` を落とす（Eloquent の `delete()` の型が例外送出を宣言しないため）。事前
-> チェックならこれを踏まない。フラッシュ文言は下表で固定する。
+> `try/catch (QueryException)` で書くと larastan の **Dead catch**
+> （`Dead catch - QueryException is never thrown in the try block.`）で `phpstan analyse` が
+> 落ちる。フラッシュ文言は下表で固定する。
 >
 > | 削除対象（関連レコードあり） | フラッシュ文言 |
 > |---|---|
@@ -215,4 +211,4 @@ FK 制約を持つテーブルは依存先を後に削除する（ER 図の矢�
 AuditLog → Notification → Lending → BookTag → Book → Tag → Category → User
 ```
 
-Laravel Dusk のシステムテストではブラウザが別プロセスで動作するため、DB トランザクションによるロールバックが効かない。各モデルの `truncate()`（外部キー制約を一時的に無効化した上で）をこの順序で呼び出す必要がある。詳細な実装は `.claude/commands/scaffold-phase4-ui-tests.md` 参照。
+Dusk ではブラウザが別プロセスで動くためトランザクションによるロールバックが効かない。各モデルの `truncate()`（外部キー制約を一時的に無効化した上で）をこの順序で呼び出す。詳細な実装は `.claude/commands/scaffold-phase4-ui-tests.md` 参照。
