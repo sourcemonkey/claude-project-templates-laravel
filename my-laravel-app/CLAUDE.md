@@ -10,15 +10,14 @@
 @docs/screens.md  
 @docs/api-spec.md  
 
-**次のものは意図的に `@` 参照していない。** 読む場面が限られる一方、`@` を付けると
-全セッションの文脈に常時載り、以降のすべての API 呼び出しで再送されるため。
-**下表の場面に当たったら、その時点で Read すること。**
+**次のものは意図的に `@` 参照していない**（読む場面が限られるのに、常時文脈へ載るため）。
+**下表の場面に当たったら、その時点で Read すること。`@` 参照を足さないこと。**
 
 | ファイル | 読むべき場面 |
 |---|---|
 | `docs/architecture.md` | **Controller / Action / Policy / Livewire を追加・変更するとき**（レイヤの責務・トランザクション境界・認可エラーの挙動が一次情報） |
 | `docs/seeds.md` | Seeder の実装と、投入済みサンプルデータの件数・値を前提にする作業 |
-| `docs/boost-guidelines.md` | Laravel エコシステムの一般規約を確かめたいとき。**上記 `docs/*.md` と `team-rules/` が優先し、Boost のガイドラインはそれらが触れていない領域を補完する位置づけ**（Laravel Boost が Phase 1 で生成するため、それ以前は存在しない） |
+| `docs/boost-guidelines.md` | Laravel エコシステムの一般規約を確かめたいとき。**`docs/*.md` と `team-rules/` が優先し、Boost はそれらが触れていない領域を補完する**（Phase 1 で生成するため、それ以前は存在しない） |
 | `docs/decisions.md` | 技術選定の理由を確かめるとき、採用しなかった選択肢へ変更を検討するとき |
 
 ## このプロジェクトでの作業方針
@@ -40,16 +39,12 @@
 
 各フェーズ完了時、`/verify` で完了基準を満たしているかセルフチェックする。
 
-> **フェーズの完了は「プロジェクトの実装完了」ではない。** `team-rules/review-policy.md`
-> の自己レビューは「PR を出す前（あるいは『実装完了』と報告する前）」の
-> チェックリストだが、**各フェーズの終わりはそこに当たらない**。フェーズごとの
-> 判定は、そのフェーズの手順書（`.claude/commands/scaffold-phase*.md`）の
-> 完了基準に書かれた項目だけで行う。
+> **フェーズの完了判定は、そのフェーズの手順書（`.claude/commands/scaffold-phase*.md`）の
+> 完了基準に書かれた項目だけで行う。** `team-rules/review-policy.md` の自己レビューは
+> 「PR を出す前」のチェックリストで、各フェーズの終わりはそこに当たらない。
 >
-> 特に**カバレッジ 80% は Phase 5 で初めて測る**。Phase 1〜4 の時点では対象コードが
-> 揃っておらず、達していなくても正常である。前倒しで測ってもよいが、
-> **未達を理由にフェーズを `aborted` にしないこと**（過去のトライアルで、当該フェーズの
-> 完了基準に無いカバレッジ計測が行われた）。
+> 特に**カバレッジ 80% は Phase 5 で初めて測る**。Phase 1〜4 では達していなくても正常で、
+> **未達を理由にフェーズを `aborted` にしないこと**。
 
 ## 完了の定義（プロジェクト全体）
 
@@ -57,7 +52,7 @@
 - [ ] `composer run dev` で起動し、ログインから主要画面遷移まで動作
 - [ ] `php artisan test` が all green
 - [ ] Laravel Dusk のシステムテストが all green
-- [ ] カバレッジ 80% 以上（`vendor/bin/pest --coverage --min=80` の**終了コード**で判定。`laravel/pao` の JSON の `result` は未達でも `passed` を返すため使わない）
+- [ ] カバレッジ 80% 以上（`vendor/bin/pest --coverage --min=80` の**終了コード**で判定。JSON の `result` は使わない。`docs/stack.md` 参照）
 - [ ] `vendor/bin/pint --test` が違反 0
 - [ ] `vendor/bin/phpstan analyse` でエラーなし（larastan/larastan による静的解析）
 - [ ] README に「起動方法」「テストアカウント」が記載されている
@@ -68,5 +63,4 @@
 - **JS フレームワーク（React/Vue）を導入しない**。Livewire + Alpine.js で完結させる。
 - **Laravel Breeze（Livewire スタック）を使う**。自前認証を書かない。
 - **Laravel Policy（標準機能）を使う**。CanCanCan 相当のサードパーティ認可ライブラリや自前認可ロジックは導入しない。
-- **非同期ジョブを使わない**。Queue の生成物は残すがワーカーは起動しない。
-  詳細は `docs/stack.md` の「ジョブ・キャッシュ・ブロードキャスト」セクション参照。
+- **非同期ジョブを使わない**。Queue の生成物は残すがワーカーは起動しない（`docs/stack.md` 参照）。
