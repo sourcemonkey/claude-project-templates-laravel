@@ -29,16 +29,14 @@ description: フェーズ5 - Seeder、テスト、README、起動確認で完成
 - Seeder 投入後、admin ダッシュボードで申請待ち件数・延滞件数が表示されることを確認する
 
 > **`UserSeeder` の `role` は `firstOrCreate()` に渡さず、取得後に明示代入すること。**
-> `role` は Mass assignment 対象外（`team-rules/security.md` / Phase 2 手順書）のため、
-> `firstOrCreate([...], ['role' => ...])` の第 2 引数に入れても**黙って捨てられ、
-> 全員が `Member` のまま作られる**（例外は出ないので気付きにくい）。
+> `role` は Mass assignment 対象外なので、第 2 引数に入れても**全員が `Member` のまま
+> 作られる**（例外は出ない）。
 > ```php
 > $user = User::firstOrCreate(['email' => $attributes['email']], [...]);
 > $user->role = $attributes['role'];
 > $user->save();
 > ```
-> 管理者アカウントが Member で作られると、後続の Dusk（管理者動線）が
-> 「`/admin` からリダイレクトされる」形で落ちる。
+> 管理者が Member で作られると、後続の Dusk が「`/admin` からリダイレクトされる」形で落ちる。
 
 > **`available_copies` の出どころを 1 箇所に決めること。** `docs/seeds.md` の「注意」節は
 > 承認済み・延滞中の貸出が消費した**後**の値を書籍ごとに明示している。この値をそのまま
@@ -48,15 +46,14 @@ description: フェーズ5 - Seeder、テスト、README、起動確認で完成
 > 冪等でなくなるため）。
 
 > **`BookSeeder` のタグ付けは `sync()` ではなく `syncWithoutDetaching()` を使うこと。**
-> `book_tags` は `(book_id, tag_id)` の UNIQUE 制約を持つ。`attach()` を素で呼ぶと
-> 2 回目の `db:seed` で `Integrity constraint violation: 1062 Duplicate entry` になり、
-> 冪等性が崩れる。
+> 素の `attach()` は 2 回目の `db:seed` で
+> `Integrity constraint violation: 1062 Duplicate entry` になる。
 
 ### 2. 主要動線のシステムテスト
 
 #### 2-0. カバレッジ計測の確認（テストを書く前に必ず実施）
 
-**まず `php -m | grep pcov` でカバレッジ計測ドライバを確認する。出力が空の場合はここで中断し、`docs/stack.md` の「テストカバレッジ設定（正規形）」の導入手順を提示してユーザーに導入を依頼する**（PHP ランタイム全体に影響する変更のため、Claude Code の単独判断で `pecl install` や php.ini の編集を行わない）。カバレッジ 80% 以上は Phase 5 の完了基準であり、ドライバ無しでは達成を確認できないため、先にテストを書き進めても手戻りになる。
+**まず `php -m | grep pcov` でカバレッジ計測ドライバを確認する。出力が空の場合はここで中断し、`docs/stack.md` の「テストカバレッジ設定（正規形）」の導入手順を提示してユーザーに導入を依頼する**（PHP ランタイム全体に影響するため、単独判断で `pecl install` や php.ini の編集を行わない）。
 
 ドライバを確認できたら、`docs/stack.md` の「テストカバレッジ設定（正規形）」の通りに `phpunit.xml` を設定する。設定後、`php artisan test --coverage-html coverage` を一度実行して `coverage/index.html` が生成され、かつカバレッジが 0% でないことを確認してから次のステップへ進む。
 
@@ -77,7 +74,7 @@ description: フェーズ5 - Seeder、テスト、README、起動確認で完成
   $book = Book::factory()->create(['total_copies' => 2, 'available_copies' => 1]);
   $lending = Lending::factory()->approved()->create(['book_id' => $book->id]);
   ```
-- **Feature テストのクエリ文字列に日本語を直接埋めないこと。** `$this->get('/admin/users?filter[name]=検索対象')` はマルチバイトがそのまま URL に入って壊れ、絞り込みが一致しない。`urlencode('検索対象')` を通す。失敗時の症状は「該当 0 件」なので**原因が絞り込みロジック側にあるように見え**、切り分けに時間がかかる。
+- **Feature テストのクエリ文字列に日本語を直接埋めないこと**（`urlencode()` を通す）。症状が「該当 0 件」なので**原因が絞り込みロジック側にあるように見える**。
 
 `docs/screens.md` の主要動線を Dusk で網羅する。Phase 4 で 4 件（蔵書一覧の表示 /
 借用申請 / 申請の承認 / 非 admin の `/admin` リダイレクト）を実装済みなので、
@@ -88,9 +85,7 @@ description: フェーズ5 - Seeder、テスト、README、起動確認で完成
 - 認可: 他人の貸出詳細にアクセスすると `home` へリダイレクトされる（Policy）
 - メンバー: 蔵書一覧で**2 ページ目へページ送り**できる（下記）
 
-> **Phase 4 で先に書いてあるものがあれば、その分だけ本フェーズの新規追加は減る。**
-> 上 4 件は Phase 4 の最低要件には含まれないが、Phase 4 を厚めに書いた回では
-> 「返却」「書籍削除」が既に存在した。**重複して書き足すのではなく、不足分を埋めること**
+> **Phase 4 で既に書いてあるものは重複させず、不足分だけを埋めること**
 > （最終的に Dusk が下記の完了基準の件数に達していればよい）。
 
 > **ページネーションは Seeder のデータで検証できる。** `docs/seeds.md` は書籍を 30 件
@@ -102,23 +97,14 @@ description: フェーズ5 - Seeder、テスト、README、起動確認で完成
 > Seeder のデータはそのままでは使えない。テスト内でファクトリを使って 30 件（うち 1 件は
 > `unpublished()`）を作ること。
 >
-> **Livewire のページャは `<a>` ではなく `<button wire:click="gotoPage(...)">` である。**
-> そのため Dusk の `clickLink('2')` / `clickLink('次へ »')` は要素を掴めず、
-> ```
-> javascript error: Cannot read properties of undefined (reading 'click')
-> ```
-> で落ちる（「リンクが無い」ではなく JS エラーとして出るので、原因が分かりにくい）。
-> **`press('2')` を使うこと。**
+> **Livewire のページャは `<a>` ではなく `<button wire:click="gotoPage(...)">` なので、
+> `clickLink('2')` は掴めず `javascript error: Cannot read properties of undefined
+> (reading 'click')` で落ちる**（「リンクが無い」ではなく JS エラーとして出る）。
+> **`press('2')` を使うこと。** 押した後は `waitForText()` で描画完了を待つ。
 >
-> Livewire のページ送りは**サーバー往復を伴う**ため、押した後は
-> `waitForText()` などで描画完了を待つこと（`press()` 直後に assert すると
-> 前ページの内容を見てしまう）。
->
-> **一覧クエリに既定の並び順を入れておくこと。** `QueryBuilder::for()` に渡す
-> クエリへ `->orderBy('id')` のような安定した順序を付けないと、MySQL の返す順が
-> 保証されず「どの書籍が 2 ページ目に来るか」が実行ごとに変わりうる。
-> `allowedSorts` は `docs/db-schema.md` の定義（`created_at` / `title`）のままでよく、
-> 既定順は `for()` に渡す側のクエリで指定する。
+> **一覧クエリに既定の並び順を入れておくこと**（`QueryBuilder::for()` に渡すクエリへ
+> `->orderBy('id')`）。付けないと「どの書籍が 2 ページ目に来るか」が実行ごとに変わりうる。
+> `allowedSorts` は `docs/db-schema.md` の定義のままでよい。
 >
 > **期待する書籍名をテスト中にハードコードしないこと。** どの書籍が 2 ページ目に来るかは
 > ファクトリの生成順に依存するため、テスト内で
@@ -130,29 +116,23 @@ description: フェーズ5 - Seeder、テスト、README、起動確認で完成
 - メンバー: ログイン → 蔵書検索 → 詳細 → 借用申請 → 自分の貸出一覧で確認
 - 管理者: ログイン → 申請一覧 → 承認 → 通知が作られ在庫が減ること
 
-> **「Phase 4 で似たテストがあるから網羅済み」と判断しないこと。** 上記のうち Phase 4 の
-> シナリオに含まれないものは、書かなくても `php artisan dusk` は green になる
-> （＝完了基準をすり抜ける）。**最終的に Dusk のテストは 8 件以上**になる。
+> **「Phase 4 で似たテストがあるから網羅済み」と判断しないこと。** 含まれないものは
+> 書かなくても `php artisan dusk` は green になる（＝完了基準をすり抜ける）。
+> **最終的に Dusk のテストは 8 件以上**になる。
 
-> **カバレッジ 80% に届くかは Phase 4 の Feature テストの厚さ次第。**
-> **Dusk は `php artisan test` のカバレッジに寄与しない**（ブラウザが別プロセスで動くため
-> PCOV が実行行を拾わない）。上の Dusk 4 件を足しても数値は動かない。
->
-> 過去のトライアルでは UI テストまでで **72.02%** にとどまり、下記 4 領域の Feature テストを
-> 足して **94.64%** まで引き上げた。一方、Phase 4 手順書の「観測可能な振る舞いは assert で
-> 固定する」に沿って認可・業務ルール・ページネーションの Feature テストを厚めに書いた回では、
-> **Phase 5 に入った時点で 88〜92%** に達しており追加は不要だった。**まず数値を測ってから
-> 判断すること**（足りている場合に機械的に足す必要はない）。
+> **Dusk は `php artisan test` のカバレッジに寄与しない**（ブラウザが別プロセスで動くため）。
+> 上の Dusk 4 件を足しても数値は動かない。**まず数値を測ってから判断すること**——
+> Feature テストを厚めに書いた回は Phase 5 の開始時点で 88〜92% に達しており、追加は
+> 不要だった。
 >
 > 不足する場合は `coverage/` のディレクトリ別インデックスで低い箇所を特定して埋める。
 > ```sh
 > grep -oE '[0-9]+\.[0-9]+%' coverage/Http/Controllers/Admin/index.html | head -40
 > grep -oE '[0-9]+\.[0-9]+%' coverage/Policies/index.html | head -30
 > ```
-> **`vendor/bin/pest --coverage` の出力（pao の JSON の `raw` 配列）にはファイル単位の
-> 百分率と未到達行番号が並ぶ**ため、HTML を開かずにここから低い箇所を特定してもよい。
-> 効いたのは次の 4 領域。いずれも Dusk では
-> カバーされないが Feature テストなら安く書ける:
+> **`vendor/bin/pest --coverage` の出力（pao の JSON の `raw` 配列）にもファイル単位の
+> 百分率と未到達行番号が並ぶ**ので、HTML を開かずに特定してもよい。効いたのは次の 4 領域
+> （いずれも Dusk ではカバーされないが Feature テストなら安く書ける）:
 > - 管理画面の CRUD（カテゴリ・タグ・書籍の `store` / `update` / `destroy` と
 >   Form Request のバリデーション。異常系も含める）
 > - Livewire コンポーネント（`Livewire::test(BookSearch::class)->set('title', ...)` の形で
@@ -179,21 +159,20 @@ Phase 5 では Seeder が実装済みのため、`docs/seeds.md` のサンプル
 全文の置き換えになる。** Write ツールを使う場合は先に Read が必要。
 
 > **README は「アプリがリポジトリのルートにある」構成を前提に書くこと。** 読み手は
-> `bin/init-project.sh` で作られた**開発用リポジトリを clone した人**で、そこでは
-> `my-laravel-app/` の中身が直下に展開される。したがってコマンドの実行場所は
-> **「リポジトリ直下」で正しく**、`my-laravel-app/ で実行する` と書き換えてはならない
-> （**冒頭の「実行場所」の不変条件はこの手順書が指示するコマンドの話であり、
-> README に書く手順とは別物**）。
+> `bin/init-project.sh` で作られた開発用リポジトリを clone した人で、そこでは
+> `my-laravel-app/` の中身が直下に展開される。コマンドの実行場所は**「リポジトリ直下」で
+> 正しく、`my-laravel-app/ で実行する` と書き換えてはならない**（冒頭の「実行場所」の
+> 不変条件は、この手順書が指示するコマンドの話であって README とは別物）。
 >
 > clone した人の手元には `vendor/` も `node_modules/` も `.env` も無い。**セットアップ手順は
-> 「実行済みだから不要」ではなく、その人にとっての最初の 1 手**である。
+> その人にとっての最初の 1 手**である。
 
 含めるべき項目:
 
 - プロジェクト概要（1-2 段落）
 - 必要なランタイム（`docs/stack.md` の「ランタイム」表からコピー。**PCOV の行も落とさずに含める** — `composer install` で導入されないマシン側の前提条件であり、README が唯一の周知手段になるため）
 - セットアップ手順（`composer run setup`）
-- **別マシン・別ディレクトリへの持ち込み手順**: `node_modules/` と `vendor/` は**コピーせず、持ち込み先で `composer run setup` により生成する**こと（`cp -r` で丸ごとコピーすると `node_modules/.bin/` のシンボリックリンクが実ファイルに化け、`npm run build` が `ERR_MODULE_NOT_FOUND` で失敗する）。どうしてもコピーするなら `rsync -a --exclude=node_modules --exclude=vendor` で除外する
+- **別マシン・別ディレクトリへの持ち込み手順**: `node_modules/` と `vendor/` は**コピーせず、持ち込み先で `composer run setup` により生成する**こと（`cp -r` すると `npm run build` が `ERR_MODULE_NOT_FOUND` で失敗する）。コピーするなら `rsync -a --exclude=node_modules --exclude=vendor`
 - 起動手順（`composer run dev`）
 - テストアカウント表（`docs/seeds.md` の「アカウント」表をコピー）
 - **DB 接続情報**（DBeaver / TablePlus などの GUI クライアントから繋ぐために必要な項目を網羅する。値は `compose.yaml` と `docs/stack.md` の「MySQL 設定の規約」が一次情報）:
@@ -208,11 +187,10 @@ Phase 5 では Seeder が実装済みのため、`docs/seeds.md` のサンプル
   | JDBC URL（参考） | `jdbc:mysql://127.0.0.1:3306/bookkeeper` |
 
   あわせて次の 3 点を書くこと。**いずれも書かないと接続できない・データが見えない原因になる**:
-  - **`docker compose up -d db` で DB コンテナが起動していること**が前提（停止中は接続できない）
-  - `bookkeeper_test` は**テスト実行のたびに中身が破棄される**（`RefreshDatabase`）。GUI で中身を見るなら `bookkeeper` を選ぶ
-  - root ユーザー（`root` / `root_password`）も存在するが、**通常は `app` を使う**。root が要るのは DB 自体の作成・権限操作のときだけ
-
-  > **`compose.yaml` の `ports` は `127.0.0.1:3306:3306`** とループバックに限定して公開している。同じ PC の GUI クライアントからは繋がるが、LAN 内の別マシンからは繋がらない（意図した設定）。
+  - **`docker compose up -d db` で DB コンテナが起動していること**が前提
+  - `bookkeeper_test` は**テスト実行のたびに中身が破棄される**。GUI で見るなら `bookkeeper` を選ぶ
+  - root ユーザーも存在するが、**通常は `app` を使う**
+  - **LAN 内の別マシンからは繋がらない**（`ports` を `127.0.0.1:3306:3306` に限定しているため。意図した設定）
 - 主要 URL（`/`, `/admin`）
 - テスト実行コマンド。**`php artisan dusk` は別ターミナルで
   `php artisan serve --env=dusk.local --no-reload` を先に起動する必要がある**旨も書く
@@ -227,17 +205,15 @@ vendor/bin/pint
 ```
 
 > **Pint を掛けたあとに `php artisan test` と `php artisan dusk` を回し直すこと。**
-> `lambda_not_used_import`（クロージャの `use` から未使用変数を削る）などテストの
-> 挙動に触れる fixer があるため、Pint 前に green だったことは Pint 後の保証にならない。
+> テストの挙動に触れる fixer があるため、Pint 前に green だったことは Pint 後の保証にならない。
 
 ### 6. 最終チェック
 
 順番に実行:
 
 1. **クリーン再構築の確認（非破壊）**: 次の 2 つで担保する。**開発用 DB のデータは消さない**。
-   - `php artisan test` が all green であること（手順 2 で実施）。Feature テストの
-     `RefreshDatabase` はテスト DB の全テーブルを毎回削除して全マイグレーションを
-     適用し直すため、**マイグレーションがゼロから通ることはこれで検証済み**になる
+   - `php artisan test` が all green であること（手順 2 で実施）。`RefreshDatabase` が
+     全マイグレーションを適用し直すため、**ゼロから通ることはこれで検証済み**になる
    - `php artisan db:seed` を 2 回連続で実行し、冪等（レコード数が増えない）かつ
      `docs/seeds.md` の全件が投入されることを確認する。**`&&` で連結して 1 呼び出しにする**
      （2 回目が落ちたら非冪等なので、そこで止まるべき）:
