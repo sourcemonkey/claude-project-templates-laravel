@@ -22,14 +22,10 @@ description: フェーズ3 - Controller / View / Policy を生成し UI を完�
 3. **基底 Controller に `AuthorizesRequests` を取り込む**（後述の「`$this->authorize()` を使う前提」）
 4. **レイアウト**: `layouts/app.blade.php`（メンバー用）と `layouts/admin.blade.php`（管理者用）を作成。ヘッダ / フッタ / サイドバーの構造は `docs/screens.md` の「レイアウト」セクション参照
 
-   > **管理レイアウトのログアウトに `route('logout')` を使わないこと。** Breeze（Livewire
-   > スタック）はログアウトを名前付きルートではなく Volt のアクションとして提供するため、
-   > **`logout` ルートは存在しない**（`docs/api-spec.md` の `routes/web.php` にも無い）。
-   > POST フォームを `route('logout')` で組むと `Route [logout] not defined.` で 500 になる。
-   > `layouts/admin.blade.php` は `<livewire:layout.navigation />` を持たないので、
-   > `App\Livewire\Actions\Logout` を呼ぶ**小さな Livewire コンポーネント**をヘッダに置く
-   > （詳細は `docs/screens.md` の管理レイアウトの注記）。`routes/web.php` に `logout` を
-   > 足して解決してはならない。
+   > **管理レイアウトのログアウトに `route('logout')` を使わないこと**（`Route [logout] not
+   > defined.` で 500 になる）。`App\Livewire\Actions\Logout` を呼ぶ**小さな Livewire
+   > コンポーネント**をヘッダに置く（`docs/screens.md` の管理レイアウトの注記）。
+   > **`routes/web.php` に `logout` を足して解決してはならない。**
 5. **例外ハンドリング（`bootstrap/app.php`）**: `withExceptions()` 内で認可エラーを `render()` し、`flash('error', ...)` の上で `redirect()->route('home')` を返す（挙動と文言は `@docs/architecture.md` の「認可エラーの挙動」）。**コールバックの型**は後述の「認可エラーの render コールバック」に従うこと（誤った型を書くとコールバックが呼ばれない）
 6. **`EnsureUserIsAdmin` ミドルウェア**（`app/Http/Middleware/`）:
    - `$request->user()->isAdmin()` が false なら `flash('error', '管理者のみアクセスできます。')` の上で `redirect()->route('home')`
@@ -42,10 +38,10 @@ description: フェーズ3 - Controller / View / Policy を生成し UI を完�
 
 ## Breeze 生成物の追従（ルーティング置き換えの直後に必須）
 
-`docs/api-spec.md` の `routes/web.php` には Breeze が Phase 1 で追加する `dashboard` / `profile` の
-2 ルートが**無い**。一方 Breeze の生成物はこの 2 つを参照しているため、仕様通りに置き換えるだけだと
-`route('dashboard')` が `RouteNotFoundException` になり、**Phase 1 で green だった Breeze の
-Feature テストが壊れる**。次を必ず行うこと。
+仕様の `routes/web.php` には Breeze が追加する `dashboard` / `profile` が**無い**一方、Breeze の
+生成物はこの 2 つを参照している。置き換えるだけだと `route('dashboard')` が
+`RouteNotFoundException` になり、**Phase 1 で green だった Breeze の Feature テストが壊れる**。
+次を必ず行うこと。
 
 1. `route('dashboard')` の参照を **`route('home')` に置き換える**（ログイン・登録・メール確認後の
    遷移先を `/` にする）。対象:
@@ -56,10 +52,8 @@ Feature テストが壊れる**。次を必ず行うこと。
    - `resources/views/livewire/layout/navigation.blade.php`
    - `app/Http/Controllers/Auth/VerifyEmailController.php`
 
-   > **置換の手段**: `sed -i` による一括置換は Claude Code の Bash ツールが拒否する
-   > （作業ディレクトリ内のファイルであっても `sed in '<path>' was blocked.` になる）。
-   > `Edit` ツールでファイルごとに置換すること。同一ファイル内の複数箇所は
-   > `replace_all` で一度に処理できる。
+   > **`sed -i` による一括置換は Bash ツールが拒否する。** `Edit` ツールで置換すること
+   > （同一ファイル内の複数箇所は `replace_all`）。
 
    > **補足**: `resources/views/livewire/profile/update-profile-information-form.blade.php` と
    > `resources/views/livewire/welcome/navigation.blade.php` も `dashboard` を参照するが、
@@ -103,16 +97,14 @@ Feature テストが壊れる**。次を必ず行うこと。
    > 公開画面かつ `layouts/app.blade.php` を使うため、**未ログインで `/` を開くと
    > `Attempt to read property "name" on null` で 500 になる**。ユーザー名・ドロップダウン・
    > 各ナビ項目を `@auth` で囲み、`@guest` 側にはログイン / 新規登録へのリンクを置くこと。
-6. **`tests/Browser/ExampleTest.php` を書き換える**: `dusk:install` が生成するこのテストは
-   `visit('/')->assertSee('Laravel')` で **welcome ページの文言**を見に行く。手順 4 で
-   `welcome.blade.php` を削除するため、そのままだと
-   `Did not see expected text [Laravel] within element [body].` で `php artisan dusk` が落ちる。
-   本プロジェクトのランディングに実在する文言（例: `BookKeeper`）へ差し替えること。
+6. **`tests/Browser/ExampleTest.php` を書き換える**: 既定は `assertSee('Laravel')` で削除済みの
+   welcome ページを見に行くため、`Did not see expected text [Laravel] within element [body].` で
+   `php artisan dusk` が落ちる。ランディングに実在する文言（例: `BookKeeper`）へ差し替えること。
 
 ## `$this->authorize()` を使う前提
 
-Laravel 11 以降の `app/Http/Controllers/Controller.php` は空の抽象クラスで、
-`AuthorizesRequests` トレイトを持たない。`$this->authorize()` を呼ぶ前に取り込むこと:
+生成される `app/Http/Controllers/Controller.php` は `AuthorizesRequests` を持たない。
+`$this->authorize()` を呼ぶ前に取り込むこと:
 
 ```php
 abstract class Controller
@@ -136,17 +128,16 @@ $exceptions->render(function (AccessDeniedHttpException $e, Request $request) {
 });
 ```
 
-`AuthorizationException` を型にすると**コールバックは決して呼ばれない**。Laravel の
-`Handler::render()` は登録済みコールバック（`renderViaCallbacks()`）を実行する**前に**
-`prepareException()` で `AuthorizationException` を `AccessDeniedHttpException` へ
-変換するため。誤った型で書くとテストは 302 ではなく 403 を受け取って失敗する。
+**`AuthorizationException` を型にするとコールバックは決して呼ばれない**（Laravel が
+コールバック実行前に `AccessDeniedHttpException` へ変換するため）。誤った型で書くと
+テストは 302 ではなく 403 を受け取って失敗する。
 
 ## 画面実装の注意
 
 - **検索**: Spatie Query Builder（`QueryBuilder::for(Book::class)->allowedFilters(...)->allowedSorts(...)->paginate(25)`）を Livewire コンポーネントの `render()` 内で使う
   - 許可するフィルタ・ソートは `docs/db-schema.md` の「Spatie Query Builder 対応」セクション参照
-  - **v7 の `allowedFilters()` / `allowedSorts()` は可変長引数のみ**を受け取る。配列渡し
-    （`allowedFilters([...])`）は `TypeError: Argument #1 must be of type AllowedFilter|string, array given` になる
+  - **v7 の `allowedFilters()` / `allowedSorts()` は可変長引数のみ**を受け取る（配列渡しは
+    `TypeError: Argument #1 must be of type AllowedFilter|string, array given`）
   - **Eager Load は `for()` に渡すクエリ側で指定する**（`QueryBuilder::for(Book::with(['category', 'tags']))`）。
     `QueryBuilder` に `->with()` を繋ぐと larastan が戻り値を `Eloquent\Builder` と推論し、
     後続の `allowedFilters()` を「未定義メソッド」と判定して `phpstan analyse` が落ちる
@@ -164,13 +155,11 @@ $exceptions->render(function (AccessDeniedHttpException $e, Request $request) {
   > `docs/screens.md` がメンバーの蔵書一覧・貸出一覧を Livewire コンポーネントと
   > 定めているため、これらの Controller は `view('books.index')` を返すだけにする。
   > 検証方法は後述の「テストシナリオ」参照。
-- **enum の画面表示**: `LendingState` / `NotificationKind` / `UserRole` の日本語表記は `docs/screens.md` の「enum の表示ラベル」表が一次情報。**各 Enum クラスに `label(): string` を実装し、ビューからは `{{ $lending->state->label() }}` で参照する**。Blade 側に `@if` の連鎖や配列マッピングを書かない（`team-rules/coding-standards.md` の「Blade に複雑な `@if` の連鎖を書かない」に従う）
+- **enum の画面表示**: 日本語表記は `docs/screens.md` の「enum の表示ラベル」表が一次情報。**各 Enum クラスに `label(): string` を実装し、ビューからは `{{ $lending->state->label() }}` で参照する**。Blade 側に `@if` の連鎖や配列マッピングを書かない
 
-  > **enum の値そのものを Blade で比較しないこと。** 「返却ボタンを出すか」「承認・却下を
-  > 出すか」の判定を `@if (in_array($lending->state, [App\Enums\LendingState::Approved, ...]))`
-  > と書くと、Blade に enum クラスの完全修飾名が散る。`Lending` に `isReturnable()` /
+  > **enum の値そのものを Blade で比較しないこと。** `Lending` に `isReturnable()` /
   > `isRequested()` のような述語メソッドを置き、ビューからは `@if ($lending->isReturnable())`
-  > で参照する（`team-rules/coding-standards.md` の「真偽値を返すメソッドは is / has / can」）。
+  > で参照する。
 - **借用申請フォーム**: 通常の Blade `<form>` + `@csrf` で `route('lendings.store')` に POST する。`Route::post` 側は `StoreLendingRequest` で `book_id` / `note` をバリデーションする
 - **Livewire**: サーバー往復を伴う動的処理（検索結果の絞り込み、状態フィルタ）に使う。`wire:model.live` で入力と同時に結果を更新する
   - **`wire:model` の入力欄には `id` を付け、Dusk からは `#id` セレクタで指定すること。** Dusk の
@@ -181,24 +170,20 @@ $exceptions->render(function (AccessDeniedHttpException $e, Request $request) {
     紛らわしい）。検索欄を `<input id="title" wire:model.live="title">` とし、テスト側は
     `->type('#title', 'Ruby')` と書く
   - **選択肢（カテゴリ・タグの一覧など）は `render()` から view へ渡すこと。** Blade 内で
-    `\App\Models\Category::orderBy(...)->get()` と書かない（`team-rules/coding-standards.md` の
-    「ビジネスロジックは Model か Action / Service クラスに置く」に反する）
-- **削除確認**: Livewire コンポーネント内は `wire:confirm="削除しますか？"`。非 Livewire のフォームは Alpine.js で `<form x-data x-on:submit="confirm('削除しますか？') || $event.preventDefault()">`。**`x-data`（空でよい）を必ず付けること**。Alpine v3 は `x-data` スコープ内の要素しか `x-on:` ディレクティブを処理しないため、`x-data` の無い素の `<form x-on:submit>` は**エラーも出さず無視され、確認なしで削除・却下・返却が実行される**。これは `livewire.js` が読み込まれ Alpine が起動していても起きる（Alpine 読み込みの有無とは別問題。詳細は `docs/stack.md` の Alpine の項参照）。ナビの `x-data="{ open: false }"` は nav にスコープされるため外側のフォームには効かない
-- **削除失敗（`restrictOnDelete`）の扱い**: 貸出履歴のある書籍・ユーザー、書籍が紐づくカテゴリの `destroy` は、削除前に `exists()` で関連の有無を事前チェックし、あれば `back()->with('error', ...)` で戻す。**`try/catch (QueryException)` で書くと larastan が Dead catch で落とす**。実装パターンと固定のフラッシュ文言は `docs/db-schema.md` の「削除不可の画面挙動」参照
+    `\App\Models\Category::orderBy(...)->get()` と書かない
+- **削除確認**: Livewire コンポーネント内は `wire:confirm="削除しますか？"`。非 Livewire のフォームは Alpine.js で `<form x-data x-on:submit="confirm('削除しますか？') || $event.preventDefault()">`。**`x-data`（空でよい）を必ず付けること**（無いと**エラーも出さず無視され、確認なしで実行される**。`docs/stack.md` の Alpine の項）。ナビの `x-data="{ open: false }"` は nav にスコープされるため外側のフォームには効かない
+- **削除失敗（`restrictOnDelete`）の扱い**: 削除前に `exists()` で関連の有無を事前チェックし、あれば `back()->with('error', ...)` で戻す。**`try/catch (QueryException)` で書くと larastan が Dead catch で落とす**。実装パターンと固定のフラッシュ文言は `docs/db-schema.md` の「削除不可の画面挙動」参照
 - **フラッシュ**: `layouts/app.blade.php` の上部で `session('status')` / `session('error')` を Tailwind の色で表示
 - **エラー表示**: フォーム部分の Blade コンポーネントを作成し、`$errors->first('field')` を表示
-- **管理者レイアウトのコンポーネント登録**: Breeze は `x-app-layout` / `x-guest-layout` を
-  **クラスコンポーネント**（`app/View/Components/AppLayout.php` / `GuestLayout.php`）として提供している。
-  `x-admin-layout` を使うには `app/View/Components/AdminLayout.php` を同じ形で作ること
+- **管理者レイアウトのコンポーネント登録**: `x-admin-layout` を使うには
+  `app/View/Components/AdminLayout.php` を Breeze の `AppLayout.php` と同じ形で作ること
   （`resources/views/layouts/admin.blade.php` を置くだけでは解決されない）
-- **`layouts/admin.blade.php` には `@livewireScripts` を明示的に書くこと**。管理レイアウトを
-  使う画面には Livewire コンポーネントを持たないもの（蔵書一覧・カテゴリ・タグ）があり、
-  そこでは `livewire.js` が注入されず **Alpine が読み込まれないまま削除確認ダイアログが
-  エラーも出さずに無効化される**（確認なしで削除が実行される）。詳細は `docs/stack.md` の
-  Alpine の項参照。**`@livewireScripts` と `x-data` は両方必要**で、片方だけでは発火しない
-- **フォームの部分ビュー（`_form.blade.php` 等）に `@props` を使わないこと**。`@props` は
-  Blade コンポーネント（`x-` 記法で解決されるもの）専用のディレクティブで、`@include` した
-  ビューでは機能しない。既定値が要る変数は `@php($book = $book ?? null)` のように書く
+- **`layouts/admin.blade.php` には `@livewireScripts` を明示的に書くこと**。管理レイアウトには
+  Livewire コンポーネントを持たない画面（蔵書一覧・カテゴリ・タグ）があり、そこでは
+  Alpine が読み込まれず削除確認が無効化される。**`@livewireScripts` と `x-data` は両方必要**で、
+  片方だけでは発火しない
+- **フォームの部分ビュー（`_form.blade.php` 等）に `@props` を使わないこと**（`@include` した
+  ビューでは機能しない）。既定値が要る変数は `@php($book = $book ?? null)` のように書く
 
 ## レイアウトのスタイル（実装ブレ防止のため明示）
 
