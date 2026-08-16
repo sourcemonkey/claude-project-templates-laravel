@@ -120,6 +120,10 @@ Faker でランダム生成ではなく、明示的な書籍を入れる（画�
   - 未公開書籍サンプル: `available_copies = 1`
   - **上記 8 件より下の 22 件は貸出が 1 件も紐づかないため、`available_copies = total_copies`（在庫表の値をそのまま）とする**
 - 冪等性: 各レコードは `firstOrCreate()`（ユニークなキーを第一引数に指定）を使う。
+- **`firstOrCreate()` の第 2 引数に渡してよいのは、そのモデルの `$fillable` にある列だけ。**
+  含まれない列は**例外を出さずに黙って捨てられる**ので、取得してから明示代入して `save()` する。
+  該当するのは `User` の `role`（下記の注意書き）と、`Lending` の `state` / `approved_at` /
+  `due_on` / `returned_at`（第 2 引数に混ぜると 5 件すべてが `Requested` で作られる）。
 
 ## 冪等キー（`firstOrCreate()` の第一引数）
 
