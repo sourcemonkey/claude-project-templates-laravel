@@ -13,17 +13,14 @@
 | Docker Compose | v2 以上（`docker compose` サブコマンド形式） | `docker-compose` (旧 v1) は使わない。Docker Desktop 同梱版はすでに v5 系に達しているため、上限は設けない |
 | PCOV（PHP 拡張） | 1.0 以上 | **カバレッジ計測時のみ必要**（アプリの実行・`php artisan test` 単体には不要）。`php -m \| grep pcov` で確認。未導入時の導入手順は「テストカバレッジ設定（正規形）」節 |
 
-> **PCOV は `.tool-versions` で固定できない。** PHP 拡張はバージョンマネージャ（asdf / mise）
-> が管理する PHP インストールに紐づくため、**PHP を入れ直すと失われる**。`composer install`
-> でも復元されない。各開発者が一度手で導入し、`php -m | grep pcov` が空になったら
-> 再導入する必要がある。この非再現性を解消したい場合は、カバレッジ判定を CI
-> （コンテナ内で決定論的に導入できる）へ移すのが本筋。
+> **PCOV は `.tool-versions` で固定できない。PHP を入れ直すと失われ、`composer install` でも
+> 復元されない。** 各開発者が一度手で導入し、`php -m | grep pcov` が空になったら再導入する。
 
 ## フレームワーク・主要パッケージ
 
 「手動追加」列が ✅ のパッケージは手動で `composer require` する。— は `laravel/laravel` に既定で含まれる、または PHP 標準拡張として利用する。
 
-**アプリの生成は `composer create-project laravel/laravel:^13.0` で行う（`laravel new` は使わない）。** Installer にはバージョン指定オプションが無く、常に最新安定版を取得するため 13 系に固定できないことによる。一時ディレクトリへ生成して直下へ配置する手順の詳細は `.claude/commands/scaffold-phase1-skeleton.md` の Step 3 参照。
+**アプリの生成は `composer create-project laravel/laravel:^13.0` で行う（`laravel new` はバージョンを固定できないため使わない）。** 手順の詳細は `.claude/commands/scaffold-phase1-skeleton.md` の Step 3 参照。
 
 | パッケージ | 用途 | 手動追加 | 種別 |
 |---|---|---|---|
@@ -39,53 +36,35 @@
 
 Alpine.js は Livewire に同梱されるため、別途 npm パッケージとしての追加は不要。
 
-> **ただし「自動的に読み込まれる」のはページ単位の条件付きである。** Livewire v3 は
-> **そのページが Livewire コンポーネントを実際に描画したときだけ** `livewire.js`
-> （Alpine を同梱する）をレスポンスへ注入する。Livewire コンポーネントを 1 つも
-> 持たないレイアウト・画面では Alpine が読み込まれず、`x-data` / `x-on:submit` が
-> **エラーも出さずに無効化される**。削除確認（`x-on:submit="confirm(...) || ..."`）が
-> 効かなくなり、確認なしで削除が実行される。
->
-> `resources/js/app.js` は生成物では実質空で Alpine を import して
-> いないため、この経路での補完も効かない。**Livewire コンポーネントを持たない画面が
-> ありうるレイアウトには `@livewireScripts` を明示的に書くこと**（本プロジェクトでは
-> `resources/views/layouts/admin.blade.php` が該当する。`layouts/app.blade.php` は
+> **ただし読み込まれるのは、そのページが Livewire コンポーネントを描画したときだけ。**
+> 1 つも持たない画面では Alpine が読み込まれず、`x-data` / `x-on:submit` が**エラーも
+> 出さずに無効化される**（削除確認が効かず、確認なしで削除される）。**Livewire
+> コンポーネントを持たない画面がありうるレイアウトには `@livewireScripts` を明示的に
+> 書くこと**（本プロジェクトでは `layouts/admin.blade.php` が該当。`layouts/app.blade.php` は
 > `<livewire:layout.navigation />` を含むため自動注入が働く）。
 
 > **Alpine の読み込みとは別に、`x-on:` を書くフォームには `x-data`（空でよい）が要る。**
-> Alpine v3 は `x-data` スコープ内の要素しか `x-on:` / `x-bind:` 等のディレクティブを
-> 処理しない。`livewire.js` が読み込まれ Alpine が起動していても、`x-data` の無い素の
-> `<form x-on:submit="confirm(...) || $event.preventDefault()">` は**エラーも出さず無視され、
-> 確認ダイアログが出ないまま削除・却下・返却が実行される**。削除確認等のフォームは
-> 必ず `<form x-data x-on:submit="...">` の形にすること（`layouts/app.blade.php` を使う
-> `lendings/show` の返却フォームでも、`@livewireScripts` を持つ管理画面でも、いずれも
-> `x-data` が無ければ発火しない。Dusk は `Waited 5 seconds for dialog.` で失敗する）。
-> ナビの `x-data="{ open: false }"` は nav 要素にスコープされるため、その外側にある
-> フォームには効かない。
+> Alpine v3 は `x-data` スコープ内の要素しか処理しないため、`x-data` の無い素の
+> `<form x-on:submit="...">` は**エラーも出さず無視され、確認ダイアログが出ないまま
+> 実行される**（Dusk は `Waited 5 seconds for dialog.` で失敗する）。必ず
+> `<form x-data x-on:submit="...">` の形にすること。ナビの `x-data="{ open: false }"` は
+> nav 要素にスコープされるため、その外側のフォームには効かない。
 
 > **Livewire は v3 系を使う。** 上流の最新は v4 系だが、`breeze:install livewire` が
-> `composer require livewire/livewire:^3.6.4` を実行して制約を書き込むため
-> （`vendor/laravel/breeze/src/Console/InstallsLivewireStack.php`）。**これは意図した状態であり、
-> `composer.json` に v3 が入っているのを「古い」と判断して上げないこと。**
->
-> なお `livewire/volt` 自身の制約は `^3.6.1|^4.0` で v4 も許容している。**volt が v3 を
-> 強制しているわけではない**ため、`composer require livewire/livewire`（制約なし）を
-> 後から実行すると Breeze の `^3.6.4` を上書きして v4 が入ってしまう。v4 へ移行する場合は
-> Breeze 側の対応を確認したうえで、Phase 3 の Livewire コンポーネントの記法差分を
-> 検証すること。
+> `^3.6.4` の制約を書き込む。**これは意図した状態であり、v3 を「古い」と判断して
+> 上げないこと。** `composer require livewire/livewire`（制約なし）を後から実行すると
+> この制約を上書きして v4 が入る。
 
-`livewire/livewire` と `livewire/volt` はどちらも手動追加せず、`breeze:install livewire`（Phase 1）が `composer.json` の `require` へ追加する（`livewire/livewire:^3.6.4` / `livewire/volt:^1.7.0`）。いずれもトップレベルの依存として入るため、自前の Livewire コンポーネントを書くうえで別途 `composer require` する必要はない。Breeze はこれを使って認証画面を単一ファイルコンポーネント（`resources/views/livewire/pages/auth/*.blade.php`）として生成する。本プロジェクトで新規に書く Livewire コンポーネントは Volt 記法ではなくクラスベース（`app/Livewire/`）に揃える（`docs/architecture.md` のディレクトリ規約参照）。
+`livewire/livewire` / `livewire/volt` は手動追加せず、`breeze:install livewire`（Phase 1）が `require` へ追加する（`^3.6.4` / `^1.7.0`）。Breeze はこれを使って認証画面を単一ファイルコンポーネント（`resources/views/livewire/pages/auth/*.blade.php`）として生成する。**本プロジェクトで新規に書く Livewire コンポーネントは Volt 記法ではなくクラスベース（`app/Livewire/`）に揃える**（`docs/architecture.md` のディレクトリ規約参照）。
 
 ### 公式スターターキット・公式プレイブックとの関係
 
 **本プロジェクトは公式スターターキット（Livewire / React / Vue）を採用せず、素の Laravel に
-Breeze を後入れする**（`composer create-project laravel/laravel` はキットを含まない素の構成を生成する）。
-また Laravel 公式がエージェント向けに配布するインストール手順（[laravel.com/for/agents](https://laravel.com/for/agents)）の
-プロンプトも使わない。
+Breeze を後入れする。** Laravel 公式がエージェント向けに配布するインストール手順
+（[laravel.com/for/agents](https://laravel.com/for/agents)）のプロンプトも使わない。
 
 **`composer.json` に Breeze があるのを「メンテナンスが止まったパッケージ」と判断して
-公式スターターキットへ差し替えないこと。** 判断の根拠と、公式プレイブックとの項目別の差分は
-`docs/decisions.md` にまとめてある。
+公式スターターキットへ差し替えないこと。** 根拠は `docs/decisions.md`。
 
 ### 開発・テスト用
 
@@ -100,20 +79,16 @@ Breeze を後入れする**（`composer create-project laravel/laravel` はキ�
 | `laravel/dusk` | システムテスト（Capybara + Selenium 相当） | ✅ | `require-dev` |
 | `laravel/boost` | AI エージェント向けの MCP サーバー（DB スキーマ・ログ・ドキュメント検索）と AI ガイドライン生成 | ✅ | `require-dev` |
 
-> **`laravel/pao` は `^1.1.3` 以上に固定する**（Phase 1 の Step 8 で引き上げる）。`laravel/laravel` の
-> 既定は `^1.0.6` だが、**v1.1.2 以前は全件パスでも `php artisan test` の終了コードが 1 になる**
-> （v1.1.3 / 2026-07-29 で解消）。本プロジェクトは完了基準をすべて終了コードで判定するため、
-> 下限を上げないと **green のテストを失敗と誤認する**。この制約を下げないこと。
+> **`laravel/pao` は `^1.1.3` 以上に固定する**（Phase 1 の Step 8 で引き上げる。**下げないこと**）。
+> **v1.1.2 以前は全件パスでも `php artisan test` の終了コードが 1 になる**ため、完了基準を
+> 終了コードで判定する本プロジェクトでは green のテストを失敗と誤認する。
 >
-> **カバレッジの `--min` については、pao の JSON の `result` フィールドだけが嘘をつく**（こちらは
-> 別問題で未解消）。`--min` 未達でも `"result":"passed"` を返す。終了コードと `raw` は正しいので、
-> **終了コードで判定すれば `--min` は使える**。詳細は後述の「テストカバレッジ設定（正規形）」参照。
+> **ただし pao の JSON の `result` フィールドは信用しない**（`--min` 未達でも `"passed"` を返す。
+> 後述「テストカバレッジ設定（正規形）」参照）。
 
-カバレッジ計測ドライバの **PCOV は composer パッケージではなく PHP 拡張**のため、この表ではなく「ランタイム」表に記載している（マシン側の前提条件であり、`composer install` では導入されない）。
-
-> **`laravel/boost` の導入範囲**: Phase 1 の `boost:install --mcp --guidelines` により、MCP サーバー設定（`.mcp.json`）と AI ガイドライン（`docs/boost-guidelines.md`）だけを生成する。**Agent Skills（`--skills`）は導入しない** — 出力先の `.claude/` はヘッドレス実行で書き込めず、かつテンプレートへコミットすると `boost:update` の同期責任が人手に残るため。
+> **`laravel/boost` の導入範囲**: Phase 1 の `boost:install --mcp --guidelines` で `.mcp.json` と `docs/boost-guidelines.md` だけを生成する。**Agent Skills（`--skills`）は導入しない**（出力先の `.claude/` はヘッドレス実行で書き込めないため）。
 >
-> ガイドラインの出力先は `config/boost.php` で `CLAUDE.md` から `docs/` へ退避させている（`CLAUDE.md` はテンプレートの成果物であり Boost に再生成させない）。Boost のガイドラインのうち本プロジェクトの方針と衝突する 2 つは `.ai/guidelines/` で上書きしている。
+> ガイドラインの出力先は `config/boost.php` で `CLAUDE.md` から `docs/` へ退避させ、方針と衝突する 2 つは `.ai/guidelines/` で上書きしている。
 
 > | 上書きファイル | 対象 | 理由 |
 > |---|---|---|
@@ -183,9 +158,7 @@ DevCommands::except('queue');
 
 対象は `php artisan dev:list` で確認できる（除外後は `server` / `logs` / `vite` の 3 つ）。
 
-> **`composer.json` の `dev` を `concurrently` 直書きへ書き換えないこと。** 上流の既定から意図的に
-> 逸脱することになり、`php artisan dev` が持つ機能を手放したうえ、上流の既定が次に
-> 変わったときに再び陳腐化する。
+> **`composer.json` の `dev` を `concurrently` 直書きへ書き換えないこと。**
 
 ## Eloquent の strict 設定
 
@@ -295,7 +268,7 @@ Laravel の `migrate` はデータベース自体の作成を行わないため�
 
 ### `config/database.php`
 
-`mysql` 接続は **`laravel/laravel` が生成する構造をそのまま使い、`env()` の第 2 引数（既定値）だけを本プロジェクトの値に揃える**。接続情報はすべて `env()` 経由で統一し、一部だけハードコードにはしない（どれが環境変数で上書きできるのかを読み手が推測せずに済むため）。
+`mysql` 接続は **`laravel/laravel` が生成する構造をそのまま使い、`env()` の第 2 引数（既定値）だけを本プロジェクトの値に揃える**。接続情報はすべて `env()` 経由で統一し、一部だけハードコードにはしない。
 
 下記が調整後の正規形。生成物との差分は `database` / `username` / `password` / `collation` の既定値 4 つだけである:
 
@@ -329,11 +302,8 @@ Laravel の `migrate` はデータベース自体の作成を行わないため�
 
 カバレッジ計測には PCOV を使う（Xdebug よりテスト実行が高速なため）。`phpunit.xml` に以下を設定する。
 
-> **前提（composer パッケージでは代替できない）**: PHP のカバレッジ計測には実行トレースを行う
-> **PHP 拡張が必須**で、選択肢は実質 PCOV か Xdebug の 2 つ（phpdbg は php-code-coverage 側で
-> サポート廃止済み）。composer パッケージの `pcov/clobber` は PHPUnit 5〜7 向けの互換シムであり
-> （最終リリース 2019 年、作者自身が PHPUnit 8 以降では不要と明記）、本プロジェクトの PHPUnit では
-> **導入してはならない**。
+> **composer パッケージでは代替できない。** カバレッジ計測には PHP 拡張が必須で、
+> `pcov/clobber` は PHPUnit 5〜7 向けの互換シムなので**導入してはならない**。
 
 ```xml
 <coverage>
@@ -365,13 +335,10 @@ vendor/bin/pest --coverage --min=80
 ```
 
 > **`laravel/pao` が整形する JSON の `result` フィールドは信用してはならない。**
-> `--min` 未達でも `{"tool":"pest","result":"passed",...}` を返す。一方で**終了コードは 1 になり、
-> `raw` 配列の末尾に `Total: NN.N %` と `FAIL Code coverage below expected 80.0 %...` が入る**ので、
-> そちらを見れば正しく判定できる（実カバレッジ 91.9% に対し `--min=95` を指定して確認済み）。
-> `result` を見て合否を決めると、**未達を「達成」と誤認する**。
+> `--min` 未達でも `{"tool":"pest","result":"passed",...}` を返す。**終了コードと `raw` 配列
+> （末尾に `Total: NN.N %`）は正しい**ので、そちらで判定する。
 
-HTML レポート（`coverage/index.html`）は数値の内訳を見るために使う。どのディレクトリが低いかを
-特定して埋める用途で、合否判定の一次情報ではない。
+HTML レポート（`coverage/index.html`）は数値の内訳を見るために使う。合否判定の一次情報ではない。
 
 具体的な実行手順と出力例は `.claude/commands/scaffold-phase5-finalize.md` の手順 6-3 参照。
 
