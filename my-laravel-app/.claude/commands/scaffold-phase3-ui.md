@@ -212,6 +212,10 @@ Tailwind の最小構成。実装ブレを防ぐため以下に揃える:
 - フラッシュ status: `bg-green-50 text-green-800 border border-green-200 rounded p-3`
 - フラッシュ error: `bg-red-50 text-red-800 border border-red-200 rounded p-3`
 
+**ボタンは Breeze 生成の `x-primary-button` / `x-danger-button` を使い、上の配色に合わせて
+コンポーネント側（`resources/views/components/`）の class を書き換える。** 新規画面に生の
+class を書かないこと。この書き換えにより認証画面のボタンも同じ配色になる（意図した結果）。
+
 ## Policy の書き方（実装ブレ防止のため例示）
 
 リソース全体に共通する形式:
