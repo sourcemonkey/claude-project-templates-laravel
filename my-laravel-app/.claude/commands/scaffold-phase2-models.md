@@ -280,14 +280,25 @@ php artisan migrate:rollback && php artisan migrate
 `tests/Unit/Models/` に各モデルの最低限のバリデーションテストを Pest で書く（`test/models` 相当のディレクトリ構成）。網羅すべき観点:
 
 - presence（必須カラムのバリデーション、または DB の NOT NULL 制約）
+  - **`Model::create($model::factory()->raw([...]))` と書かないこと。** `raw()` は非 fillable の列も
+    返し、`docs/stack.md` の「Eloquent の strict 設定」により DB へ到達する前に
+    `MassAssignmentException` になる。`Model::factory()->create(['col' => null])` を使う
 - uniqueness
 - enum（PHP Enum）キャストの確認
 - リレーションの存在
 - `books` の CHECK 制約（`available_copies` の範囲違反で `QueryException`）
 - 削除時の挙動（`restrictOnDelete` で `QueryException`、`cascadeOnDelete` で連動削除されること）
-- `role` が Mass assignment されないこと（`User::create()` に `role` を渡しても `Member` のままであること）
-  - **`create()` 直後のインスタンスから `role` を読まない。** fillable が `role` を捨てるため属性が載らず、
-    DB 側の `default(0)` も再取得するまで反映されないので `null` が返る。`->fresh()` を挟んでから確認する
+- `role` が Mass assignment されないこと。`User::create()` に `role` を渡すと
+  `MassAssignmentException` が投げられることを assert する:
+
+  ```php
+  expect(fn () => User::create([
+      'name' => 'テストユーザー',
+      'email' => 'guarded@test.local',
+      'password' => 'password',
+      'role' => UserRole::Admin,
+  ]))->toThrow(Illuminate\Database\Eloquent\MassAssignmentException::class);
+  ```
 - **`Lending` の遷移メソッド**（`approve()` / `reject()` / `returnBook()`）の正常系と、不正な遷移元で `DomainException` が送出されること（Phase 3 の Action がこれらに直接依存する）
 
 **各観点につき、該当するモデルごとに 1 件書く**（観点が当てはまらないモデルは飛ばす）。

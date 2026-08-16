@@ -357,7 +357,10 @@ DB_PASSWORD=app_password
 
 起動するプロセスは `Illuminate\Foundation\DevCommands::registerDefaults()` が登録する `server` / `queue` / `logs` / `vite` の 4 つで、**`composer.json` に `queue:listen` という文字列は存在しない**。`docs/stack.md` の規約（Queue ワーカーを起動しない）に従うため、`app/Providers/AppServiceProvider.php` の `boot()` で除外する:
 
+あわせて `docs/stack.md` の「Eloquent の strict 設定」に従い、mass assignment の取りこぼしを例外にする 1 行も同じ `boot()` に置く。
+
 ```php
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\DevCommands;
 
 public function boot(): void
@@ -365,6 +368,9 @@ public function boot(): void
     // docs/stack.md の方針により Queue ワーカーは起動しない。
     // composer run dev → php artisan dev の対象から queue を外す。
     DevCommands::except('queue');
+
+    // fillable 外の列を mass assignment したときに例外にする（既定は黙って捨てる）。
+    Model::preventSilentlyDiscardingAttributes(! $this->app->isProduction());
 }
 ```
 

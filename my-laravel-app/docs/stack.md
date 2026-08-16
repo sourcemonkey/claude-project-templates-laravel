@@ -187,6 +187,29 @@ DevCommands::except('queue');
 > 逸脱することになり、`php artisan dev` が持つ機能を手放したうえ、上流の既定が次に
 > 変わったときに再び陳腐化する。
 
+## Eloquent の strict 設定
+
+`AppServiceProvider::boot()` で次を有効にする。
+
+```php
+Model::preventSilentlyDiscardingAttributes(! $this->app->isProduction());
+```
+
+`$fillable` に無い列を mass assignment すると、既定では**例外も警告も出ずに捨てられる**。
+これを非 production でのみ `MassAssignmentException` にする。捨てられた列名が例外文に出る。
+
+**`Model::shouldBeStrict()` は使わない。** 同時に有効になる `preventLazyLoading` と
+`preventAccessingMissingAttributes` は本プロジェクトでは採らない。
+
+この設定に依存する書き方が 2 つある。
+
+- **モデルファクトリは影響を受けない**（`Illuminate\...\Factories\Factory` がモデル生成を
+  `Model::unguarded()` で包むため）。`User::factory()->admin()` のように非 fillable の列を
+  ファクトリで設定する形はそのまま使える
+- **NOT NULL 制約のテストで `Model::create($model::factory()->raw([...]))` と書かない。**
+  `raw()` は非 fillable を含む全列を返すため、DB へ到達する前に例外になる。
+  `Model::factory()->create(['col' => null])` を使う
+
 ## 初回セットアップ（正規形）
 
 初回セットアップも `laravel/laravel` 既定の `composer.json` の `setup` スクリプト（`composer run setup`）を使う。**同内容の自前スクリプト（`bin/setup` 等）は作らない**（開発サーバー起動と同じ理由で、`composer.json` 側との二重管理になるため）。
