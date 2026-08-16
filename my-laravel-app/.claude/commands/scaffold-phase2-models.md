@@ -193,7 +193,7 @@ enum LendingState: int
 }
 ```
 
-状態遷移用の外部パッケージは使わず、`Lending` モデルのメソッド（`approve()`, `reject()`, `returnBook()`）として実装する（`return` は PHP 予約語のためメソッド名に使えない）。各メソッド内で遷移元の state を確認し、不正な場合は `throw new \DomainException(...)` する。在庫減算・通知・**`due_on` の設定**は Action（Phase 3）側で行い、モデルのメソッドは state 遷移（と対応する `approved_at` / `returned_at` の設定）に限定する。**`due_on`（14 日後）を `approve()` に含めないこと。** 責務の一次情報は `docs/architecture.md` の Action 一覧で、そこでは `ApproveLendingAction` 側に置かれている（`docs/api-spec.md` の「副作用」は Action 全体の結果を平坦に並べたもので、model と Action の切り分けは示していない）。
+状態遷移用の外部パッケージは使わず、`Lending` モデルのメソッド（`approve()`, `reject()`, `returnBook()`）として実装する（`return` は PHP 予約語のためメソッド名に使えない）。各メソッド内で遷移元の state を確認し、不正な場合は `throw new \DomainException(...)` する。在庫減算・通知・**`due_on` の設定**は Action（Phase 3）側で行い、モデルのメソッドは state 遷移（と対応する `approved_at` / `returned_at` の設定）に限定する。**`due_on`（14 日後）を `approve()` に含めないこと。** 責務の一次情報は `docs/architecture.md` の Action 一覧。
 
 `markOverdue()` のようなメソッドは作成しない。`Overdue` への遷移はバッチ相当の操作（将来 Queue を有効化した際に実装予定）であり、本フェーズでは Seeder で state を直接 `Overdue` に設定することで代替する。
 
