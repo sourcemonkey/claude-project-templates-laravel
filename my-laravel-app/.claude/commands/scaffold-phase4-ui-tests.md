@@ -31,7 +31,7 @@ Phase 3 で実装した画面・認可・Action が `docs/` の定めどおり�
 
 ### `tests/DuskTestCase.php` の設定（テストを書く前に必ず実施）
 
-Laravel Dusk はブラウザを別プロセスで操作するため、DB トランザクションによるロールバック（`RefreshDatabase` 等）が効かない。`Illuminate\Foundation\Testing\DatabaseTruncation` トレイトを使い、テストごとに関連テーブルを truncate する:
+Dusk では `RefreshDatabase` 等のロールバックが効かないため、`Illuminate\Foundation\Testing\DatabaseTruncation` トレイトでテストごとに関連テーブルを truncate する:
 
 ```php
 <?php
@@ -70,16 +70,7 @@ Dusk は `.env.dusk.local` があればそれを読む。無いと `.env` がそ
   > **`--env=dusk.local` と `--no-reload` は両方とも必須。** どちらが欠けても、ブラウザが
   > 叩くサーバーが**開発用の `bookkeeper`** を読み、`bookkeeper_test` にデータを作る
   > テストプロセスと DB が食い違う。テストが用意したデータが画面に出ず、`waitForText` や
-  > ログインが原因の分かりにくい形でタイムアウトする。
-  >
-  > `--env` だけでは足りない理由は `ServeCommand::startProcess()` にある。`--no-reload` が
-  > 無いと、子プロセス（`php -S`）へ渡す環境変数を `$passthroughVariables`（`APP_ENV` /
-  > `PATH` / Herd / Xdebug 系のみ）で絞り、**`DB_DATABASE` を含む残りをすべて削除する**。
-  > 子プロセスは `runningInConsole()` が偽で `--env` 引数を見られないため、`APP_ENV` の値から
-  > `.env.{APP_ENV}` を探すが、`.env.dusk.local` の中身は `APP_ENV=local`（`.env` からの
-  > コピー）なので `.env.local` は見つからず **`.env` へフォールバックする**。
-  > `--no-reload` を付けると全環境変数がそのまま子へ渡り、`.env.dusk.local` の
-  > mtime 変化によるサーバー再起動も起きない。
+  > ログインが**原因の分かりにくい形でタイムアウトする**。
 - ChromeDriver がホストの Chrome とバージョン一致していること。ずれている場合は
   `php artisan dusk:chrome-driver --detect`（Phase 1 手順書参照）
 - 非 TTY 環境では `Warning: TTY mode requires /dev/tty to be read/writable.` が出るが
@@ -87,17 +78,12 @@ Dusk は `.env.dusk.local` があればそれを読む。無いと `.env` がそ
 
 ### `signInAs` ヘルパー
 
-Dusk でログイン後の画面操作を行う際、リダイレクト完了を待たずに次の操作を行うと断続的に失敗するテストになる。次のヘルパーを用意すること。
+ログイン後にリダイレクト完了を待たずに次の操作を行うと断続的に失敗するテストになる。次のヘルパーを用意すること。
 
-> **置き場所は `tests/Pest.php` の「Functions」節**（`pest --init` が生成する
-> コメントブロックのある箇所）。**各 Dusk テストファイルに同じ関数を書いてはならない。**
-> Pest はテストファイルをすべて読み込むため、2 つ以上のファイルで同じ関数を宣言すると
-> ```
-> Fatal error: Cannot redeclare function signInAs() (previously declared in
-> .../tests/Browser/AdminBookCrudTest.php:9) in .../tests/Browser/LendingFlowTest.php on line 15
-> ```
-> で `php artisan dusk` 全体が起動すらしなくなる。Dusk のテストファイルは本フェーズで
-> 複数になる（借用フロー・返却・書籍 CRUD）ため、最初から共有の置き場に書くこと。
+> **置き場所は `tests/Pest.php` の「Functions」節**（`pest --init` が生成するコメントブロックの
+> ある箇所）。**各 Dusk テストファイルに同じ関数を書いてはならない。** 2 つ以上のファイルで
+> 宣言すると `Fatal error: Cannot redeclare function signInAs()` で `php artisan dusk` 全体が
+> 起動しなくなる。
 
 ```php
 // tests/Pest.php の「Functions」節
@@ -129,24 +115,18 @@ function makeUser(bool $admin = false): User
 `tests/Pest.php` の冒頭に `use App\Models\User;` / `use Illuminate\Support\Facades\Hash;` /
 `use Laravel\Dusk\Browser;` を足すこと。
 
-> **重要（先頭の `logout()` は省略不可）**: Dusk はブラウザインスタンスをテスト間で再利用する。
-> 前のテストのログインセッションが残ったまま `/login` を開くと認証済みとしてリダイレクトされ、
-> `email` 入力欄が存在しないため
-> `no such element: Unable to locate element: {"method":"css selector","selector":"body email"}`
-> で落ちる。単体で走らせると通り、まとめて走らせると落ちるため原因を掴みにくい。
+> **重要（先頭の `logout()` は省略不可）**: Dusk はブラウザをテスト間で再利用するため、前の
+> セッションが残ったまま `/login` を開くとリダイレクトされ `no such element: ... body email`
+> で落ちる。**単体では通り、まとめて走らせると落ちる**ので原因を掴みにくい。
 
-> **補足（パスワード）**: `UserFactory` の既定パスワードは `password` である。
-> `signInAs` が `password123` を使うため、上記 `makeUser()` のように
-> `User::factory()->create(['password' => Hash::make('password123')])` と明示すること。
+> **補足（パスワード）**: `UserFactory` の既定パスワードは `password`。`signInAs` は
+> `password123` を使うため、上記 `makeUser()` のように明示すること。
 
-> **重要（`waitUntil('window.Livewire')` は省略不可）**: Breeze のログインフォームは
-> Livewire コンポーネントである。`livewire.js` のロード前に `press('ログイン')` すると
-> **Livewire のハンドラではなくネイティブ submit** が走り、action 属性の無いフォームが
-> 空の値で `/login` にリロードされる。結果 `waitForLocation('/')` が
+> **重要（`waitUntil('window.Livewire')` は省略不可）**: `livewire.js` のロード前に
+> `press('ログイン')` すると**ネイティブ submit** が走り、`waitForLocation('/')` が
 > `Waited 5 seconds for location [/].` でタイムアウトする（失敗時のスクリーンショットは
-> **入力欄が空のログイン画面**になる）。テストが数件のうちは偶然通ってしまい、
-> **本フェーズで Dusk が増えると実行ごとに別のテストが落ちるフレーキーな症状**として
-> 顕在化するため、最初から入れておくこと。
+> **入力欄が空のログイン画面**になる）。**テストが少ないうちは偶然通り、Dusk が増えると
+> 実行ごとに別のテストが落ちるフレーキーな症状**になるため、最初から入れておくこと。
 
 ### Livewire で一覧が絞り込まれるのを待つ
 
@@ -168,22 +148,18 @@ $browser->waitForText('こころ')
     ->assertSee('プロを目指す人のためのRuby入門');
 ```
 
-`wire:model.live` は入力のたびにサーバーへ往復するため、`type()` の直後は**まだ絞り込み前の
-一覧が描画されている**。「絞り込み後も残る要素」を待機条件にすると、待機が成立した時点が
-絞り込み前なのか後なのか区別できない。**待機条件は必ず「操作によって状態が変わる側」に置く**
-（これは削除確認の `waitForText('書籍を削除しました')` が効く理由と同じ原則）。
+**待機条件は必ず「操作によって状態が変わる側」に置く。** 「絞り込み後も残る要素」を条件に
+すると、待機が成立した時点が絞り込み前なのか後なのか区別できない。
 
 > **`wire:model` の入力欄は `#id` セレクタで指定する。** Dusk の `type('title', ...)` は
-> `name` 属性を前提にしているが、Livewire の入力欄は `wire:model` でバインドするため
-> `name` を書かないのが普通で、`no such element: {"method":"css selector","selector":"body title"}`
-> で落ちる。実装側で `id` を付ける規約は Phase 3 手順書「画面実装の注意」の Livewire の項。
+> `name` 属性を前提にしているが Livewire の入力欄は `name` を書かないのが普通で、
+> `no such element: {"method":"css selector","selector":"body title"}` で落ちる。
 
 ### confirm ダイアログを伴う操作
 
-削除ボタンのように `confirm()` を挟む操作は、次の 2 つを守ること。`press()` はクリック
-直後に戻るため、**`acceptDialog()` の前に `waitForDialog()` を挟む**（ダイアログ生成前に
-呼ぶと `no such alert` で落ちる）。また確認ダイアログは Alpine の `x-on:submit` が発火
-させるため、**`press()` の前に対象フォームの Alpine 初期化を待つ**（初期化前に押すと素通りする）。
+削除ボタンのように `confirm()` を挟む操作は、次の 2 つを守ること。**`acceptDialog()` の前に
+`waitForDialog()` を挟む**（生成前に呼ぶと `no such alert` で落ちる）。**`press()` の前に
+対象フォームの Alpine 初期化を待つ**（初期化前に押すと素通りする）。
 
 ```php
 $browser->waitUntil("document.querySelector('form[x-data]')?._x_dataStack !== undefined")
@@ -193,14 +169,9 @@ $browser->waitUntil("document.querySelector('form[x-data]')?._x_dataStack !== un
     ->waitForText('書籍を削除しました');
 ```
 
-> **`waitUntil('window.Alpine')` では足りない。** これが真になるのは *Alpine
-> オブジェクトが生えた瞬間*であって、**個々の要素の `x-data` が初期化された
-> ことは保証しない**。Livewire v3 は自身のブートを終えてから Alpine を起動する
-> ため、この 2 つの間には隙がある。Alpine v3 は初期化を終えた要素に
-> `_x_dataStack` を生やすので、**そのフォーム自身**を見るのが正確な条件になる。
->
-> 過去のトライアルでは、`waitUntil('window.Alpine')` を実装した状態でなお
-> `Waited 5 seconds for dialog.` を踏んでいる（後述の「フレーキー時の扱い」参照）。
+> **`waitUntil('window.Alpine')` では足りない**（Alpine オブジェクトが生えただけで、
+> 個々の要素の `x-data` 初期化は保証されない）。初期化を終えた要素には `_x_dataStack` が
+> 生えるので、**そのフォーム自身**を見るのが正確な条件になる。
 
 なお、ダイアログがそもそも出ず `waitForDialog()` が
 `Waited 5 seconds for dialog.` で落ちる場合、原因は 3 つある。順に確認すること:
@@ -245,19 +216,17 @@ $browser->waitUntil("document.querySelector('form[x-data]')?._x_dataStack !== un
 
 > **返却を検証するテストは、Dusk でも Feature でも「1 冊消費済み」の書籍を用意すること。**
 > `Lending::factory()->approved()` / `->overdue()` は **state を設定するだけで
-> `available_copies` を減らさない**。ファクトリの既定は在庫満杯なので、そのまま返却させると
-> `ReturnLendingAction` の `increment('available_copies')` が `total_copies` を超え、
-> CHECK 制約 `books_available_lte_total` に違反する。
+> `available_copies` を減らさない**ため、そのまま返却させると CHECK 制約
+> `books_available_lte_total` に違反する。
 >
 > ```php
 > $book = Book::factory()->create(['total_copies' => 2, 'available_copies' => 1]);
 > $lending = Lending::factory()->approved()->create(['book_id' => $book->id]);
 > ```
 >
-> **`QueryException` は Action の `catch (DomainException)` に掛からず 500 になるため、
-> テストからは「state が Approved のまま変わらない」という形でしか見えない**
-> （`Failed asserting that two variables reference the same object.` で、在庫制約が原因だと
-> 分かりにくい）。Dusk でも Feature テストでも同じ罠を踏む。
+> **テストからは「state が Approved のまま変わらない」という形でしか見えない**ので
+> （`Failed asserting that two variables reference the same object.`）、在庫制約が原因だと
+> 気づきにくい。
 
 `php artisan dusk` で確認する。**green になったことを「待機条件が正しい」ことの証明に
 しないこと**（ハイドレーション待ちの漏れはサーバーが速く返れば通ってしまう）。待機の
@@ -304,30 +273,25 @@ $browser->waitUntil("document.querySelector('form[x-data]')?._x_dataStack !== un
 > ```
 >
 > **(a) の画面で「Controller にも paginate を置いて `assertViewHas` で書く」ことはできない**
-> （理由は Phase 3 手順書「画面実装の注意」のページネーションの項。`?page=2` でも
-> 1 ページ目が返るため `count() === 5` が落ちる）。
+> （`?page=2` でも 1 ページ目が返るため `count() === 5` が落ちる。Phase 3 手順書参照）。
 >
-> **Livewire コンポーネントには `WithPagination` トレイトを付けること。** 付け忘れると、
-> 2 ページ目を開いた状態で検索条件を変えたときに**ページ番号がリセットされず「該当なし」に
-> なる**。この不具合は 1 ページ目しか見ないテストでは検出できないため、
+> **Livewire コンポーネントには `WithPagination` トレイトを付けること。** 付け忘れると
+> 2 ページ目で検索条件を変えたときに**ページ番号がリセットされず「該当なし」になる**。
+> 1 ページ目しか見ないテストでは検出できないため、
 > `Livewire::test(BookList::class)->call('gotoPage', 2)->set('title', ...)` のように
 > ページ送り後の絞り込みも 1 件検証しておく。
 
-**各画面がデータなしでも 200 を返すことを確認する Feature テスト**（完了基準の
-「各画面が（データなしでも）500 にならずに表示できる」に対応）を書く。
-Blade 側の null 参照を Dusk より早く・安く検出できる。
+**各画面がデータなしでも 200 を返すことを確認する Feature テスト**を書く（完了基準に対応）。
 
-> **「データありの詳細画面」も併せて 1 件ずつ叩くこと。** データなしの一覧は Blade の
+> **「データありの詳細画面」も併せて 1 件ずつ叩くこと。** データなしの一覧は
 > `@if ($items->isEmpty())` 側しか通らず、**行を描画する分岐が一度も実行されない**。
-> `$log->created_at?->format(...)` のような null 参照は、レコードが 1 件ある状態で
-> 初めて踏む。
+> `$log->created_at?->format(...)` のような null 参照はレコードが 1 件ある状態で初めて踏む。
 
 ## 観測可能な振る舞いは assert で固定する
 
 `docs/` が**外から見える具体値**を定めている箇所は、**その値を直接検証する assert** をテストに
-含めること。実装が仕様と違っていても、**実装に合わせて書いたテストは green になる**ため、
-これが無いと仕様違反を検出する手段が無くなる（`php artisan test` も `dusk` も pint も phpstan も
-通ってしまう）。
+含めること。**実装に合わせて書いたテストは仕様違反でも green になる**ため、これが無いと
+検出する手段が無くなる。
 
 対象と assert の例:
 
@@ -352,8 +316,7 @@ vendor/bin/pint
 ```
 
 **パスを列挙して渡さないこと。** 触ったディレクトリを書き漏らすうえ、`bootstrap` を明示指定
-すると、**引数なしなら除外される `bootstrap/cache/*.php`**（Laravel が生成するキャッシュ）まで
-整形対象に入る。
+すると**引数なしなら除外される `bootstrap/cache/*.php`** まで整形対象に入る。
 
 ## このフェーズの完了基準
 
