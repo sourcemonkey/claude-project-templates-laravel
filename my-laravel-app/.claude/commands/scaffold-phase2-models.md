@@ -40,13 +40,10 @@ php artisan make:migration add_role_to_users_table --table=users
 
 次に `App\Models\User` を補正する。
 
-> **注意1（`role` を Mass assignment 対象にしない）**: `team-rules/security.md` の
-> 「`id` や `role` 等の権限に関わるカラムを `$fillable` に含めない」に従い、**`role` は
-> fillable に追加しない**（追加すると Mass assignment による権限昇格の余地が生まれる）。
-> ロール変更（`PATCH /admin/users/{user}`）を明示代入で書く必要があるが、**その実装は
-> Phase 3 の担当**であり、一次情報は `docs/api-spec.md` の同エンドポイントの項に置いてある
-> （手順書は当該フェーズのセッションしか読まないため、ここには書かない）。Model Factory は
-> fillable を経由しないため、`User::factory()->admin()` は問題なく機能する。
+> **注意1（`role` を Mass assignment 対象にしない）**: `team-rules/security.md` に従い
+> **`role` は fillable に追加しない**。Model Factory は fillable を経由しないため
+> `User::factory()->admin()` は問題なく機能する（ロール変更の実装は Phase 3 の担当で、
+> 一次情報は `docs/api-spec.md`）。
 
 > **注意2（Laravel 13 の User モデルは属性ベース）**: `laravel/laravel` が生成する `User` モデルは、`protected $fillable` / `protected $hidden` プロパティではなく PHP 属性 `#[Fillable([...])]` / `#[Hidden([...])]` を使う。上記の通り `role` は fillable に足さないので、`#[Fillable(['name', 'email', 'password'])]` はそのままでよい。
 
@@ -62,7 +59,7 @@ enum UserRole: int
 
 `User` モデルに `isAdmin(): bool` メソッドを追加し、`role === UserRole::Admin` を返す。
 
-> **注意3（larastan 用の `@property` 注釈）**: enum キャストしたカラム（`role`）は、`@property` PHPDoc が無いと larastan が `casts()` の型を推論できず `int` 扱いになり、`isAdmin()` の `role === UserRole::Admin` が **「常に false」と誤判定されて `vendor/bin/phpstan analyse` がエラーになる**（`team-rules/review-policy.md` の必須チェック）。モデルの docblock に `@property` を付けること:
+> **注意3（larastan 用の `@property` 注釈）**: enum キャストしたカラムは `@property` PHPDoc が無いと larastan が `int` 扱いにし、`role === UserRole::Admin` を「常に false」と誤判定して `vendor/bin/phpstan analyse` がエラーになる。モデルの docblock に `@property` を付けること:
 > ```php
 > /**
 >  * @property UserRole $role
@@ -71,10 +68,8 @@ enum UserRole: int
 > ```
 > 同様に enum キャストを持つ他モデル（`Lending::$state`, `Notification::$kind`）にも `@property` を付ける。
 >
-> **date / datetime キャストも同じ理由で `@property` が要る。** larastan はこれらも `string` と
-> 推論するため、`Carbon` のメソッドを呼ぶコードが `Cannot call method toDateString() on string.`
-> でエラーになる（Phase 3 の `ApproveLendingAction` が `$lending->due_on->toDateString()` を
-> 使うため必ず踏む）。`Lending` には次を付けておくこと:
+> **date / datetime キャストも同じ理由で `@property` が要る**（`Cannot call method
+> toDateString() on string.` になる）。`Lending` には次を付けておくこと:
 > ```php
 > /**
 >  * @property LendingState $state
@@ -85,7 +80,7 @@ enum UserRole: int
 >  */
 > ```
 
-> **注意4（`Notifiable` トレイトとの衝突）**: `User` に `notifications()` の `hasMany` を定義しないこと。Breeze が付与する `Illuminate\Notifications\Notifiable` トレイトが既に `notifications()`（`MorphMany` 返り、パスワードリセットで利用）を提供しており、これを `HasMany` 返りで上書きすると larastan が非共変な戻り値型としてエラーにする。独自 `Notification` へのアクセスは `Notification` 側の `belongsTo(User::class)` で表現する。`User` に必要なリレーションは `lendings()`（`hasMany`）のみ。
+> **注意4（`Notifiable` トレイトとの衝突）**: **`User` に `notifications()` を定義しないこと。** Breeze が付与する `Notifiable` トレイトの `notifications()`（`MorphMany`）を `HasMany` で上書きすることになり、larastan が非共変な戻り値型としてエラーにする。独自 `Notification` へのアクセスは `Notification` 側の `belongsTo(User::class)` で表現する。**`User` に必要なリレーションは `lendings()` のみ。**
 
 ### 残りのモデル
 
@@ -108,14 +103,10 @@ php artisan make:model Category -mf && php artisan make:model Tag -mf && php art
 php artisan make:model Lending -mf && php artisan make:model Notification -mf && php artisan make:model AuditLog -mf
 ```
 
-> **ツールの並列呼び出しでまとめてはいけない。** 実行順が保証されずタイムスタンプが
-> 前後し、FK 依存が壊れる。順序を保ったまま呼び出しを減らせるのは `&&` の連結だけである。
->
-> 2 つに分けてあるのは、連結が長くなるほどツール側の別のガード
-> （`uses shell operators that require approval for safety`）に当たりやすいため。
-> 呼び出しをまたいでも順序は保たれる。
+> **ツールの並列呼び出しでまとめてはいけない**（実行順が保証されず FK 依存が壊れる）。
+> 2 つに分けてあるのは、連結が長いとツール側の別のガードに当たりやすいため。
 
-> `App\Models\Notification` は Laravel 標準の `Illuminate\Notifications\Facades\Notification` ファサードと名前が衝突しないよう、Controller / Action での `use` 文に注意する（完全修飾名かエイリアスで区別する）。なお Laravel 13 は標準の `notifications` テーブルのマイグレーションを生成しないため、`create_notifications_table` を新規作成してもテーブル名は衝突しない。
+> `App\Models\Notification` は Laravel 標準の `Notification` ファサードと名前が衝突するので、Controller / Action での `use` 文に注意する（完全修飾名かエイリアスで区別する）。
 
 各モデルの `$fillable`（`User` 以外は従来どおり `protected $fillable` プロパティで可）・`casts()`・リレーションを定義する。enum キャスト（`Lending::$state` → `LendingState`, `Notification::$kind` → `NotificationKind`）を持つモデルには前述の `@property` 注釈を付ける。
 
@@ -126,20 +117,16 @@ Enum クラスは `app/Enums/` に置く。値は `docs/db-schema.md` の各テ�
 > 書こうとして「Unknown column 'updated_at'」で失敗する）。`created_at` はマイグレーションの
 > `useCurrent()` により DB 側で設定される。この設定に伴い、次の 3 点が要る:
 >
-> - `changes_json` を `'changes_json' => 'array'` でキャストする。**モデルテストで再取得した値を
->   `toBe()` で比較しない。** MySQL の JSON 型はキーの挿入順を保持しないため、
->   `['before' => ..., 'after' => ...]` を入れても `['after' => ..., 'before' => ...]` で返り、
->   厳密比較が `Failed asserting that two arrays are identical.` で落ちる。`toMatchArray()` を使う
+> - `changes_json` を `'changes_json' => 'array'` でキャストする。**再取得した値を `toBe()` で
+>   比較しない**（MySQL の JSON 型はキーの挿入順を保持せず、厳密比較が
+>   `Failed asserting that two arrays are identical.` で落ちる）。`toMatchArray()` を使う
 > - **`created_at` も `'created_at' => 'datetime'` でキャストする。** `$timestamps = false` の
->   モデルは `created_at` を**自動ではキャストしない**ため、明示しないと DB から読んだ値が
->   文字列のままになる。Phase 3 の監査ログ画面で `{{ $log->created_at?->format('Y-m-d H:i') }}`
->   と書くと `Call to a member function format() on string` で **500** になる（`?->` は null 用で、
->   文字列には効かない）。larastan 用に `@property \Illuminate\Support\Carbon|null $created_at` も付ける
-> - **`created_at` は生成直後のインスタンスに載らない。** `useCurrent()` が生成するのは DB 側の
->   `DEFAULT CURRENT_TIMESTAMP` で、Eloquent は自分で設定も再取得もしないため
->   `AuditLog::factory()->create()->created_at` は **`null` を返す**。値を読むときは
->   `->fresh()` を挟む（忘れるとモデルテストが `Expecting null not to be null.` で落ちる）。
->   `User::$role` を DB の `default(0)` に任せた場合と同じ理屈で、後述のファクトリの注意と対になっている
+>   モデルは自動キャストが効かず、Phase 3 の監査ログ画面が
+>   `Call to a member function format() on string` で **500** になる。larastan 用に
+>   `@property \Illuminate\Support\Carbon|null $created_at` も付ける
+> - **`created_at` は生成直後のインスタンスに載らない**（`useCurrent()` は DB 側の既定値なので
+>   Eloquent が再取得しない）。`AuditLog::factory()->create()->created_at` は `null` を返すため、
+>   値を読むときは `->fresh()` を挟む
 
 ジェネレータの自動生成だけでは制約が足りないので、以下を必ず確認:
 
@@ -174,7 +161,7 @@ public function down(): void
 }
 ```
 
-> このマイグレーションは `use Illuminate\Support\Facades\DB;` を必要とする。また `ALTER TABLE ... ADD CONSTRAINT` は MySQL 固有の構文で SQLite では動かないため、テストは必ず MySQL の `bookkeeper_test` で実行すること（前提の phpunit.xml 設定を参照）。
+> `use Illuminate\Support\Facades\DB;` が要る。`ALTER TABLE ... ADD CONSTRAINT` は MySQL 固有の構文なので、テストは必ず `bookkeeper_test`（MySQL）で実行すること。
 
 ### Lending の state 遷移
 
@@ -195,13 +182,13 @@ enum LendingState: int
 
 状態遷移用の外部パッケージは使わず、`Lending` モデルのメソッド（`approve()`, `reject()`, `returnBook()`）として実装する（`return` は PHP 予約語のためメソッド名に使えない）。各メソッド内で遷移元の state を確認し、不正な場合は `throw new \DomainException(...)` する。在庫減算・通知・**`due_on` の設定**は Action（Phase 3）側で行い、モデルのメソッドは state 遷移（と対応する `approved_at` / `returned_at` の設定）に限定する。**`due_on`（14 日後）を `approve()` に含めないこと。** 責務の一次情報は `docs/architecture.md` の Action 一覧。
 
-`markOverdue()` のようなメソッドは作成しない。`Overdue` への遷移はバッチ相当の操作（将来 Queue を有効化した際に実装予定）であり、本フェーズでは Seeder で state を直接 `Overdue` に設定することで代替する。
+**`markOverdue()` のようなメソッドは作成しない。** `Overdue` への遷移はバッチ相当の操作で、本フェーズでは Seeder が state を直接設定する。
 
 ### リレーション
 
 テーブル定義と ER 図から方向を導出し、各モデルに `hasMany` / `belongsTo` / `belongsToMany` を記述する。削除時の挙動はマイグレーションの外部キー定義で `@docs/db-schema.md` の「削除時の挙動」セクション通りに設定する。`User` の `notifications()` は定義しない（前述の注意4）。
 
-`belongsToMany` は中間テーブル名を明示し（`belongsToMany(Tag::class, 'book_tags')`）、`withTimestamps()` を付ける（`book_tags` は `created_at` / `updated_at` を持つため。付けないと attach 時に NOT NULL 違反になる）。
+`belongsToMany` は中間テーブル名を明示し（`belongsToMany(Tag::class, 'book_tags')`）、**`withTimestamps()` を付ける**（付けないと attach 時に NOT NULL 違反になる）。
 
 ### Spatie Query Builder 対応
 
@@ -225,11 +212,10 @@ php artisan migrate:rollback && php artisan migrate
 
 `make:model -f` が生成するファクトリは中身が空（`return [];`）なので、`docs/db-schema.md` の定義に合わせて書くこと（ファイルが既に存在するため Read してから編集する）。
 
-> **`UserFactory` だけは前提が違う。** `laravel/laravel` / Breeze が既に生成済みで
-> 中身も空でないため「**残りの**ファクトリ」に含まれない。**実行順序 1（users
-> テーブルの補正）の一部として、`User` を触る時点で下の `User` の項まで読み、
-> モデルと同時に直すこと**（後回しにすると `role` が `null` のままモデルテストが
-> 落ちる）。
+> **`UserFactory` は既に生成済みで中身も空**ではないため、上の「残りのファクトリ」に
+> 含まれない。**実行順序 1（users テーブルの補正）の一部として、`User` を触る時点で
+> 下の `User` の項まで読み、モデルと同時に直すこと**（後回しにすると `role` が `null` の
+> ままモデルテストが落ちる）。
 
 - `User` ファクトリのメールは `@test.local` ドメインにする（Breeze 標準ファクトリの既定ドメインとテスト実行時に衝突しないようにするため）。`role` を扱う `admin()` state も追加する
 
@@ -239,8 +225,8 @@ php artisan migrate:rollback && php artisan migrate
 
   > **`fake()->safeEmail('test.local')` と書かないこと。** Faker の `safeEmail()` は
   > **引数を取らず**、常に `example.com` / `.net` / `.org` を返す。
-  - **`definition()` にも `'role' => UserRole::Member` を明示すること**。マイグレーションの `default(0)` に任せると、`User::factory()->create()` が返す**インスタンスに `role` 属性が載らない**（DB 側の既定値は INSERT 後に再取得しない限りモデルへ反映されない）。この状態で `$user->role` を読むと enum キャストが効かず `null` が返り、後述のモデルテスト「enum キャストの確認」が `Failed asserting that null is identical to an object of class "App\Enums\UserRole".` で落ちる
-- **`Book` ファクトリの既定は「在庫満杯」（`available_copies` = `total_copies`）にすること**。`fake()->numberBetween()` を 2 つ独立に呼ぶと CHECK 制約違反で `QueryException` になり、`available_copies` に 0 を許すと `Lending::factory()` が連鎖生成した書籍の承認が在庫チェックに弾かれて**確率的に落ちるテスト**になる。ファクトリの既定は「素直に使って通る値」とし、在庫切れの検証用に `outOfStock()` state（`available_copies = 0`）を用意して異常系はテスト側で明示する
+  - **`definition()` にも `'role' => UserRole::Member` を明示すること**。マイグレーションの `default(0)` に任せると `User::factory()->create()` が返すインスタンスに `role` が載らず、モデルテストの「enum キャストの確認」が `Failed asserting that null is identical to an object of class "App\Enums\UserRole".` で落ちる
+- **`Book` ファクトリの既定は「在庫満杯」（`available_copies` = `total_copies`）にすること**。`fake()->numberBetween()` を 2 つ独立に呼ぶと CHECK 制約違反になり、0 を許すと `Lending::factory()` 経由の承認が在庫チェックに弾かれて**確率的に落ちるテスト**になる。**ファクトリの既定は「素直に使って通る値」とし、異常系は `outOfStock()` state（`available_copies = 0`）でテスト側から明示する**
   - **`available_copies` はローカル変数ではなくクロージャで `$attributes['total_copies']` から導出すること。**
 
     ```php
@@ -251,21 +237,17 @@ php artisan migrate:rollback && php artisan migrate
     ];
     ```
 
-    ローカル変数（`$totalCopies = fake()->numberBetween(1, 5);` を 2 箇所で使う書き方）でも
-    引数なしの `Book::factory()->create()` は通るため、Phase 2 のモデルテストでは気付けない。
-    しかし**呼び出し側が `total_copies` だけを上書きすると既定の `available_copies` が
-    そのまま残り**、`Book::factory()->create(['total_copies' => 2])` が
-    `SQLSTATE[HY000]: General error: 3819 Check constraint 'books_available_lte_total' is violated.`
-    で落ちる。これは Phase 4 の Dusk（返却テストで在庫を指定して書籍を作る）で初めて
-    顕在化するため、**Phase 2 の時点でクロージャにしておくこと**。
-    `outOfStock()` などの state は definition の解決後に適用されるので影響を受けない。
+    ローカル変数で書くと `Book::factory()->create(['total_copies' => 2])` のように
+    **呼び出し側が片方だけを上書きしたときに** `Check constraint 'books_available_lte_total'
+    is violated.` で落ちる。**Phase 2 のモデルテストでは気付けず、Phase 4 の Dusk で初めて
+    顕在化する**ので、ここでクロージャにしておくこと。
   - **`isbn` は `fake()->unique()->isbn13()` とする。`optional()` と繋がないこと**
     （`optional()` は**後続の呼び出しを確率で `null` に差し替える**ため、
     `optional()->unique()->isbn13()` は `null` に対するメソッド呼び出しになって落ちる）。
     null の ISBN は `docs/seeds.md` の「未公開書籍サンプル」を Seeder が作るので、
     ファクトリ側で混ぜる必要はない。
 - `Lending` ファクトリには state ごとの state メソッド（`approved()`, `overdue()`, `returned()`, `rejected()`）を用意しておくと、モデルテストと Phase 4・5 の Feature / Dusk テストの両方で使える
-  - **Seeder では使わない。** Phase 5 の Seeder は `docs/seeds.md` の固定値を `firstOrCreate()` で投入する方式のため、ファクトリを経由しない。`approved()` の `due_on` は `docs/api-spec.md` の承認仕様（14 日後）に従うので、**seeds.md の Approved サンプル（`due_on = 7 日後`）とは一致しない**。Seeder でこの state を使うと seeds.md と食い違うデータが入る
+  - **Seeder では使わない**（`approved()` の `due_on` は 14 日後で、**seeds.md の Approved サンプル（7 日後）と一致しない**ため、使うと仕様と食い違うデータが入る）
 
 ### モデルテスト
 
@@ -275,14 +257,14 @@ php artisan migrate:rollback && php artisan migrate
 >     ->use(RefreshDatabase::class)
 >     ->in('Unit/Models');
 > ```
-> これが無いと `tests/Unit/Models/` のテストは Laravel を起動できず `A facade root has not been set.` 等で失敗する。`TestCase` / `RefreshDatabase` は `tests/Pest.php` の冒頭で既に import 済みなので、**完全修飾名では書かないこと**（Pint の `fully_qualified_strict_types` が短縮するため差分が出る）。
+> これが無いと `A facade root has not been set.` 等で失敗する。`TestCase` / `RefreshDatabase` は `tests/Pest.php` の冒頭で import 済みなので、**完全修飾名では書かないこと**（Pint が短縮して差分が出る）。
 
 `tests/Unit/Models/` に各モデルの最低限のバリデーションテストを Pest で書く（`test/models` 相当のディレクトリ構成）。網羅すべき観点:
 
 - presence（必須カラムのバリデーション、または DB の NOT NULL 制約）
-  - **`Model::create($model::factory()->raw([...]))` と書かないこと。** `raw()` は非 fillable の列も
-    返し、`docs/stack.md` の「Eloquent の strict 設定」により DB へ到達する前に
-    `MassAssignmentException` になる。`Model::factory()->create(['col' => null])` を使う
+  - **`Model::create($model::factory()->raw([...]))` と書かないこと**（`raw()` は非 fillable の列も
+    返すため、DB へ到達する前に `MassAssignmentException` になる）。
+    `Model::factory()->create(['col' => null])` を使う
 - uniqueness
 - enum（PHP Enum）キャストの確認
 - リレーションの存在
