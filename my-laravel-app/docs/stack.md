@@ -83,8 +83,7 @@ Breeze を後入れする。** Laravel 公式がエージェント向けに配�
 > **v1.1.2 以前は全件パスでも `php artisan test` の終了コードが 1 になる**ため、完了基準を
 > 終了コードで判定する本プロジェクトでは green のテストを失敗と誤認する。
 >
-> **ただし pao の JSON の `result` フィールドは信用しない**（`--min` 未達でも `"passed"` を返す。
-> 後述「テストカバレッジ設定（正規形）」参照）。
+> **ただし pao の JSON の `result` フィールドは信用しない**（後述「80% 判定の規約」参照）。
 
 > **`laravel/boost` の導入範囲**: Phase 1 の `boost:install --mcp --guidelines` で `.mcp.json` と `docs/boost-guidelines.md` だけを生成する。**Agent Skills（`--skills`）は導入しない**（出力先の `.claude/` はヘッドレス実行で書き込めないため）。
 >

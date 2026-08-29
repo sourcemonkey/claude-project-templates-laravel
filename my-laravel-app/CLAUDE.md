@@ -52,7 +52,7 @@
 - [ ] `composer run dev` で起動し、ログインから主要画面遷移まで動作
 - [ ] `php artisan test` が all green
 - [ ] Laravel Dusk のシステムテストが all green
-- [ ] カバレッジ 80% 以上（`vendor/bin/pest --coverage --min=80` の**終了コード**で判定。JSON の `result` は使わない。`docs/stack.md` 参照）
+- [ ] カバレッジ 80% 以上（判定方法は `docs/stack.md` の「80% 判定の規約」）
 - [ ] `vendor/bin/pint --test` が違反 0
 - [ ] `vendor/bin/phpstan analyse` でエラーなし（larastan/larastan による静的解析）
 - [ ] README に「起動方法」「テストアカウント」が記載されている
