@@ -181,10 +181,6 @@ composer require -q spatie/laravel-query-builder blade-ui-kit/blade-heroicons
 composer require -q --dev -W larastan/larastan laravel/dusk laravel-lang/lang laravel/boost
 ```
 
-> **`-W` を外さないこと。** `laravel/dusk` は guzzle 7 系までしか許容しないが、Step 3 の
-> `create-project` は guzzle 8 系をロックするため、付けないと依存解決に失敗する（`-W` が
-> guzzle 系 3 パッケージを 7 系へ下げる）。`laravel/dusk` が guzzle 8 に対応したら不要になる。
-
 > `laravel/boost` は、AI エージェント向けの MCP サーバー（DB スキーマ・ログ・Laravel
 > エコシステムのドキュメント検索）と AI ガイドラインを提供する。導入手順は Step 6 参照。
 
