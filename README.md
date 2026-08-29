@@ -59,7 +59,8 @@ PHP 8.4.23 / Laravel 13 向けに移植したものです。フェーズ分割�
     │       ├── conf.d/
     │       └── initdb/          ← 初回起動時に bookkeeper / bookkeeper_test を作成
     ├── docs/                    ← 仕様ドキュメント
-    │   ├── stack.md             ← 技術スタック
+    │   ├── stack.md             ← 技術スタック（全フェーズで読む）
+    │   ├── setup.md             ← 雛形生成・依存・DB・環境変数（CLAUDE.md から @ 参照しない。Phase 1 で読む）
     │   ├── architecture.md      ← レイヤ設計（CLAUDE.md から @ 参照しない。Phase 3・4 で読む）
     │   ├── db-schema.md         ← DB スキーマ
     │   ├── screens.md           ← 画面構成
@@ -159,7 +160,7 @@ cd my-laravel-app && bin/check-repo.sh
 ### Laravel のバージョン方針
 
 **本テンプレートは Laravel 13 系を前提に書かれています。** `my-laravel-app/docs/` の
-仕様（`stack.md` の `laravel/framework (^13.0)`、`.env` / `phpunit.xml` / `config/app.php`
+仕様（`setup.md` の `laravel/framework (^13.0)`、`.env` / `phpunit.xml` / `config/app.php`
 の既定値に関する記述）も、`.claude/commands/` の手順書も、すべて 13 系の生成物に
 合わせています。
 
@@ -308,13 +309,13 @@ Laravel アプリそのものなので、次のように再配置されます。
 | SimpleCov | PHPUnit/Pest の `--coverage-html`（PCOV ドライバ） | |
 | Service オブジェクト | Action クラス（`app/Actions/`） | 命名規則は「操作 + リソース + Action」 |
 
-詳細な理由・設計判断は `my-laravel-app/docs/stack.md` および `my-laravel-app/docs/architecture.md` 参照。
+詳細な理由・設計判断は `my-laravel-app/docs/` の `stack.md` / `setup.md` / `architecture.md` 参照。
 
 ## カスタマイズのコツ
 
 - **別の業務系プロジェクトに転用するとき**: `my-laravel-app/docs/` の中身だけ
   差し替えれば、コマンドや方針はそのまま使えます
-- **DB を PostgreSQL にしたいとき**: `docs/stack.md` の MySQL 関連記述、
+- **DB を PostgreSQL にしたいとき**: `docs/setup.md` / `docs/stack.md` の MySQL 関連記述、
   `my-laravel-app/compose.yaml` のイメージ、Phase 1 のコマンドファイルの 3 箇所を
   書き換えれば対応できます
 - **チーム共通ルールの強化**: `team-rules/` 配下にファイルを追加し、

@@ -175,7 +175,7 @@ Phase 5 では Seeder が実装済みのため、`docs/seeds.md` のサンプル
 - **別マシン・別ディレクトリへの持ち込み手順**: `node_modules/` と `vendor/` は**コピーせず、持ち込み先で `composer run setup` により生成する**こと（`cp -r` すると `npm run build` が `ERR_MODULE_NOT_FOUND` で失敗する）。コピーするなら `rsync -a --exclude=node_modules --exclude=vendor`
 - 起動手順（`composer run dev`）
 - テストアカウント表（`docs/seeds.md` の「アカウント」表をコピー）
-- **DB 接続情報**（DBeaver / TablePlus などの GUI クライアントから繋ぐために必要な項目を網羅する。値は `compose.yaml` と `docs/stack.md` の「MySQL 設定の規約」が一次情報）:
+- **DB 接続情報**（DBeaver / TablePlus などの GUI クライアントから繋ぐために必要な項目を網羅する。値は `compose.yaml` と `docs/setup.md` の「MySQL 設定の規約」が一次情報）:
 
   | 項目 | 値 |
   |---|---|

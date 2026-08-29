@@ -199,7 +199,7 @@ Laravel 本体はホスト側で動き、`127.0.0.1:3306` 経由でコンテナ�
   生成物として残すが、ワーカー（`php artisan queue:work` / `queue:listen`）は起動しない。
 - Redis / Laravel Horizon / Reverb などの追加導入もしない。
 - 将来「返却期限リマインドメールの定期配信」等を実装することになった時点で
-  Queue を有効化する想定。詳細方針は `docs/stack.md` の
+  Queue を有効化する想定。詳細方針は `docs/setup.md` の
   「ジョブ・キャッシュ・ブロードキャスト」セクション参照。
 
 ## インフラ構成（開発環境）

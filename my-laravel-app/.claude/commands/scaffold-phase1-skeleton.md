@@ -4,7 +4,7 @@ description: フェーズ1 - Laravel 雛形を生成し依存を導入する（D
 
 # Phase 1: スケルトン生成
 
-`docs/stack.md` の技術スタックに従って、Laravel アプリの雛形を作成する。
+`docs/setup.md` と `docs/stack.md` の技術スタックに従って、Laravel アプリの雛形を作成する。
 DBMS は **MySQL 8.x** を **Docker コンテナ** で起動して利用する。
 Laravel 本体はホスト側で動かす。
 
@@ -24,7 +24,7 @@ Laravel 本体はホスト側で動かす。
 - `my-laravel-app/.npmrc`（npm のサプライチェーン対策 `ignore-scripts=true` / `audit=true`）
 - ルート直下の `.tool-versions`, `env.example`, `.gitignore`
 
-これらの内容を確認・編集する必要はない（中身は `docs/stack.md` の規約に合致した状態でコミット済み）。
+これらの内容を確認・編集する必要はない（中身は `docs/stack.md` / `docs/setup.md` の規約に合致した状態でコミット済み）。
 
 ## 実行手順
 
@@ -152,7 +152,7 @@ composer remove -q pestphp/pest-plugin-drift --dev
 
 ### 4. config/database.php の調整
 
-`docs/stack.md` の「MySQL 設定の規約」セクションに記載の正規形に合わせて `mysql` 接続設定を修正する。
+`docs/setup.md` の「MySQL 設定の規約」セクションに記載の正規形に合わせて `mysql` 接続設定を修正する。
 
 **構造には手を入れない。`env()` の第 2 引数（既定値）を 4 か所書き換えるだけである**（`laravel/laravel` の生成物は既に `charset` / `collation` も `env()` 経由になっている）:
 
@@ -174,7 +174,7 @@ composer remove -q pestphp/pest-plugin-drift --dev
 
 ### 5. Composer パッケージの追加
 
-`docs/stack.md` の「手動追加」列が ✅ のパッケージを追加する:
+`docs/setup.md` の「手動追加」列が ✅ のパッケージを追加する:
 
 ```sh
 composer require -q spatie/laravel-query-builder blade-ui-kit/blade-heroicons
@@ -271,7 +271,7 @@ composer require -q --dev -W larastan/larastan laravel/dusk laravel-lang/lang la
   > ヘッドレスでも生成できる。
 
   > **出力先の退避と `.ai/guidelines/` による上書きは、テンプレート同梱の設定で済んでいる**
-  > （`config/boost.php` と `.ai/guidelines/` の 2 ファイル。詳細は `docs/stack.md`）。
+  > （`config/boost.php` と `.ai/guidelines/` の 2 ファイル。詳細は `docs/setup.md`）。
   >
   > **上書きの成否は `grep -n "^## Project Rules" docs/boost-guidelines.md` が無出力かで判定する**
   > （上書きが効いていなくてもエラーにならず素通りするため）。効いていれば
@@ -288,7 +288,7 @@ composer require -q --dev -W larastan/larastan laravel/dusk laravel-lang/lang la
 php artisan key:generate
 ```
 
-`DB_DATABASE=bookkeeper` を追記する。`MAIL_MAILER` は Laravel 13 の `.env` では既定で `log` になっている（`docs/stack.md` の「メール確認」セクション参照）。既定から変わっている場合のみ `log` に設定する。
+`DB_DATABASE=bookkeeper` を追記する。`MAIL_MAILER` は Laravel 13 の `.env` では既定で `log` になっている（`docs/setup.md` の「メール確認」セクション参照）。既定から変わっている場合のみ `log` に設定する。
 
 Laravel 13 の `.env` / `.env.example` は `DB_CONNECTION=sqlite` 以外の `DB_*` 行が**コメントアウトされた状態**で生成される。コメントを外した上で値を設定すること:
 
@@ -318,7 +318,7 @@ DB_PASSWORD=app_password
 
 ### 8. composer.json の dev / setup スクリプトの調整
 
-開発サーバーの起動もセットアップも、`laravel/laravel` 既定の `composer.json` のスクリプト（`composer run dev` / `composer run setup`）を使う。**自前のラッパースクリプト（`bin/dev`・`bin/setup` 等）は作らない**（`composer.json` 側との二重管理になるため。`docs/stack.md` の「開発サーバー起動（正規形）」「初回セットアップ（正規形）」参照）。既定の生成物を本プロジェクトの方針に合わせて編集する。
+開発サーバーの起動もセットアップも、`laravel/laravel` 既定の `composer.json` のスクリプト（`composer run dev` / `composer run setup`）を使う。**自前のラッパースクリプト（`bin/dev`・`bin/setup` 等）は作らない**（`composer.json` 側との二重管理になるため。`docs/setup.md` の「開発サーバー起動（正規形）」「初回セットアップ（正規形）」参照）。既定の生成物を本プロジェクトの方針に合わせて編集する。
 
 **`scripts.dev`**: **`composer.json` は書き換えない。** Laravel 13.17 以降の `laravel/laravel` が生成する `dev` は、`concurrently` の直書きではなく Laravel 本体の `php artisan dev` への委譲になっている:
 
@@ -329,7 +329,7 @@ DB_PASSWORD=app_password
 ]
 ```
 
-起動するプロセスは `Illuminate\Foundation\DevCommands::registerDefaults()` が登録する `server` / `queue` / `logs` / `vite` の 4 つで、**`composer.json` に `queue:listen` という文字列は存在しない**。`docs/stack.md` の規約（Queue ワーカーを起動しない）に従うため、`app/Providers/AppServiceProvider.php` の `boot()` で除外する:
+起動するプロセスは `Illuminate\Foundation\DevCommands::registerDefaults()` が登録する `server` / `queue` / `logs` / `vite` の 4 つで、**`composer.json` に `queue:listen` という文字列は存在しない**。`docs/setup.md` の規約（Queue ワーカーを起動しない）に従うため、`app/Providers/AppServiceProvider.php` の `boot()` で除外する:
 
 あわせて `docs/stack.md` の「Eloquent の strict 設定」に従い、mass assignment の取りこぼしを例外にする 1 行も同じ `boot()` に置く。
 
@@ -339,7 +339,7 @@ use Illuminate\Foundation\DevCommands;
 
 public function boot(): void
 {
-    // docs/stack.md の方針により Queue ワーカーは起動しない。
+    // docs/setup.md の方針により Queue ワーカーは起動しない。
     // composer run dev → php artisan dev の対象から queue を外す。
     DevCommands::except('queue');
 
@@ -386,7 +386,7 @@ composer require -q --dev "laravel/pao:^1.1.3" --no-interaction
 ```
 
 既定は `^1.0.6` だが、**v1.1.2 以前は全件パスでも `php artisan test` の終了コードが 1 になる**
-（詳細は `docs/stack.md`）。完了基準を終了コードで判定するため、下限を保証しておく。
+（詳細は `docs/setup.md`）。完了基準を終了コードで判定するため、下限を保証しておく。
 
 ### 9. DB の作成と起動確認
 
@@ -481,7 +481,7 @@ php artisan test && vendor/bin/pint --test && vendor/bin/phpstan analyse --memor
 - [ ] `CLAUDE.md` が `boost:install` に書き換えられていない（`git status` に現れないこと）
 - [ ] `composer.json` の `laravel/framework` が `^13.`（Step 3 の検証を通過している）
 - [ ] `git status --short -- composer.lock` が `?? composer.lock` を返す（`.gitignore` で除外されていない）
-- [ ] `composer.json` に `docs/stack.md` の「手動追加 ✅」パッケージがすべて記載
+- [ ] `composer.json` に `docs/setup.md` の「手動追加 ✅」パッケージがすべて記載
 - [ ] Laravel Breeze（Livewire スタック）/ laravel-lang / larastan / Dusk の初期化済み
 - [ ] `php artisan dusk:chrome-driver --detect` を実行済み（ホストの Chrome とバージョンが一致）
 - [ ] `php artisan dev:list` に `queue` が**含まれていない**（`server` / `logs` / `vite` の 3 つ）

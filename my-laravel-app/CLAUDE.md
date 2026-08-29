@@ -15,6 +15,7 @@
 
 | ファイル | 読むべき場面 |
 |---|---|
+| `docs/setup.md` | **Phase 1** で Laravel 雛形・依存パッケージ・開発 DB・環境変数を用意するとき（`docs/stack.md` から分けてある。Phase 2 以降では読まない） |
 | `docs/architecture.md` | **Controller / Action / Policy / Livewire を追加・変更するとき**（レイヤの責務・トランザクション境界・認可エラーの挙動が一次情報） |
 | `docs/seeds.md` | Seeder の実装と、投入済みサンプルデータの件数・値を前提にする作業 |
 | `docs/boost-guidelines.md` | Laravel エコシステムの一般規約を確かめたいとき。**`docs/*.md` と `team-rules/` が優先し、Boost はそれらが触れていない領域を補完する**（Phase 1 で生成するため、それ以前は存在しない） |
@@ -63,4 +64,4 @@
 - **JS フレームワーク（React/Vue）を導入しない**。Livewire + Alpine.js で完結させる。
 - **Laravel Breeze（Livewire スタック）を使う**。自前認証を書かない。
 - **Laravel Policy（標準機能）を使う**。CanCanCan 相当のサードパーティ認可ライブラリや自前認可ロジックは導入しない。
-- **非同期ジョブを使わない**。Queue の生成物は残すがワーカーは起動しない（`docs/stack.md` 参照）。
+- **非同期ジョブを使わない**。Queue の生成物は残すがワーカーは起動しない（`docs/setup.md` 参照）。
