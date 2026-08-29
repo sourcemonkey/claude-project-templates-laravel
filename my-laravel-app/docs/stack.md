@@ -96,7 +96,7 @@ Breeze を後入れする。** Laravel 公式がエージェント向けに配�
 >
 > 上書きファイルのパスは Boost 内部のガイドラインキーに対応する（`boost` 節は `boost/core.blade.php`）。**節見出しの名前（`=== boost rules ===`）とは一致しない**ので、パスは `vendor/laravel/boost/src/Install/GuidelineComposer.php` の対応表で確認すること。上書き時は Boost 側の有用な記述（MCP ツールの説明等）を書き写して維持する。
 >
-> **`team-rules/` と `docs/*.md` が優先、Boost は補完**という関係を保つこと。
+> **`docs/*.md` と `team-rules/` が優先、Boost は補完**という関係を保つこと。
 
 `factory_bot` 相当は Laravel 標準の Model Factory（`database/factories/`）、`faker` 相当は `fakerphp/faker`（Laravel の依存関係に標準で含まれる）を使う。追加インストール不要。
 
