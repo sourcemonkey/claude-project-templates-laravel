@@ -114,7 +114,7 @@ Laravel の生成物（`app/`・`composer.json`・`.env.example` など）が加
 DBMS は MySQL 8.x を **Docker コンテナ** で起動する設計です。
 ホスト OS への MySQL インストールは不要です。
 
-### 前提条件の検査（`bin/doctor.sh`）
+### 前提条件の検査（`my-laravel-app/bin/doctor.sh`）
 
 上表を満たしているかは、Claude Code を起動する前に検査できます。
 
@@ -141,7 +141,7 @@ Docker デーモンと Compose v2、DB ポートの空き、DB ボリューム�
 - `my-laravel-app/bin/` に置いてあるため、`bin/init-project.sh` で作った**利用者の
   プロジェクトにも引き継がれます**（新メンバーがクローンした直後にも使えます）。
 
-### リポジトリ衛生の検査（`bin/check-repo.sh`）
+### リポジトリ衛生の検査（`my-laravel-app/bin/check-repo.sh`）
 
 各フェーズの完了基準のうち機械的に判定できるものを 1 回で検査します。同じく読み取り専用で、
 フェーズ 1〜5 のどの時点でも同じコマンドで走ります（まだ存在しないものは検査しません）。

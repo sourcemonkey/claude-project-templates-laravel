@@ -17,8 +17,8 @@
 ## このリポジトリの位置づけ
 
 このリポジトリの成果物は **Laravel プロジェクト用の Claude Code テンプレート**
-（`CLAUDE.md` / `team-rules/` / `.claude/commands/` のスラッシュコマンド / `docs/` の
-仕様一式）そのものであり、現在はその内容をブラッシュアップしている段階にある。
+（`CLAUDE.md` / `team-rules/` / `my-laravel-app/.claude/commands/` のスラッシュコマンド /
+`my-laravel-app/docs/` の仕様一式）そのものであり、現在はその内容をブラッシュアップしている段階にある。
 
 `my-laravel-app/`（蔵書管理システム BookKeeper）は、**テンプレートが正しく動作するかを
 検証するための使い捨てのサンプル**であり、生成 → 検証 → `bin/reset-phase.sh` で破棄、を
@@ -26,8 +26,8 @@
 
 このため、作業の優先順位を次のように置く。
 
-- **注力する**: 手順書（`.claude/commands/`）・`docs/` の仕様・`team-rules/` の
-  記述の正確さ。実際にフェーズを走らせて再現するか、が唯一の判断基準。
+- **注力する**: 手順書（`my-laravel-app/.claude/commands/`）・`my-laravel-app/docs/` の
+  仕様・`team-rules/` の記述の正確さ。実際にフェーズを走らせて再現するか、が唯一の判断基準。
 - **注力しない**: 検証用スクリプト（`bin/reset-phase.sh` 等）や `my-laravel-app` 自体の
   本番運用向けの作り込み。誤操作防止のガード・データ保全・冪等性の厳密化などは、
   テンプレートの検証を妨げない限り実装しない。
