@@ -280,7 +280,8 @@ vendor/bin/pint
 6. `vendor/bin/phpstan analyse --memory-limit=512M` でエラー 0（**`--memory-limit` を省略しない**。この環境の PHP の既定は 128M で、省略すると並列ワーカーが `Child process error (exit code 255): while running parallel worker` で落ちる）
 7. `composer audit` で既知の脆弱性 0
 
-   > 5〜7 は互いに独立で、いずれも終了コードで判定する。**`&&` で連結して 1 呼び出しにする**:
+   > 5〜7 は互いに独立で、いずれも終了コードで判定する。**`&&` で連結して 1 呼び出しにする**
+   > （`laravel/pao` が結果を JSON 1 行に整形するため出力は数十文字。`tail` で切らない）:
    >
    > ```sh
    > vendor/bin/pint --test && vendor/bin/phpstan analyse --memory-limit=512M && composer audit

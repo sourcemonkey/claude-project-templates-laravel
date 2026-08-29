@@ -310,6 +310,7 @@ vendor/bin/pint && vendor/bin/pint --test
 まず `bin/check-repo.sh`（読み取りのみ）を実行し、終了コード 0 を確認してから以下を確認する。
 
 コマンドで確かめる 3 項目は `&&` でつないで 1 呼び出しにする。
+**`laravel/pao` が結果を JSON 1 行に整形するため出力は数十文字。`tail` で切らない。**
 
 ```sh
 php artisan test && vendor/bin/pint --test && vendor/bin/phpstan analyse --memory-limit=512M

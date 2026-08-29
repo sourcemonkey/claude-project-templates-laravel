@@ -461,6 +461,7 @@ composer require -q --dev "laravel/pao:^1.1.3" --no-interaction
 
 コマンドで確かめる 3 項目は `&&` でつないで 1 呼び出しにする（`;` ではなく `&&` を使う。
 `;` だと途中が落ちても最後のコマンドの終了コードしか返らず、失敗を取りこぼす）。
+**`laravel/pao` が結果を JSON 1 行に整形するため出力は数十文字。`tail` で切らない。**
 
 ```sh
 php artisan test && vendor/bin/pint --test && vendor/bin/phpstan analyse --memory-limit=512M
