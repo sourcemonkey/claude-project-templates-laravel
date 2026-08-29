@@ -158,6 +158,61 @@ else
     hint ".gitignore への追加が漏れています"
 fi
 
+# ---- docs のバージョン表記が一次情報と一致するか --------------------------
+# 数値は人が読む docs/ にも書く。二重管理を避けるのではなく、ズレを機械が検出する。
+# 一次情報は .tool-versions（PHP）と compose.yaml（DB イメージ）。
+#
+# 判定は 2 方向:
+#   - 同系列で違う版が docs にある      -> NG（パッチ版の追従漏れ。実際に起きるのはほぼこれ）
+#   - 一次情報の値が docs に 1 度も無い -> WARN（系列ごと変えたときの追従漏れの疑い）
+#
+# 採用しなかった選択肢は「8.5」のように系列だけで書けば検査に掛からない
+# （docs/decisions.md が比較対象として挙げる版がこれに当たる）。
+# \b は BSD grep で移植性が無いため使わない。
+check_doc_versions() {
+    label="$1"; expected="$2"; regex="$3"
+
+    if [ -z "$expected" ]; then
+        warn "${label} の一次情報を読めず、docs の表記を検査していない"
+        return
+    fi
+
+    found="$(grep -rhoE "$regex" docs 2>/dev/null | sort -u)"
+
+    if [ -z "$found" ]; then
+        warn "docs に ${label}（${expected}）の表記が 1 つも無い"
+        hint "系列ごと更新した際の追従漏れの可能性があります"
+        return
+    fi
+
+    stale="$(printf '%s\n' "$found" | grep -vFx "$expected")"
+    if [ -z "$stale" ]; then
+        ok "docs の ${label} 表記は一次情報（${expected}）と一致する"
+        return
+    fi
+
+    ng "docs の ${label} 表記が一次情報（${expected}）と食い違う:"
+    printf '%s\n' "$stale" | while IFS= read -r v; do
+        grep -rn -- "$v" docs | while IFS= read -r line; do
+            printf '        %s\n' "$line"
+        done
+    done
+    hint "docs 側を ${expected} に合わせてください"
+}
+
+if [ ! -d docs ]; then
+    skip "docs/ が無いためバージョン表記を検査しない"
+else
+    php_pinned="$(awk '$1 == "php" { print $2; exit }' .tool-versions 2>/dev/null)"
+    php_series="$(printf '%s' "${php_pinned%.*}" | sed 's/\./\\./g')"
+    check_doc_versions "PHP" "$php_pinned" "${php_series}\.[0-9]+"
+
+    mysql_image="$(awk '/^[[:space:]]*image:[[:space:]]*mysql:/ {
+        sub(/^[[:space:]]*image:[[:space:]]*/, ""); print; exit }' compose.yaml 2>/dev/null)"
+    mysql_major="${mysql_image#mysql:}"; mysql_major="${mysql_major%%.*}"
+    check_doc_versions "MySQL イメージ" "$mysql_image" "mysql:${mysql_major}\.[0-9]+"
+fi
+
 # ---- まとめ --------------------------------------------------------------
 echo
 if [ "$ng_count" -eq 0 ]; then
