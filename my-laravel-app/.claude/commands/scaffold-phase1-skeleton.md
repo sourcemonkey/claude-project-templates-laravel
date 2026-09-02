@@ -92,7 +92,7 @@ composer create-project -q laravel/laravel:^13.0 tmp-skeleton --remove-vcs --pre
 生成完了後、`rsync` で全生成物（ドットファイル含む）を `my-laravel-app/` 直下へ配置し、一時ディレクトリを削除する:
 
 ```sh
-rsync -a --exclude=/.gitignore --exclude=/.npmrc tmp-skeleton/ .
+rsync -a --exclude=/.gitignore --exclude=/.npmrc --exclude=/CLAUDE.md --exclude=/AGENTS.md tmp-skeleton/ .
 git clean -fdxq tmp-skeleton
 ls -a .env.example artisan composer.json composer.lock phpunit.xml
 ```
@@ -103,7 +103,7 @@ ls -a .env.example artisan composer.json composer.lock phpunit.xml
 > 含まず `.env` を取りこぼす。Bash ツールも書き込み系の glob を拒否する）。`rsync -a` は
 > 末尾スラッシュ付きの指定でドットファイルごと再帰コピーする。
 
-**`--exclude` は必ず指定する。** `laravel/laravel` 同梱の `.gitignore` / `.npmrc` ではなく、テンプレート同梱版を正とするため（先頭 `/` は転送元ルート直下のみを対象にする指定で、`storage/framework/*/.gitignore` 等は除外されない）。
+**`--exclude` は必ず指定する。** `.gitignore` / `.npmrc` / `CLAUDE.md` は `laravel/laravel` 同梱版ではなくテンプレート同梱版を正とするため（先頭 `/` は転送元ルート直下のみを対象にする指定で、`storage/framework/*/.gitignore` 等は除外されない）。`AGENTS.md` は**テンプレートに無いので持ち込まない**（Boost のブートストラップ指示で、`curl | bash` による PHP 導入と無条件の `boost:install` を求めるため、mise 固定・`--mcp --guidelines` 限定の方針と衝突する）。
 
 配置後、テンプレート同梱ファイルが無傷であることを確認する:
 
