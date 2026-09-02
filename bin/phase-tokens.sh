@@ -153,7 +153,17 @@ def cell($a): [
                 elif ($l | startswith("Phase")) and $a.first != null then (($a.last - $a.first) | hms)
                 else "-" end) + " |"),
   ("| **合計** | " + (cell($total) | join(" | "))
-   + " | " + (if $total.first != null then (($total.last - $total.first) | hms) else "-" end) + " |")
+   + " | " + (if $total.first != null then (($total.last - $total.first) | hms) else "-" end) + " |"),
+
+  # begin が届かなかった区間は 0 行として出る。「計測できなかった」を「消費ゼロ」と
+  # 読ませない（team-rules/coding-standards.md）。
+  (($phases | map(select((($st.spans[.] // {}).start == null)
+                         and (($st.spans[.] // {}).end != null))))
+   | if length > 0 then
+       ("",
+        "※ " + join(" / ") + " は begin マーカーが見つからず計測できていない。消費は「マーカー外」に含まれる。",
+        "  begin は assistant のテキストブロックに要る。`echo` 等でコマンド出力にすると読めない。")
+     else empty end)
 '
 
 # 「経過」列はフック（PreToolUse の待機など）による停止時間を含む。作業時間の
